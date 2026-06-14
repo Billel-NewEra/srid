@@ -8,8 +8,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="SRID COM">
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
-    <link rel="apple-touch-icon" href="/static/icon-192.png">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='logo.svg') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}">
     <title>{% block title %}SRID COM — Gestion Financière{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.22/dist/full.min.css" rel="stylesheet" type="text/css" />
     <script src="https://cdn.tailwindcss.com"></script>
@@ -362,7 +362,7 @@
                 </ul>
             </div>
             <a href="{{ url_for('dashboard') }}" class="btn btn-ghost gap-2 text-lg font-bold">
-                <img src="/static/icon.jpg" alt="SRID COM" class="h-10 max-w-[120px] rounded-lg object-contain">
+                <img src="{{ url_for('static', filename='icon.jpg') }}" alt="SRID COM" class="h-10 max-w-[120px] rounded-lg object-contain">
                 <span class="hidden sm:inline">SRID COM</span>
             </a>
         </div>
