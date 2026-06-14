@@ -1,4 +1,4 @@
-const CACHE_NAME = 'srid-com-v2';
+const CACHE_NAME = 'srid-com-v3';
 const ASSETS_TO_CACHE = [
   './',
   './static/logo.svg',

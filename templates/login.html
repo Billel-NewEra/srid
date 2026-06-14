@@ -7,6 +7,9 @@
     <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.22/dist/full.min.css" rel="stylesheet" type="text/css" />
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icon-192.png') }}">
+    <meta name="theme-color" content="#1e3a5f">
 </head>
 <body class="min-h-screen bg-base-200 flex items-center justify-center">
     <div class="card w-full max-w-md shadow-2xl bg-base-100 border border-base-300">
@@ -49,5 +52,11 @@
             </form>
         </div>
     </div>
+
+    <script>
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('{{ url_for("service_worker") }}');
+        }
+    </script>
 </body>
 </html>
