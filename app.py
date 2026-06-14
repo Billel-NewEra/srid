@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, send_file
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, send_file, send_from_directory
 from config import Config
 from models import db, Operation, User, AuditLog
 from datetime import datetime, date, timedelta
@@ -38,6 +38,11 @@ def inject_globals():
 
 
 # --- Routes Auth ---
+
+@app.route('/sw.js')
+def service_worker():
+    return send_from_directory('static', 'sw.js', mimetype='application/javascript')
+
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():

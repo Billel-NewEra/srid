@@ -493,7 +493,7 @@
 
         // PWA Service Worker
         if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('{{ url_for("static", filename="sw.js") }}');
+            navigator.serviceWorker.register('{{ url_for("service_worker") }}');
         }
     </script>
 
