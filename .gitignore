@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+database.db
+*.xlsx
+srd.jpg
+srd2.jpg
+icon.jpg

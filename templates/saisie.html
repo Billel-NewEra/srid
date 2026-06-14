@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}Saisie - SRID COM{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+        <h1 class="text-2xl font-bold"><i class="fas fa-plus-circle text-primary mr-2"></i>Nouvelle opération</h1>
+    </div>
+
+    <div class="card bg-base-100 shadow-xl">
+        <div class="card-body">
+            <form method="POST" action="{{ url_for('saisie') }}"
+                  hx-post="{{ url_for('saisie') }}"
+                  hx-target="#form-result"
+                  hx-swap="innerHTML"
+                  class="space-y-6">
+
+                <!-- Section: Type et Société -->
+                <div class="divider divider-start text-sm font-semibold opacity-70">
+                    <i class="fas fa-tag mr-1"></i> Type d'opération
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Type *</span></label>
+                        <select name="type_operation" class="select select-bordered w-full" required>
+                            <option value="" disabled selected>-- Choisir --</option>
+                            <option value="Chèque">Chèque</option>
+                            <option value="Virement">Virement</option>
+                            <option value="Versement">Versement</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Société *</span></label>
+                        <select name="societe" class="select select-bordered w-full" required>
+                            <option value="" disabled selected>-- Choisir --</option>
+                            <option value="SRID">SRID</option>
+                            <option value="Genetics">Genetics</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Famille</span></label>
+                        <input type="text" name="famille" class="input input-bordered w-full" placeholder="Ex: Famille A">
+                    </div>
+                </div>
+
+                <!-- Section: Dates -->
+                <div class="divider divider-start text-sm font-semibold opacity-70">
+                    <i class="fas fa-calendar mr-1"></i> Dates
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Date opération *</span></label>
+                        <input type="date" name="date_operation" class="input input-bordered w-full" required>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Date réception</span></label>
+                        <input type="date" name="date_reception" class="input input-bordered w-full">
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Report encaissement</span></label>
+                        <input type="date" name="date_encaissement" class="input input-bordered w-full">
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Date sortie</span></label>
+                        <input type="date" name="date_sortie" class="input input-bordered w-full">
+                    </div>
+                </div>
+
+                <!-- Section: Client et Montant -->
+                <div class="divider divider-start text-sm font-semibold opacity-70">
+                    <i class="fas fa-user mr-1"></i> Client & Montant
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Client / Libellé *</span></label>
+                        <input type="text" name="client" class="input input-bordered w-full" placeholder="Nom du client" required>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Remettant</span></label>
+                        <input type="text" name="remettant" class="input input-bordered w-full" placeholder="Personne qui remet">
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Montant *</span></label>
+                        <input type="number" name="montant" step="0.01" class="input input-bordered w-full" placeholder="0.00" required>
+                    </div>
+                </div>
+
+                <!-- Section: Banque et Pièce -->
+                <div class="divider divider-start text-sm font-semibold opacity-70">
+                    <i class="fas fa-university mr-1"></i> Banque & Pièce
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Banque</span></label>
+                        <input type="text" name="banque" class="input input-bordered w-full" placeholder="Nom de la banque">
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">N° Pièce</span></label>
+                        <input type="text" name="numero_piece" class="input input-bordered w-full" placeholder="N° chèque ou versement">
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Statut *</span></label>
+                        <select name="statut" class="select select-bordered w-full" required>
+                            <option value="En attente">En attente</option>
+                            <option value="Encaissé">Encaissé</option>
+                            <option value="En cours">En cours</option>
+                            <option value="Rejeté">Rejeté</option>
+                            <option value="Annulé">Annulé</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Section: Détails -->
+                <div class="divider divider-start text-sm font-semibold opacity-70">
+                    <i class="fas fa-info-circle mr-1"></i> Détails
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Type détail</span></label>
+                        <select name="type_detail" class="select select-bordered w-full">
+                            <option value="">-- Aucun --</option>
+                            <option value="Courant">Courant</option>
+                            <option value="Garantie">Garantie</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Entrée (reçu par)</span></label>
+                        <input type="text" name="entree" class="input input-bordered w-full" placeholder="Personne qui a reçu">
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Sortie (remis par)</span></label>
+                        <input type="text" name="sortie" class="input input-bordered w-full" placeholder="Personne qui a remis">
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Saisi par</span></label>
+                        <input type="text" name="cree_par" class="input input-bordered w-full" placeholder="Votre nom">
+                    </div>
+                </div>
+                <div class="form-control">
+                    <label class="label"><span class="label-text font-medium">Remarque</span></label>
+                    <textarea name="remarque" class="textarea textarea-bordered w-full" rows="3" placeholder="Notes ou commentaires..."></textarea>
+                </div>
+
+                <!-- Bouton -->
+                <div class="flex justify-end gap-3 pt-4">
+                    <button type="reset" class="btn btn-ghost">
+                        <i class="fas fa-eraser mr-1"></i> Effacer
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save mr-1"></i> Enregistrer
+                    </button>
+                </div>
+            </form>
+
+            <!-- Zone de résultat HTMX -->
+            <div id="form-result" class="mt-4"></div>
+        </div>
+    </div>
+</div>
+{% endblock %}

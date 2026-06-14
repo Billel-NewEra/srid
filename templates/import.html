@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Import Excel - SRID COM{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <h1 class="text-2xl font-bold mb-6"><i class="fas fa-file-import text-primary mr-2"></i>Import Excel</h1>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Upload -->
+        <div class="card bg-base-100 shadow-xl border border-base-300">
+            <div class="card-body">
+                <h2 class="card-title text-lg"><i class="fas fa-upload mr-2 text-emerald-400"></i>Importer un fichier</h2>
+                <p class="text-sm opacity-60 mb-4">Importez vos fichiers Excel existants. Le système détectera automatiquement le type d'opération selon le nom de la feuille.</p>
+
+                <form method="POST" enctype="multipart/form-data" class="space-y-4">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Fichier Excel (.xlsx)</span></label>
+                        <input type="file" name="file" accept=".xlsx,.xls" class="file-input file-input-bordered file-input-primary w-full" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-full">
+                        <i class="fas fa-cloud-upload-alt mr-2"></i> Importer
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Instructions -->
+        <div class="card bg-base-100 shadow-xl border border-base-300">
+            <div class="card-body">
+                <h2 class="card-title text-lg"><i class="fas fa-info-circle mr-2 text-amber-400"></i>Instructions</h2>
+                <div class="space-y-3 text-sm">
+                    <div class="bg-base-200 rounded-lg p-3">
+                        <p class="font-semibold mb-1"><i class="fas fa-check text-emerald-400 mr-1"></i> Détection automatique</p>
+                        <p class="opacity-70">Le type d'opération est détecté selon le nom de la feuille Excel (chèque, virement, versement).</p>
+                    </div>
+                    <div class="bg-base-200 rounded-lg p-3">
+                        <p class="font-semibold mb-1"><i class="fas fa-check text-emerald-400 mr-1"></i> Format attendu</p>
+                        <p class="opacity-70">La première ligne doit contenir les en-têtes. Les données commencent à la ligne 2.</p>
+                    </div>
+                    <div class="bg-base-200 rounded-lg p-3">
+                        <p class="font-semibold mb-1"><i class="fas fa-check text-emerald-400 mr-1"></i> Colonnes détectées</p>
+                        <p class="opacity-70">Date, Client, Montant et Banque sont détectés automatiquement dans chaque ligne.</p>
+                    </div>
+                    <div class="bg-base-200 rounded-lg p-3">
+                        <p class="font-semibold mb-1"><i class="fas fa-exclamation-triangle text-amber-400 mr-1"></i> Note</p>
+                        <p class="opacity-70">Les lignes sans date ou sans montant sont ignorées. Vous pouvez importer le même fichier plusieurs fois (les doublons ne sont pas détectés).</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

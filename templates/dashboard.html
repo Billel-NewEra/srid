@@ -1,0 +1,364 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - SRID COM{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- Titre -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+        <h1 class="text-2xl font-bold"><i class="fas fa-chart-line text-primary mr-2"></i>Dashboard</h1>
+        <div class="badge badge-outline badge-lg mt-2 sm:mt-0">
+            <i class="fas fa-calendar mr-1"></i> {{ today }}
+        </div>
+    </div>
+
+    <!-- KPIs principaux -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div class="stat rounded-xl shadow-lg border border-emerald-500/20" style="background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.02));">
+            <div class="stat-figure text-emerald-400">
+                <i class="fas fa-receipt text-3xl"></i>
+            </div>
+            <div class="stat-title">Total Opérations</div>
+            <div class="stat-value text-emerald-400" data-count="{{ total_ops }}">0</div>
+        </div>
+        <div class="stat rounded-xl shadow-lg border border-amber-500/20" style="background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.02));">
+            <div class="stat-figure text-amber-400">
+                <i class="fas fa-coins text-3xl"></i>
+            </div>
+            <div class="stat-title">Montant Total</div>
+            <div class="stat-value text-amber-400 text-lg" data-count="{{ total_montant }}" data-decimal="true">0</div>
+        </div>
+        <div class="stat rounded-xl shadow-lg border border-sky-500/20" style="background: linear-gradient(135deg, rgba(14,165,233,0.08), rgba(14,165,233,0.02));">
+            <div class="stat-figure text-sky-400">
+                <i class="fas fa-calculator text-3xl"></i>
+            </div>
+            <div class="stat-title">Moyenne / opération</div>
+            <div class="stat-value text-sky-400 text-lg" data-count="{{ montant_moyen }}" data-decimal="true">0</div>
+        </div>
+        <div class="stat rounded-xl shadow-lg border border-violet-500/20" style="background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(139,92,246,0.02));">
+            <div class="stat-figure text-violet-400">
+                <div class="radial-progress text-violet-400" style="--value:{{ taux_encaissement }};--size:3.5rem;--thickness:4px;" role="progressbar">
+                    <span class="text-xs font-bold">{{ taux_encaissement }}%</span>
+                </div>
+            </div>
+            <div class="stat-title">Taux d'encaissement</div>
+            <div class="stat-value text-violet-400">{{ taux_encaissement }}%</div>
+        </div>
+    </div>
+
+    <!-- KPIs secondaires - Statuts -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+        <div class="flex items-center gap-3 p-3 rounded-lg bg-base-100 shadow-sm border border-base-300">
+            <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
+            <div>
+                <p class="text-xs opacity-60">Encaissés</p>
+                <p class="font-bold text-lg">{{ encaisses }}</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3 p-3 rounded-lg bg-base-100 shadow-sm border border-base-300">
+            <div class="w-3 h-3 rounded-full bg-amber-500"></div>
+            <div>
+                <p class="text-xs opacity-60">En attente</p>
+                <p class="font-bold text-lg">{{ en_attente }}</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3 p-3 rounded-lg bg-base-100 shadow-sm border border-base-300">
+            <div class="w-3 h-3 rounded-full bg-red-500"></div>
+            <div>
+                <p class="text-xs opacity-60">Rejetés</p>
+                <p class="font-bold text-lg">{{ rejetes }}</p>
+            </div>
+        </div>
+        <div class="flex items-center gap-3 p-3 rounded-lg bg-base-100 shadow-sm border border-base-300">
+            <div class="w-3 h-3 rounded-full bg-sky-500"></div>
+            <div>
+                <p class="text-xs opacity-60">En cours</p>
+                <p class="font-bold text-lg">{{ en_cours }}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Répartition par type -->
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        <div class="card bg-base-100 shadow-sm">
+            <div class="card-body p-4 flex flex-row items-center gap-3">
+                <div class="badge badge-lg bg-blue-600 text-white border-blue-700"><i class="fas fa-money-check"></i></div>
+                <div>
+                    <p class="text-sm opacity-70">Chèques</p>
+                    <p class="text-xl font-bold">{{ total_cheques }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="card bg-base-100 shadow-sm">
+            <div class="card-body p-4 flex flex-row items-center gap-3">
+                <div class="badge badge-lg bg-purple-600 text-white border-purple-700"><i class="fas fa-exchange-alt"></i></div>
+                <div>
+                    <p class="text-sm opacity-70">Virements</p>
+                    <p class="text-xl font-bold">{{ total_virements }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="card bg-base-100 shadow-sm">
+            <div class="card-body p-4 flex flex-row items-center gap-3">
+                <div class="badge badge-lg bg-orange-500 text-white border-orange-600"><i class="fas fa-piggy-bank"></i></div>
+                <div>
+                    <p class="text-sm opacity-70">Versements</p>
+                    <p class="text-xl font-bold">{{ total_versements }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Graphiques principaux -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="card bg-base-100 shadow">
+            <div class="card-body">
+                <h2 class="card-title text-sm"><i class="fas fa-chart-area mr-2 text-emerald-500"></i>Montants mensuels — {{ year }} vs {{ previous_year }}</h2>
+                <canvas id="compareChart" class="w-full" height="220"></canvas>
+            </div>
+        </div>
+        <div class="card bg-base-100 shadow">
+            <div class="card-body">
+                <h2 class="card-title text-sm"><i class="fas fa-chart-pie mr-2 text-violet-500"></i>Statut des opérations</h2>
+                <canvas id="statutChart" class="w-full" height="220"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Graphiques secondaires -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="card bg-base-100 shadow">
+            <div class="card-body">
+                <h2 class="card-title text-sm"><i class="fas fa-building mr-2 text-sky-500"></i>Montants par société — {{ year }}</h2>
+                <div class="flex gap-4 mb-2">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full bg-blue-500"></div>
+                        <span class="text-xs">SRID — {{ "{:,.0f}".format(montant_srid) }}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full bg-pink-500"></div>
+                        <span class="text-xs">Genetics — {{ "{:,.0f}".format(montant_genetics) }}</span>
+                    </div>
+                </div>
+                <canvas id="societeChart" class="w-full" height="200"></canvas>
+            </div>
+        </div>
+        <div class="card bg-base-100 shadow">
+            <div class="card-body">
+                <h2 class="card-title text-sm"><i class="fas fa-chart-pie mr-2 text-amber-500"></i>Chèques · Virements · Versements</h2>
+                <canvas id="typeChart" class="w-full" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Top 5 clients + Activité 30 jours -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="card bg-base-100 shadow">
+            <div class="card-body">
+                <h2 class="card-title text-sm mb-4"><i class="fas fa-trophy mr-2 text-amber-500"></i>Top 5 clients par montant — {{ year }}</h2>
+                <div class="space-y-3">
+                    {% for client_name, total, nb_ops in top_clients %}
+                    <div class="flex items-center gap-3">
+                        <div class="badge badge-sm badge-primary font-bold w-6 h-6">{{ loop.index }}</div>
+                        <div class="flex-1">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-sm font-medium truncate max-w-[180px]">{{ client_name or 'N/A' }}</span>
+                                <span class="text-sm font-bold">{{ "{:,.0f}".format(total) }}</span>
+                            </div>
+                            <progress class="progress progress-primary w-full h-2" value="{{ total }}" max="{{ top_clients[0][1] if top_clients else 1 }}"></progress>
+                        </div>
+                        <div class="badge badge-ghost badge-sm">{{ nb_ops }} ops</div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        <div class="card bg-base-100 shadow">
+            <div class="card-body">
+                <h2 class="card-title text-sm"><i class="fas fa-bolt mr-2 text-sky-500"></i>Opérations par jour — 30 derniers jours</h2>
+                <canvas id="activityChart" class="w-full" height="200"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dernières opérations -->
+    <div class="card bg-base-100 shadow">
+        <div class="card-body">
+            <h2 class="card-title text-sm mb-4"><i class="fas fa-history mr-2"></i>Dernières opérations</h2>
+            <div class="overflow-x-auto">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Type</th>
+                            <th>Société</th>
+                            <th>Client</th>
+                            <th>Montant</th>
+                            <th>Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for op in dernieres %}
+                        <tr class="hover">
+                            <td>{{ op.date_operation.strftime('%d/%m/%Y') if op.date_operation else '-' }}</td>
+                            <td>
+                                <span class="badge badge-sm font-semibold
+                                    {% if op.type_operation == 'Chèque' %}bg-blue-600 text-white border-blue-700
+                                    {% elif op.type_operation == 'Virement' %}bg-purple-600 text-white border-purple-700
+                                    {% else %}bg-orange-500 text-white border-orange-600{% endif %}">
+                                    {{ op.type_operation }}
+                                </span>
+                            </td>
+                            <td class="text-xs">{{ op.societe }}</td>
+                            <td>{{ op.client }}</td>
+                            <td class="font-mono">{{ "{:,.2f}".format(op.montant) }}</td>
+                            <td>
+                                <span class="badge badge-sm font-semibold
+                                    {% if op.statut == 'Encaissé' %}bg-emerald-600 text-white border-emerald-700
+                                    {% elif op.statut == 'En attente' %}bg-amber-500 text-white border-amber-600
+                                    {% elif op.statut == 'Rejeté' %}bg-red-600 text-white border-red-700
+                                    {% elif op.statut == 'Annulé' %}bg-gray-500 text-white border-gray-600
+                                    {% else %}bg-sky-600 text-white border-sky-700{% endif %}">
+                                    {{ op.statut }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr><td colspan="6" class="text-center opacity-50 py-8">Aucune opération enregistrée</td></tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const chartColors = {
+        emerald: 'rgb(16, 185, 129)',
+        amber: 'rgb(245, 158, 11)',
+        violet: 'rgb(139, 92, 246)',
+        sky: 'rgb(14, 165, 233)',
+        blue: 'rgb(59, 130, 246)',
+        blueAlpha: 'rgba(59, 130, 246, 0.15)',
+        pink: 'rgb(236, 72, 153)',
+        pinkAlpha: 'rgba(236, 72, 153, 0.15)',
+        red: 'rgb(239, 68, 68)',
+        gray: 'rgb(107, 114, 128)',
+    };
+    const gridColor = 'rgba(148, 163, 184, 0.1)';
+
+    // 1. Évolution N vs N-1
+    const compareCtx = document.getElementById('compareChart').getContext('2d');
+    const g1 = compareCtx.createLinearGradient(0, 0, 0, 300);
+    g1.addColorStop(0, 'rgba(16, 185, 129, 0.3)');
+    g1.addColorStop(1, 'rgba(16, 185, 129, 0.01)');
+    const g2 = compareCtx.createLinearGradient(0, 0, 0, 300);
+    g2.addColorStop(0, 'rgba(148, 163, 184, 0.2)');
+    g2.addColorStop(1, 'rgba(148, 163, 184, 0.01)');
+
+    new Chart(compareCtx, {
+        type: 'line',
+        data: {
+            labels: ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'],
+            datasets: [{
+                label: '{{ year }}',
+                data: {{ monthly_data | tojson }},
+                backgroundColor: g1, borderColor: chartColors.emerald, borderWidth: 2.5,
+                fill: true, tension: 0.4, pointBackgroundColor: chartColors.emerald,
+                pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 7,
+            }, {
+                label: '{{ previous_year }}',
+                data: {{ monthly_data_prev | tojson }},
+                backgroundColor: g2, borderColor: 'rgba(148,163,184,0.6)', borderWidth: 1.5,
+                borderDash: [5,5], fill: true, tension: 0.4, pointRadius: 2, pointHoverRadius: 5,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 15 } } },
+            scales: {
+                y: { beginAtZero: true, grid: { color: gridColor }, ticks: { callback: v => v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':v } },
+                x: { grid: { display: false } }
+            },
+            interaction: { intersect: false, mode: 'index' }
+        }
+    });
+
+    // 2. Répartition par statut
+    new Chart(document.getElementById('statutChart').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Encaissé','En attente','Rejeté','Annulé','En cours'],
+            datasets: [{ data: [{{ statut_data['Encaissé'] }},{{ statut_data['En attente'] }},{{ statut_data['Rejeté'] }},{{ statut_data['Annulé'] }},{{ statut_data['En cours'] }}],
+                backgroundColor: [chartColors.emerald, chartColors.amber, chartColors.red, chartColors.gray, chartColors.sky],
+                borderWidth: 2, borderColor: 'rgba(30,41,59,0.8)', hoverOffset: 10 }]
+        },
+        options: { responsive: true, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { padding: 15, usePointStyle: true, pointStyle: 'circle' } } } }
+    });
+
+    // 3. SRID vs Genetics
+    new Chart(document.getElementById('societeChart').getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'],
+            datasets: [{
+                label: 'SRID', data: {{ monthly_srid | tojson }},
+                backgroundColor: chartColors.blueAlpha, borderColor: chartColors.blue, borderWidth: 1.5, borderRadius: 4,
+            }, {
+                label: 'Genetics', data: {{ monthly_genetics | tojson }},
+                backgroundColor: chartColors.pinkAlpha, borderColor: chartColors.pink, borderWidth: 1.5, borderRadius: 4,
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 15 } } },
+            scales: {
+                y: { beginAtZero: true, stacked: true, grid: { color: gridColor }, ticks: { callback: v => v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':v } },
+                x: { stacked: true, grid: { display: false } }
+            }
+        }
+    });
+
+    // 4. Répartition par type
+    new Chart(document.getElementById('typeChart').getContext('2d'), {
+        type: 'doughnut',
+        data: {
+            labels: ['Chèques','Virements','Versements'],
+            datasets: [{ data: [{{ type_data['Chèque'] }},{{ type_data['Virement'] }},{{ type_data['Versement'] }}],
+                backgroundColor: [chartColors.blue, chartColors.violet, chartColors.amber],
+                borderWidth: 2, borderColor: 'rgba(30,41,59,0.8)', hoverOffset: 10 }]
+        },
+        options: { responsive: true, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { padding: 15, usePointStyle: true, pointStyle: 'circle' } } } }
+    });
+
+    // 5. Activité 30 jours
+    const actCtx = document.getElementById('activityChart').getContext('2d');
+    const actG = actCtx.createLinearGradient(0, 0, 0, 200);
+    actG.addColorStop(0, 'rgba(14,165,233,0.6)');
+    actG.addColorStop(1, 'rgba(14,165,233,0.05)');
+    new Chart(actCtx, {
+        type: 'bar',
+        data: { labels: {{ daily_labels | tojson }}, datasets: [{ label: 'Opérations', data: {{ daily_activity | tojson }}, backgroundColor: actG, borderColor: chartColors.sky, borderWidth: 1, borderRadius: 3 }] },
+        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: gridColor }, ticks: { stepSize: 1 } }, x: { grid: { display: false }, ticks: { maxTicksLimit: 10, maxRotation: 0 } } } }
+    });
+
+    // Compteurs animés
+    document.querySelectorAll('[data-count]').forEach(el => {
+        const target = parseFloat(el.dataset.count);
+        const isDecimal = el.dataset.decimal === 'true';
+        const duration = 1200;
+        const start = performance.now();
+        function animate(now) {
+            const progress = Math.min((now - start) / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const current = target * eased;
+            if (isDecimal) el.textContent = current.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            else el.textContent = Math.floor(current).toLocaleString('fr-FR');
+            if (progress < 1) requestAnimationFrame(animate);
+        }
+        requestAnimationFrame(animate);
+    });
+</script>
+{% endblock %}

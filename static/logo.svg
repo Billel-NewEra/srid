@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- Background rounded square -->
+  <rect width="64" height="64" rx="14" fill="#1a3a5c"/>
+  
+  <!-- Stylized S with swoosh (bird/leaf motif) -->
+  <path d="M 18 24 C 18 18 22 15 27 16 C 32 17 34 20 32 24 C 30 28 24 30 22 32 C 20 34 19 38 22 40 C 25 42 30 42 33 40" 
+        fill="none" stroke="#4cb858" stroke-width="3" stroke-linecap="round"/>
+  <!-- Green leaf accents -->
+  <path d="M 28 13 L 33 10 C 34 13 31 16 29 16 Z" fill="#4cb858"/>
+  <path d="M 14 34 L 11 38 C 14 40 17 37 17 35 Z" fill="#4cb858"/>
+  
+  <!-- RID text -->
+  <text x="46" y="34" text-anchor="middle" font-family="Arial Black, sans-serif" font-size="13" font-weight="900" fill="white" letter-spacing="-0.5">RID</text>
+  
+  <!-- COM text -->
+  <text x="42" y="54" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" font-weight="bold" fill="#4cb858" letter-spacing="1.5">COM</text>
+  
+  <!-- Decorative lines around COM -->
+  <line x1="20" y1="50" x2="28" y2="50" stroke="#4cb858" stroke-width="1.5" stroke-linecap="round"/>
+  <line x1="56" y1="50" x2="60" y2="50" stroke="#4cb858" stroke-width="1.5" stroke-linecap="round" opacity="0.7"/>
+</svg>

@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="luxury">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#1e3a5f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="SRID COM">
+    <link rel="manifest" href="/static/manifest.json">
+    <link rel="icon" type="image/svg+xml" href="/static/logo.svg">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
+    <title>{% block title %}SRID COM — Gestion Financière{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.22/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/htmx.org@2.0.4"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        /* Thème sombre - valeur sélectionnée/tapée en blanc, texte par défaut reste doré */
+        [data-theme="luxury"] .input,
+        [data-theme="luxury"] .textarea {
+            color: hsl(0 0% 90%);
+        }
+        [data-theme="luxury"] .input::placeholder,
+        [data-theme="luxury"] .textarea::placeholder {
+            color: hsl(0 0% 40%);
+        }
+        /* Select : la valeur par défaut (placeholder) reste dorée, la valeur choisie en blanc */
+        [data-theme="luxury"] .select option:not(:first-child) {
+            color: hsl(0 0% 90%);
+        }
+        [data-theme="luxury"] .select.selected {
+            color: hsl(0 0% 95%);
+        }
+
+        /* Thème clair - Bleu profond + accents vifs */
+        [data-theme="corporate"] {
+            --p: 225 85% 48%;
+            --pf: 225 85% 40%;
+            --pc: 0 0% 100%;
+            --s: 262 70% 55%;
+            --sf: 262 70% 47%;
+            --sc: 0 0% 100%;
+            --a: 170 75% 40%;
+            --af: 170 75% 32%;
+            --ac: 0 0% 100%;
+            --n: 220 25% 14%;
+            --nf: 220 25% 10%;
+            --nc: 0 0% 98%;
+            --b1: 220 30% 98%;
+            --b2: 225 25% 94%;
+            --b3: 225 20% 89%;
+            --bc: 220 30% 12%;
+            --in: 200 85% 52%;
+            --su: 160 75% 40%;
+            --wa: 38 92% 50%;
+            --er: 0 72% 52%;
+            --rounded-box: 1rem;
+            --rounded-btn: 0.6rem;
+            --btn-text-case: none;
+        }
+
+        /* === MODE CLAIR : Style global === */
+        [data-theme="corporate"] body {
+            background: linear-gradient(160deg, hsl(220 35% 97%) 0%, hsl(235 25% 95%) 50%, hsl(210 30% 96%) 100%);
+        }
+        [data-theme="corporate"] .navbar {
+            background: linear-gradient(135deg, hsl(220 40% 18%), hsl(230 35% 22%));
+            backdrop-filter: blur(12px);
+            border-bottom: none;
+            box-shadow: 0 4px 20px hsl(220 40% 15% / 0.3);
+            color: white;
+        }
+        [data-theme="corporate"] .navbar a,
+        [data-theme="corporate"] .navbar .btn-ghost {
+            color: hsl(210 20% 85%);
+        }
+        [data-theme="corporate"] .navbar a:hover,
+        [data-theme="corporate"] .navbar .btn-ghost:hover {
+            color: white;
+            background: hsl(225 40% 30%);
+        }
+
+        /* Cards */
+        [data-theme="corporate"] .card {
+            background: white;
+            border: 1px solid hsl(220 25% 90%);
+            box-shadow: 0 4px 20px hsl(220 40% 60% / 0.1), 0 1px 6px hsl(220 40% 60% / 0.06);
+        }
+
+        /* Inputs */
+        [data-theme="corporate"] .input-bordered,
+        [data-theme="corporate"] .select-bordered,
+        [data-theme="corporate"] .textarea-bordered {
+            border: 2px solid hsl(220 25% 88%);
+            background: white;
+            transition: all 0.25s ease;
+        }
+        [data-theme="corporate"] .input-bordered:focus,
+        [data-theme="corporate"] .select-bordered:focus,
+        [data-theme="corporate"] .textarea-bordered:focus {
+            border-color: hsl(225 85% 50%);
+            background: white;
+            box-shadow: 0 0 0 4px hsl(225 85% 50% / 0.12), 0 2px 8px hsl(225 85% 50% / 0.08);
+        }
+
+        /* Boutons */
+        [data-theme="luxury"] .btn-primary {
+            background: linear-gradient(135deg, hsl(47 80% 50%), hsl(40 75% 45%));
+            color: hsl(240 10% 10%);
+            border: none;
+            box-shadow: 0 4px 14px hsl(47 80% 50% / 0.3);
+            transition: all 0.2s ease;
+        }
+        [data-theme="luxury"] .btn-primary:hover {
+            transform: translateY(-1px);
+            background: linear-gradient(135deg, hsl(47 100% 58%), hsl(40 85% 52%));
+            box-shadow: 0 6px 20px hsl(47 80% 50% / 0.4);
+        }
+        [data-theme="corporate"] .btn-primary {
+            background: linear-gradient(135deg, hsl(225 85% 50%), hsl(240 70% 48%));
+            border: none;
+            color: white;
+            box-shadow: 0 4px 14px hsl(225 85% 50% / 0.35);
+            transition: all 0.2s ease;
+        }
+        [data-theme="corporate"] .btn-primary:hover {
+            transform: translateY(-1px);
+            background: linear-gradient(135deg, hsl(225 90% 55%), hsl(240 75% 53%));
+            box-shadow: 0 6px 20px hsl(225 85% 50% / 0.45);
+        }
+        [data-theme="corporate"] .btn-ghost {
+            transition: all 0.2s ease;
+        }
+        [data-theme="corporate"] .btn-ghost:hover {
+            background: hsl(225 30% 94%);
+        }
+
+        /* Dropdown menu - fond opaque dans les deux thèmes */
+        [data-theme="corporate"] .dropdown-content {
+            background: white !important;
+            border-color: hsl(220 20% 80%) !important;
+        }
+        [data-theme="luxury"] .dropdown-content {
+            background: hsl(240 10% 14%) !important;
+            border-color: hsl(0 0% 30%) !important;
+        }
+
+        /* Menu navbar hover en mode clair */
+        [data-theme="corporate"] .navbar .menu li a {
+            transition: all 0.2s ease;
+            outline: none;
+            color: hsl(210 20% 85%);
+        }
+        [data-theme="corporate"] .navbar .menu li a:hover {
+            background: hsl(225 40% 28%);
+            color: white;
+        }
+        [data-theme="corporate"] .navbar .menu li a:focus,
+        [data-theme="corporate"] .navbar .menu li a:focus-visible {
+            outline: none;
+            box-shadow: none;
+        }
+        [data-theme="corporate"] .navbar .menu li a.bg-primary\/10 {
+            background: hsl(225 50% 30%);
+            color: white;
+            font-weight: 600;
+        }
+        /* Dropdown en mode clair - texte foncé */
+        [data-theme="corporate"] .dropdown-content a {
+            color: hsl(220 20% 25%) !important;
+        }
+        [data-theme="corporate"] .dropdown-content a.text-red-500 {
+            color: rgb(239 68 68) !important;
+        }
+        [data-theme="corporate"] .dropdown-content .menu-title span {
+            color: hsl(220 20% 35%) !important;
+        }
+        /* Dropdown en mode sombre - texte clair */
+        [data-theme="luxury"] .dropdown-content a {
+            color: hsl(0 0% 90%) !important;
+        }
+        [data-theme="luxury"] .dropdown-content a.text-red-500 {
+            color: rgb(239 68 68) !important;
+        }
+        [data-theme="luxury"] .dropdown-content .menu-title span {
+            color: hsl(47 60% 60%) !important;
+        }
+
+        /* Supprimer outline noir sur tous les éléments interactifs en clair */
+        [data-theme="corporate"] a:focus,
+        [data-theme="corporate"] button:focus,
+        [data-theme="corporate"] .btn:focus,
+        [data-theme="corporate"] select:focus,
+        [data-theme="corporate"] input:focus,
+        [data-theme="corporate"] textarea:focus {
+            outline: none;
+        }
+
+        /* Stats/KPIs */
+        [data-theme="corporate"] .stat {
+            background: white;
+            border: 1px solid hsl(220 25% 90%);
+            box-shadow: 0 2px 10px hsl(220 40% 60% / 0.08);
+        }
+
+        /* Table */
+        [data-theme="corporate"] .table :where(thead) :where(tr) {
+            background: hsl(220 30% 15%);
+            color: white;
+        }
+        [data-theme="corporate"] .table :where(tbody tr):hover {
+            background: hsl(225 30% 96%);
+        }
+
+        /* Icône recherche - adaptatif au thème */
+        [data-theme="luxury"] .input-group .bg-primary {
+            background: hsl(47 80% 52%) !important;
+            color: hsl(0 0% 10%) !important;
+        }
+
+        /* Badges - types d'opérations plus distinctifs */
+        [data-theme="corporate"] .badge {
+            border-radius: 9999px;
+        }
+        [data-theme="corporate"] .badge-primary {
+            background: hsl(225 80% 50%);
+            border-color: hsl(225 80% 50%);
+            color: white;
+        }
+        [data-theme="corporate"] .badge-secondary {
+            background: hsl(262 65% 52%);
+            border-color: hsl(262 65% 52%);
+            color: white;
+        }
+        [data-theme="corporate"] .badge-accent {
+            background: hsl(170 70% 38%);
+            border-color: hsl(170 70% 38%);
+            color: white;
+        }
+        [data-theme="corporate"] .badge-success {
+            background: hsl(155 70% 38%);
+            border-color: hsl(155 70% 38%);
+            color: white;
+        }
+        [data-theme="corporate"] .badge-warning {
+            background: hsl(38 90% 48%);
+            border-color: hsl(38 90% 48%);
+            color: white;
+        }
+        [data-theme="corporate"] .badge-error {
+            background: hsl(0 70% 50%);
+            border-color: hsl(0 70% 50%);
+            color: white;
+        }
+
+        /* Dividers */
+        [data-theme="corporate"] .divider::before,
+        [data-theme="corporate"] .divider::after {
+            background: linear-gradient(90deg, transparent, hsl(220 25% 85%), transparent);
+        }
+
+        /* Footer */
+        [data-theme="corporate"] footer {
+            background: hsl(220 30% 15%);
+            color: hsl(210 20% 80%);
+            border-top: none;
+        }
+
+        /* Labels - titres en couleur distincte du contenu */
+        [data-theme="corporate"] .label-text {
+            color: hsl(220 30% 30%);
+            font-weight: 600;
+        }
+        [data-theme="corporate"] .divider {
+            color: hsl(225 50% 45%);
+        }
+        [data-theme="corporate"] h1, [data-theme="corporate"] h2, [data-theme="corporate"] h3 {
+            color: hsl(220 35% 18%);
+        }
+        /* Contenu des champs en mode clair */
+        [data-theme="corporate"] .input,
+        [data-theme="corporate"] .textarea {
+            color: hsl(220 20% 20%);
+        }
+        [data-theme="corporate"] .select {
+            color: hsl(225 60% 45%);
+        }
+        [data-theme="corporate"] .select.selected {
+            color: hsl(220 20% 20%);
+        }
+        [data-theme="corporate"] .stat-title {
+            color: hsl(225 40% 45%);
+        }
+
+        /* File input - cohérent avec btn-primary */
+        [data-theme="corporate"] .file-input::file-selector-button {
+            background: hsl(225 85% 48%);
+            color: white;
+            border: none;
+        }
+        [data-theme="corporate"] .file-input::file-selector-button:hover {
+            background: hsl(225 90% 42%);
+            color: white;
+        }
+        [data-theme="luxury"] .file-input::file-selector-button {
+            background: hsl(47 80% 50%);
+            color: hsl(240 10% 10%);
+            border: none;
+        }
+        [data-theme="luxury"] .file-input::file-selector-button:hover {
+            background: hsl(47 100% 60%);
+            color: hsl(240 10% 10%);
+        }
+
+        /* Modal - visible dans les deux thèmes */
+        [data-theme="corporate"] .modal-box {
+            background: white;
+            border: 1px solid hsl(220 25% 88%);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        [data-theme="corporate"] .modal-box .bg-base-200 {
+            background: hsl(220 25% 96%);
+            border: 1px solid hsl(220 20% 90%);
+        }
+        [data-theme="luxury"] .modal-box {
+            background: hsl(240 10% 12%);
+            border: 1px solid hsl(0 0% 35%);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+        }
+        [data-theme="luxury"] .modal-box .bg-base-200 {
+            background: hsl(240 10% 18%);
+            border: 1px solid hsl(240 10% 25%);
+        }
+
+        .fade-in { animation: fadeIn 0.3s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .htmx-settling { opacity: 0; }
+        .htmx-added { opacity: 1; transition: opacity 0.3s ease-in; }
+        .count-up { transition: all 0.6s ease-out; }
+        .toast-container { position: fixed; top: 80px; right: 20px; z-index: 9999; }
+        .toast-item { animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 4.7s forwards; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        @keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
+    </style>
+</head>
+<body class="min-h-screen bg-base-200">
+    <!-- Navbar -->
+    <div class="navbar bg-base-100 border-b border-base-300 shadow-sm sticky top-0 z-50">
+        <div class="navbar-start">
+            <div class="dropdown">
+                <div tabindex="0" role="button" class="btn btn-ghost lg:hidden">
+                    <i class="fas fa-bars text-xl"></i>
+                </div>
+                <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow-lg bg-base-100 text-base-content rounded-box w-56 border-2 border-base-300">
+                    <li><a href="{{ url_for('dashboard') }}"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                    <li><a href="{{ url_for('saisie') }}"><i class="fas fa-plus-circle"></i> Saisie</a></li>
+                    <li><a href="{{ url_for('consultation') }}"><i class="fas fa-search"></i> Consultation</a></li>
+                    <li><a href="{{ url_for('import_excel') }}"><i class="fas fa-file-import"></i> Import</a></li>
+                    <li><a href="{{ url_for('historique') }}"><i class="fas fa-history"></i> Historique</a></li>
+                </ul>
+            </div>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-ghost gap-2 text-lg font-bold">
+                <img src="/static/icon.jpg" alt="SRID COM" class="h-10 max-w-[120px] rounded-lg object-contain">
+                <span class="hidden sm:inline">SRID COM</span>
+            </a>
+        </div>
+        <div class="navbar-center hidden lg:flex">
+            <ul class="menu menu-horizontal px-1 gap-1">
+                <li>
+                    <a href="{{ url_for('dashboard') }}" class="{% if request.endpoint == 'dashboard' %}bg-primary/10 text-primary{% endif %} rounded-lg">
+                        <i class="fas fa-chart-line"></i> Dashboard
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('saisie') }}" class="{% if request.endpoint == 'saisie' %}bg-primary/10 text-primary{% endif %} rounded-lg">
+                        <i class="fas fa-plus-circle"></i> Saisie
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('consultation') }}" class="{% if request.endpoint == 'consultation' %}bg-primary/10 text-primary{% endif %} rounded-lg">
+                        <i class="fas fa-search"></i> Consultation
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('import_excel') }}" class="{% if request.endpoint == 'import_excel' %}bg-primary/10 text-primary{% endif %} rounded-lg">
+                        <i class="fas fa-file-import"></i> Import
+                    </a>
+                </li>
+                <li>
+                    <a href="{{ url_for('historique') }}" class="{% if request.endpoint == 'historique' %}bg-primary/10 text-primary{% endif %} rounded-lg">
+                        <i class="fas fa-history"></i> Historique
+                    </a>
+                </li>
+            </ul>
+        </div>
+        <div class="navbar-end gap-2">
+            <!-- Toggle thème -->
+            <label class="swap swap-rotate btn btn-ghost btn-sm btn-circle">
+                <input type="checkbox" id="theme-toggle" onchange="toggleTheme()">
+                <i class="fas fa-sun swap-off text-amber-400"></i>
+                <i class="fas fa-moon swap-on text-violet-400"></i>
+            </label>
+            <!-- Export -->
+            <a href="{{ url_for('export_excel') }}" class="btn btn-ghost btn-sm hidden sm:flex">
+                <i class="fas fa-file-excel text-emerald-400"></i>
+            </a>
+            <!-- User menu -->
+            {% if is_logged_in %}
+            <div class="dropdown dropdown-end">
+                <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-2">
+                    <div class="avatar placeholder">
+                        <div class="bg-emerald-600 text-white rounded-full w-7">
+                            <span class="text-xs">{{ current_user[0] | upper if current_user else 'U' }}</span>
+                        </div>
+                    </div>
+                    <span class="hidden sm:inline text-sm">{{ current_user }}</span>
+                </div>
+                <ul tabindex="0" class="dropdown-content z-[1] menu p-2 rounded-box w-48 mt-2 text-base-content bg-base-100 border-2 border-base-300" style="box-shadow: 0 10px 40px rgba(0,0,0,0.25);">
+                    <li class="menu-title"><span class="text-xs font-semibold">{{ current_role | capitalize }}</span></li>
+                    <li><a href="{{ url_for('logout') }}" class="text-red-500 hover:bg-red-500/10 hover:text-red-400 font-medium"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></li>
+                </ul>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Toast notifications -->
+    <div class="toast-container" id="toast-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ category }} shadow-lg mb-2 toast-item max-w-sm">
+            <i class="fas fa-{% if category == 'success' %}check-circle{% elif category == 'error' %}exclamation-circle{% elif category == 'warning' %}exclamation-triangle{% else %}info-circle{% endif %}"></i>
+            <span class="text-sm">{{ message }}</span>
+        </div>
+        {% endfor %}
+        {% endif %}
+        {% endwith %}
+    </div>
+
+    <!-- Contenu principal -->
+    <main class="container mx-auto px-4 py-6 max-w-7xl">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Footer -->
+    <footer class="footer footer-center p-4 text-base-content mt-8">
+        <aside>
+            <p class="text-sm opacity-60"><i class="fas fa-building-columns mr-1"></i> SRID COM — Gestion des opérations financières</p>
+            <p class="text-xs opacity-40 mt-1">© {{ now().year if now is defined else 2026 }} <a href="https://mobibenz.dz" target="_blank" rel="noopener" class="link link-hover">mobibenz.dz</a> — Tous droits réservés</p>
+        </aside>
+    </footer>
+
+    <script>
+        // Toggle thème clair/sombre
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const next = current === 'luxury' ? 'corporate' : 'luxury';
+            html.setAttribute('data-theme', next);
+            localStorage.setItem('theme', next);
+        }
+        // Charger le thème sauvegardé
+        (function() {
+            const saved = localStorage.getItem('theme');
+            if (saved) {
+                document.documentElement.setAttribute('data-theme', saved);
+                if (saved === 'corporate') {
+                    document.getElementById('theme-toggle').checked = true;
+                } else if (!saved) {
+                    document.documentElement.setAttribute('data-theme', 'luxury');
+                }
+            }
+        })();
+
+        // Auto-remove toasts
+        setTimeout(() => {
+            document.querySelectorAll('.toast-item').forEach(el => el.remove());
+        }, 5000);
+
+        // Select: couleur titre par défaut, couleur contenu quand sélectionné
+        document.querySelectorAll('select.select').forEach(sel => {
+            sel.addEventListener('change', function() {
+                if (this.value) {
+                    this.classList.add('selected');
+                } else {
+                    this.classList.remove('selected');
+                }
+            });
+        });
+
+        // PWA Service Worker
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js');
+        }
+    </script>
+
+    {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,128 @@
+<div class="space-y-4">
+    <h3 class="font-bold text-lg flex items-center gap-2">
+        <i class="fas fa-receipt text-primary"></i>
+        Opération #{{ operation.id }}
+    </h3>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="bg-base-200 rounded-lg p-3">
+            <p class="text-xs opacity-60 uppercase">Type</p>
+            <p class="font-semibold">{{ operation.type_operation }}</p>
+        </div>
+        <div class="bg-base-200 rounded-lg p-3">
+            <p class="text-xs opacity-60 uppercase">Société</p>
+            <p class="font-semibold">{{ operation.societe }}</p>
+        </div>
+        <div class="bg-base-200 rounded-lg p-3">
+            <p class="text-xs opacity-60 uppercase">Date opération</p>
+            <p class="font-semibold">{{ operation.date_operation.strftime('%d/%m/%Y') if operation.date_operation else '-' }}</p>
+        </div>
+        <div class="bg-base-200 rounded-lg p-3">
+            <p class="text-xs opacity-60 uppercase">Date réception</p>
+            <p class="font-semibold">{{ operation.date_reception.strftime('%d/%m/%Y') if operation.date_reception else '-' }}</p>
+        </div>
+        <div class="bg-base-200 rounded-lg p-3">
+            <p class="text-xs opacity-60 uppercase">Montant</p>
+            <p class="font-semibold text-lg text-emerald-400">{{ "{:,.2f}".format(operation.montant) }}</p>
+        </div>
+        <div class="bg-base-200 rounded-lg p-3">
+            <p class="text-xs opacity-60 uppercase">Client</p>
+            <p class="font-semibold">{{ operation.client }}</p>
+        </div>
+        <div class="bg-base-200 rounded-lg p-3">
+            <p class="text-xs opacity-60 uppercase">Banque</p>
+            <p class="font-semibold">{{ operation.banque or '-' }}</p>
+        </div>
+        <div class="bg-base-200 rounded-lg p-3">
+            <p class="text-xs opacity-60 uppercase">N° Pièce</p>
+            <p class="font-semibold">{{ operation.numero_piece or '-' }}</p>
+        </div>
+        <div class="bg-base-200 rounded-lg p-3">
+            <p class="text-xs opacity-60 uppercase">Statut</p>
+            <span class="badge font-semibold
+                {% if operation.statut == 'Encaissé' %}bg-emerald-600 text-white border-emerald-700
+                {% elif operation.statut == 'En attente' %}bg-amber-500 text-white border-amber-600
+                {% elif operation.statut == 'Rejeté' %}bg-red-600 text-white border-red-700
+                {% elif operation.statut == 'Annulé' %}bg-gray-500 text-white border-gray-600
+                {% else %}bg-sky-600 text-white border-sky-700{% endif %}">
+                {{ operation.statut }}
+            </span>
+        </div>
+        {% if operation.remettant %}
+        <div class="bg-base-200 rounded-lg p-3">
+            <p class="text-xs opacity-60 uppercase">Remettant</p>
+            <p class="font-semibold">{{ operation.remettant }}</p>
+        </div>
+        {% endif %}
+        {% if operation.entree %}
+        <div class="bg-base-200 rounded-lg p-3">
+            <p class="text-xs opacity-60 uppercase">Entrée (reçu par)</p>
+            <p class="font-semibold">{{ operation.entree }}</p>
+        </div>
+        {% endif %}
+        {% if operation.sortie %}
+        <div class="bg-base-200 rounded-lg p-3">
+            <p class="text-xs opacity-60 uppercase">Sortie (remis par)</p>
+            <p class="font-semibold">{{ operation.sortie }}</p>
+        </div>
+        {% endif %}
+        {% if operation.date_encaissement %}
+        <div class="bg-base-200 rounded-lg p-3">
+            <p class="text-xs opacity-60 uppercase">Report encaissement</p>
+            <p class="font-semibold">{{ operation.date_encaissement.strftime('%d/%m/%Y') }}</p>
+        </div>
+        {% endif %}
+        {% if operation.date_sortie %}
+        <div class="bg-base-200 rounded-lg p-3">
+            <p class="text-xs opacity-60 uppercase">Date sortie</p>
+            <p class="font-semibold">{{ operation.date_sortie.strftime('%d/%m/%Y') }}</p>
+        </div>
+        {% endif %}
+        {% if operation.famille %}
+        <div class="bg-base-200 rounded-lg p-3">
+            <p class="text-xs opacity-60 uppercase">Famille</p>
+            <p class="font-semibold">{{ operation.famille }}</p>
+        </div>
+        {% endif %}
+    </div>
+
+    {% if operation.remarque %}
+    <div class="bg-base-200 rounded-lg p-3">
+        <p class="text-xs opacity-60 uppercase">Remarque</p>
+        <p class="mt-1">{{ operation.remarque }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Historique d'audit -->
+    {% if audits %}
+    <div class="border-t border-base-300 pt-3 mt-3">
+        <p class="text-xs font-semibold opacity-60 uppercase mb-2"><i class="fas fa-history mr-1"></i>Historique</p>
+        <div class="space-y-1">
+            {% for audit in audits[:5] %}
+            <div class="flex items-center gap-2 text-xs">
+                <span class="badge badge-xs
+                    {% if audit.action == 'création' %}badge-success
+                    {% elif audit.action == 'modification' %}badge-warning
+                    {% else %}badge-error{% endif %}">{{ audit.action }}</span>
+                <span class="opacity-60">{{ audit.date_action.strftime('%d/%m %H:%M') }}</span>
+                <span>{{ audit.utilisateur }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="text-xs opacity-50 pt-2 border-t border-base-300">
+        <p><i class="fas fa-user mr-1"></i>Saisi par : {{ operation.cree_par or 'Non spécifié' }}</p>
+        <p><i class="fas fa-clock mr-1"></i>Créé le : {{ operation.date_creation.strftime('%d/%m/%Y %H:%M') if operation.date_creation else '-' }}</p>
+    </div>
+
+    <div class="modal-action flex gap-2">
+        <a href="{{ url_for('edit_operation', op_id=operation.id) }}" class="btn btn-sm btn-warning">
+            <i class="fas fa-edit mr-1"></i>Modifier
+        </a>
+        <form method="dialog">
+            <button class="btn btn-sm">Fermer</button>
+        </form>
+    </div>
+</div>

@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+{% block title %}Consultation - SRID COM{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
+        <h1 class="text-2xl font-bold"><i class="fas fa-search text-primary mr-2"></i>Consultation</h1>
+        <a href="{{ url_for('export_excel') }}" class="btn btn-sm btn-outline btn-success mt-2 sm:mt-0">
+            <i class="fas fa-file-excel mr-1"></i> Exporter Excel
+        </a>
+    </div>
+
+    <!-- Barre de recherche -->
+    <div class="card bg-base-100 shadow mb-6">
+        <div class="card-body p-4">
+            <div class="flex flex-col gap-4">
+                <!-- Recherche texte -->
+                <div class="form-control">
+                    <div class="input-group flex">
+                        <span class="bg-primary text-primary-content px-3 flex items-center rounded-l-lg"><i class="fas fa-search"></i></span>
+                        <input type="text" id="search-input" name="search"
+                               placeholder="Rechercher un client, banque, n° pièce..."
+                               class="input input-bordered flex-1"
+                               hx-get="{{ url_for('api_operations') }}"
+                               hx-trigger="keyup changed delay:300ms"
+                               hx-target="#results-table"
+                               hx-include="[name='type_operation'],[name='societe'],[name='statut'],[name='date_debut'],[name='date_fin']">
+                    </div>
+                </div>
+
+                <!-- Filtres -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                    <select name="type_operation" class="select select-bordered select-sm w-full"
+                            hx-get="{{ url_for('api_operations') }}"
+                            hx-trigger="change"
+                            hx-target="#results-table"
+                            hx-include="[name='search'],[name='societe'],[name='statut'],[name='date_debut'],[name='date_fin']">
+                        <option value="">Tous les types</option>
+                        <option value="Chèque">Chèque</option>
+                        <option value="Virement">Virement</option>
+                        <option value="Versement">Versement</option>
+                    </select>
+                    <select name="societe" class="select select-bordered select-sm w-full"
+                            hx-get="{{ url_for('api_operations') }}"
+                            hx-trigger="change"
+                            hx-target="#results-table"
+                            hx-include="[name='search'],[name='type_operation'],[name='statut'],[name='date_debut'],[name='date_fin']">
+                        <option value="">Toutes les sociétés</option>
+                        <option value="SRID">SRID</option>
+                        <option value="Genetics">Genetics</option>
+                    </select>
+                    <select name="statut" class="select select-bordered select-sm w-full"
+                            hx-get="{{ url_for('api_operations') }}"
+                            hx-trigger="change"
+                            hx-target="#results-table"
+                            hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='date_debut'],[name='date_fin']">
+                        <option value="">Tous les statuts</option>
+                        <option value="En attente">En attente</option>
+                        <option value="Encaissé">Encaissé</option>
+                        <option value="En cours">En cours</option>
+                        <option value="Rejeté">Rejeté</option>
+                        <option value="Annulé">Annulé</option>
+                    </select>
+                    <div class="form-control">
+                        <label class="label label-text text-xs py-0">Du</label>
+                        <input type="date" name="date_debut" class="input input-bordered input-sm w-full"
+                               hx-get="{{ url_for('api_operations') }}"
+                               hx-trigger="change"
+                               hx-target="#results-table"
+                               hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_fin']">
+                    </div>
+                    <div class="form-control">
+                        <label class="label label-text text-xs py-0">Au</label>
+                        <input type="date" name="date_fin" class="input input-bordered input-sm w-full"
+                               hx-get="{{ url_for('api_operations') }}"
+                               hx-trigger="change"
+                               hx-target="#results-table"
+                               hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_debut']">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tableau des résultats -->
+    <div class="card bg-base-100 shadow">
+        <div class="card-body p-4">
+            <div class="overflow-x-auto" id="results-table"
+                 hx-get="{{ url_for('api_operations') }}"
+                 hx-trigger="load"
+                 hx-swap="innerHTML">
+                <div class="flex justify-center py-8">
+                    <span class="loading loading-spinner loading-lg text-primary"></span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal détail -->
+    <dialog id="detail-modal" class="modal">
+        <div class="modal-box max-w-2xl" id="modal-content">
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Ouvrir le modal de détail
+    document.body.addEventListener('htmx:afterSwap', function(event) {
+        if (event.detail.target.id === 'modal-content') {
+            document.getElementById('detail-modal').showModal();
+        }
+    });
+</script>
+{% endblock %}

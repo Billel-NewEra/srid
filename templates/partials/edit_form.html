@@ -1,0 +1,63 @@
+<form method="POST" action="{{ url_for('edit_operation', op_id=operation.id) }}"
+      hx-post="{{ url_for('edit_operation', op_id=operation.id) }}"
+      hx-target="#modal-content"
+      class="space-y-4 p-2">
+    <h3 class="font-bold text-lg mb-4"><i class="fas fa-edit text-primary mr-2"></i>Modifier #{{ operation.id }}</h3>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div class="form-control">
+            <label class="label label-text text-xs">Type</label>
+            <select name="type_operation" class="select select-bordered select-sm w-full">
+                <option value="Chèque" {% if operation.type_operation == 'Chèque' %}selected{% endif %}>Chèque</option>
+                <option value="Virement" {% if operation.type_operation == 'Virement' %}selected{% endif %}>Virement</option>
+                <option value="Versement" {% if operation.type_operation == 'Versement' %}selected{% endif %}>Versement</option>
+            </select>
+        </div>
+        <div class="form-control">
+            <label class="label label-text text-xs">Société</label>
+            <select name="societe" class="select select-bordered select-sm w-full">
+                <option value="ENT" {% if operation.societe == 'ENT' %}selected{% endif %}>ENT</option>
+                <option value="Genetics" {% if operation.societe == 'Genetics' %}selected{% endif %}>Genetics</option>
+            </select>
+        </div>
+        <div class="form-control">
+            <label class="label label-text text-xs">Date opération</label>
+            <input type="date" name="date_operation" class="input input-bordered input-sm w-full" value="{{ operation.date_operation.strftime('%Y-%m-%d') if operation.date_operation else '' }}" required>
+        </div>
+        <div class="form-control">
+            <label class="label label-text text-xs">Client</label>
+            <input type="text" name="client" class="input input-bordered input-sm w-full" value="{{ operation.client }}" required>
+        </div>
+        <div class="form-control">
+            <label class="label label-text text-xs">Montant</label>
+            <input type="number" name="montant" step="0.01" class="input input-bordered input-sm w-full" value="{{ operation.montant }}" required>
+        </div>
+        <div class="form-control">
+            <label class="label label-text text-xs">Banque</label>
+            <input type="text" name="banque" class="input input-bordered input-sm w-full" value="{{ operation.banque or '' }}">
+        </div>
+        <div class="form-control">
+            <label class="label label-text text-xs">N° Pièce</label>
+            <input type="text" name="numero_piece" class="input input-bordered input-sm w-full" value="{{ operation.numero_piece or '' }}">
+        </div>
+        <div class="form-control">
+            <label class="label label-text text-xs">Statut</label>
+            <select name="statut" class="select select-bordered select-sm w-full">
+                <option value="En attente" {% if operation.statut == 'En attente' %}selected{% endif %}>En attente</option>
+                <option value="Encaissé" {% if operation.statut == 'Encaissé' %}selected{% endif %}>Encaissé</option>
+                <option value="En cours" {% if operation.statut == 'En cours' %}selected{% endif %}>En cours</option>
+                <option value="Rejeté" {% if operation.statut == 'Rejeté' %}selected{% endif %}>Rejeté</option>
+                <option value="Annulé" {% if operation.statut == 'Annulé' %}selected{% endif %}>Annulé</option>
+            </select>
+        </div>
+    </div>
+    <div class="form-control">
+        <label class="label label-text text-xs">Remarque</label>
+        <textarea name="remarque" class="textarea textarea-bordered textarea-sm w-full" rows="2">{{ operation.remarque or '' }}</textarea>
+    </div>
+
+    <div class="flex justify-end gap-2 pt-2">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('detail-modal').close()">Annuler</button>
+        <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save mr-1"></i>Enregistrer</button>
+    </div>
+</form>

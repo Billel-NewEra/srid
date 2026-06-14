@@ -1,0 +1,8 @@
+<div class="alert alert-success shadow-lg fade-in">
+    <i class="fas fa-check-circle text-xl"></i>
+    <div>
+        <h3 class="font-bold">Opération {{ action | default('enregistrée') }} !</h3>
+        <p class="text-sm">{{ operation.type_operation }} — {{ operation.client }} — {{ "{:,.2f}".format(operation.montant) }}</p>
+    </div>
+    <button class="btn btn-sm btn-ghost" onclick="this.parentElement.remove()">✕</button>
+</div>

@@ -1,0 +1,122 @@
+<!-- Résumé -->
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-2">
+    <div class="text-sm opacity-70">
+        <span class="font-semibold">{{ total_count }}</span> résultat(s)
+    </div>
+    <div class="badge badge-lg bg-emerald-600 text-white border-emerald-700">
+        <i class="fas fa-coins mr-1"></i> Total : {{ "{:,.2f}".format(total_montant) }}
+    </div>
+</div>
+
+<!-- Tableau -->
+<div class="overflow-x-auto -mx-2 sm:mx-0">
+<table class="table table-sm table-zebra">
+    <thead>
+        <tr class="bg-base-200">
+            <th>Date Op.</th>
+            <th>Réception</th>
+            <th>Type</th>
+            <th>Société</th>
+            <th>Client</th>
+            <th class="text-right">Montant</th>
+            <th>Banque</th>
+            <th>N° Pièce</th>
+            <th>Statut</th>
+            <th class="text-center">Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for op in operations %}
+        <tr class="hover">
+            <td class="whitespace-nowrap">{{ op.date_operation.strftime('%d/%m/%Y') if op.date_operation else '-' }}</td>
+            <td class="whitespace-nowrap text-xs opacity-70">{{ op.date_reception.strftime('%d/%m/%Y') if op.date_reception else '-' }}</td>
+            <td>
+                <span class="badge badge-sm font-semibold
+                    {% if op.type_operation == 'Chèque' %}bg-blue-600 text-white border-blue-700
+                    {% elif op.type_operation == 'Virement' %}bg-purple-600 text-white border-purple-700
+                    {% else %}bg-orange-500 text-white border-orange-600{% endif %}">
+                    {{ op.type_operation }}
+                </span>
+            </td>
+            <td class="text-sm">{{ op.societe }}</td>
+            <td class="max-w-32 truncate">{{ op.client }}</td>
+            <td class="text-right font-mono font-semibold">{{ "{:,.2f}".format(op.montant) }}</td>
+            <td class="text-sm">{{ op.banque or '-' }}</td>
+            <td class="text-sm">{{ op.numero_piece or '-' }}</td>
+            <td>
+                <span class="badge badge-sm font-semibold
+                    {% if op.statut == 'Encaissé' %}bg-emerald-600 text-white border-emerald-700
+                    {% elif op.statut == 'En attente' %}bg-amber-500 text-white border-amber-600
+                    {% elif op.statut == 'Rejeté' %}bg-red-600 text-white border-red-700
+                    {% elif op.statut == 'Annulé' %}bg-gray-500 text-white border-gray-600
+                    {% else %}bg-sky-600 text-white border-sky-700{% endif %}">
+                    {{ op.statut }}
+                </span>
+            </td>
+            <td class="text-center">
+                <div class="flex gap-1 justify-center">
+                    <button class="btn btn-ghost btn-xs tooltip" data-tip="Voir"
+                            hx-get="{{ url_for('api_operation_detail', op_id=op.id) }}"
+                            hx-target="#modal-content" hx-swap="innerHTML">
+                        <i class="fas fa-eye text-info"></i>
+                    </button>
+                    <a href="{{ url_for('edit_operation', op_id=op.id) }}" class="btn btn-ghost btn-xs tooltip" data-tip="Modifier">
+                        <i class="fas fa-edit text-warning"></i>
+                    </a>
+                    <button class="btn btn-ghost btn-xs tooltip" data-tip="Supprimer"
+                            hx-delete="{{ url_for('delete_operation', op_id=op.id) }}"
+                            hx-target="closest tr" hx-swap="outerHTML"
+                            hx-confirm="Supprimer cette opération ?">
+                        <i class="fas fa-trash text-error"></i>
+                    </button>
+                </div>
+            </td>
+        </tr>
+        {% else %}
+        <tr>
+            <td colspan="9" class="text-center py-12 opacity-50">
+                <i class="fas fa-inbox text-4xl mb-2 block"></i>
+                Aucune opération trouvée
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<!-- Pagination -->
+{% if total_pages > 1 %}
+<div class="flex justify-center mt-4">
+    <div class="join">
+        {% if page > 1 %}
+        <button class="join-item btn btn-sm"
+                hx-get="{{ url_for('api_operations') }}?page={{ page - 1 }}"
+                hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_debut'],[name='date_fin']">
+            <i class="fas fa-chevron-left"></i>
+        </button>
+        {% endif %}
+
+        {% for p in range(1, total_pages + 1) %}
+            {% if p == page %}
+            <button class="join-item btn btn-sm btn-primary">{{ p }}</button>
+            {% elif p <= 3 or p >= total_pages - 1 or (p >= page - 1 and p <= page + 1) %}
+            <button class="join-item btn btn-sm"
+                    hx-get="{{ url_for('api_operations') }}?page={{ p }}"
+                    hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_debut'],[name='date_fin']">
+                {{ p }}
+            </button>
+            {% elif p == 4 or p == total_pages - 2 %}
+            <button class="join-item btn btn-sm btn-disabled">...</button>
+            {% endif %}
+        {% endfor %}
+
+        {% if page < total_pages %}
+        <button class="join-item btn btn-sm"
+                hx-get="{{ url_for('api_operations') }}?page={{ page + 1 }}"
+                hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_debut'],[name='date_fin']">
+            <i class="fas fa-chevron-right"></i>
+        </button>
+        {% endif %}
+    </div>
+</div>
+{% endif %}

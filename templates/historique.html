@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Historique - SRID COM{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <h1 class="text-2xl font-bold mb-6"><i class="fas fa-history text-primary mr-2"></i>Historique des actions</h1>
+
+    <div class="card bg-base-100 shadow-xl border border-base-300">
+        <div class="card-body p-4">
+            <div class="overflow-x-auto">
+                <table class="table table-sm">
+                    <thead>
+                        <tr class="bg-base-200">
+                            <th>Date</th>
+                            <th>Action</th>
+                            <th>Utilisateur</th>
+                            <th>Opération</th>
+                            <th>Détails</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for audit in audits %}
+                        <tr class="hover">
+                            <td class="whitespace-nowrap text-sm">{{ audit.date_action.strftime('%d/%m/%Y %H:%M') if audit.date_action else '-' }}</td>
+                            <td>
+                                <span class="badge badge-sm
+                                    {% if audit.action == 'création' %}badge-success
+                                    {% elif audit.action == 'modification' %}badge-warning
+                                    {% elif audit.action == 'suppression' %}badge-error
+                                    {% else %}badge-ghost{% endif %}">
+                                    {{ audit.action }}
+                                </span>
+                            </td>
+                            <td class="text-sm">{{ audit.utilisateur or '-' }}</td>
+                            <td class="text-sm font-mono">#{{ audit.operation_id }}</td>
+                            <td class="text-sm opacity-70 max-w-xs truncate">{{ audit.details or '-' }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="5" class="text-center py-12 opacity-50">
+                                <i class="fas fa-inbox text-4xl mb-2 block"></i>
+                                Aucun historique
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
