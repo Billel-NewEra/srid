@@ -49,7 +49,7 @@ def login():
     if 'user_id' in session:
         return redirect(url_for('dashboard'))
     if request.method == 'POST':
-        username = request.form.get('username', '').strip()
+        username = request.form.get('username', '').strip().lower()
         password = request.form.get('password', '')
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
@@ -105,7 +105,9 @@ def dashboard():
     ).filter(
         extract('year', Operation.date_operation) == current_year,
         Operation.client.isnot(None),
-        ~Operation.client.in_(['SRID', 'Genetics', 'srid', 'genetics', ''])
+        Operation.client != '',
+        ~func.lower(Operation.client).like('%srid%'),
+        ~func.lower(Operation.client).like('%genetics%')
     ).group_by(Operation.client).order_by(desc('total')).limit(5).all()
 
     # Dernières opérations
