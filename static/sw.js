@@ -1,8 +1,8 @@
-const CACHE_NAME = 'srid-com-v1';
+const CACHE_NAME = 'srid-com-v2';
 const ASSETS_TO_CACHE = [
-  '/',
-  '/static/logo.svg',
-  '/static/manifest.json',
+  './',
+  './static/logo.svg',
+  './static/manifest.json',
   'https://cdn.jsdelivr.net/npm/daisyui@4.12.22/dist/full.min.css',
   'https://cdn.tailwindcss.com',
   'https://unpkg.com/htmx.org@2.0.4',

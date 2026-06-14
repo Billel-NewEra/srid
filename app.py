@@ -512,13 +512,13 @@ def _parse_excel_row(row, sheet_name):
 with app.app_context():
     db.create_all()
     if not User.query.filter_by(username='boss').first():
-        boss = User(username='boss', nom_complet='Directeur', role='boss')
-        boss.set_password('boss123')
+        boss = User(username='boss', nom_complet='Boss', role='boss')
+        boss.set_password('srid2024boss')
         db.session.add(boss)
-    if not User.query.filter_by(username='saisie').first():
-        saisie_user = User(username='saisie', nom_complet='Agent de saisie', role='saisisseur')
-        saisie_user.set_password('saisie123')
-        db.session.add(saisie_user)
+    if not User.query.filter_by(username='sabrina').first():
+        sabrina = User(username='sabrina', nom_complet='Sabrina', role='saisisseur')
+        sabrina.set_password('srid2024sab')
+        db.session.add(sabrina)
     db.session.commit()
 
 
