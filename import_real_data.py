@@ -6,26 +6,34 @@ sys.path.insert(0, os.path.dirname(__file__))
 from datetime import datetime, date
 import openpyxl
 from app import app
-from models import db, Operation, User
+from models import db, Operation, AuditLog
+
+MIN_VALID_DATE = date(2000, 1, 1)
 
 def parse_date(val):
     """Convertit une valeur Excel en date Python."""
     if val is None or val == '/' or val == '' or val == '-':
         return None
+    parsed = None
     if isinstance(val, datetime):
-        return val.date()
-    if isinstance(val, date):
-        return val
+        parsed = val.date()
+    elif isinstance(val, date):
+        parsed = val
     # Essayer de parser une string
-    try:
-        return datetime.strptime(str(val).strip(), '%Y-%m-%d').date()
-    except:
-        pass
-    try:
-        return datetime.strptime(str(val).strip(), '%d/%m/%Y').date()
-    except:
-        pass
-    return None
+    if parsed is None:
+        try:
+            parsed = datetime.strptime(str(val).strip(), '%Y-%m-%d').date()
+        except:
+            pass
+    if parsed is None:
+        try:
+            parsed = datetime.strptime(str(val).strip(), '%d/%m/%Y').date()
+        except:
+            pass
+
+    if parsed and parsed < MIN_VALID_DATE:
+        return None
+    return parsed
 
 def parse_float(val):
     """Convertit une valeur en float."""
@@ -90,7 +98,7 @@ def normalize_type_detail(val):
 
 def import_cheques_file():
     """Import fichier 'Chèques ----.xlsx'"""
-    filepath = os.path.join(os.path.dirname(__file__), 'Chèques ----.xlsx')
+    filepath = os.path.join(os.path.dirname(__file__), 'Chèques  SABRINA.xlsx')
     wb = openpyxl.load_workbook(filepath, read_only=True, data_only=True)
     count = 0
 
@@ -169,7 +177,7 @@ def import_cheques_file():
 
 def import_ent_genetics_file():
     """Import fichier 'ENT GENETICS.xlsx'"""
-    filepath = os.path.join(os.path.dirname(__file__), 'ENT GENETICS.xlsx')
+    filepath = os.path.join(os.path.dirname(__file__), 'SRID GENETICS.xlsx')
     wb = openpyxl.load_workbook(filepath, read_only=True, data_only=True)
     count = 0
 
@@ -257,7 +265,7 @@ def import_ent_genetics_file():
 
 def import_versement_cheques_ent():
     """Import fichier 'versement et cheques ENT serveur .xlsx'"""
-    filepath = os.path.join(os.path.dirname(__file__), 'versement et cheques ENT serveur .xlsx')
+    filepath = os.path.join(os.path.dirname(__file__), 'versement et cheques srid serveur .xlsx')
     wb = openpyxl.load_workbook(filepath, read_only=True, data_only=True)
     count = 0
 
@@ -361,7 +369,7 @@ def import_versement_cheques_ent():
 
             op = Operation(
                 type_operation=type_op,
-                societe=normalize_societe(famille) if famille else 'ENT',
+                societe=normalize_societe(famille) if famille else 'SRID',
                 famille=famille,
                 date_operation=date_op,
                 client=client,
@@ -382,31 +390,30 @@ def import_versement_cheques_ent():
 
 if __name__ == '__main__':
     with app.app_context():
-        # Vider les opérations existantes
+        # Backup file before refresh
+        db_path = os.path.join(os.path.dirname(__file__), 'database.db')
+        if os.path.exists(db_path):
+            ts = datetime.now().strftime('%Y%m%d_%H%M%S')
+            backup_path = os.path.join(os.path.dirname(__file__), f'database_backup_{ts}.db')
+            import shutil
+            shutil.copy2(db_path, backup_path)
+            print(f"Backup créé: {backup_path}")
+
+        # Refresh operations and audit log from latest Excel sources.
+        AuditLog.query.delete()
         Operation.query.delete()
-        db.session.commit()
-        
-        # Recréer les users par défaut
-        if not User.query.filter_by(username='boss').first():
-            u = User(username='boss', nom_complet='Directeur', role='boss')
-            u.set_password('boss123')
-            db.session.add(u)
-        if not User.query.filter_by(username='saisie').first():
-            u = User(username='saisie', nom_complet='Saisisseur', role='saisisseur')
-            u.set_password('saisie123')
-            db.session.add(u)
         db.session.commit()
 
         print("Import des fichiers Excel...")
         
         c1 = import_cheques_file()
-        print(f"  ✓ Chèques ----.xlsx : {c1} opérations")
+        print(f"  ✓ Chèques  SABRINA.xlsx : {c1} opérations")
         
         c2 = import_ent_genetics_file()
-        print(f"  ✓ ENT GENETICS.xlsx : {c2} opérations")
+        print(f"  ✓ SRID GENETICS.xlsx : {c2} opérations")
         
         c3 = import_versement_cheques_ent()
-        print(f"  ✓ versement et cheques ENT serveur .xlsx : {c3} opérations")
+        print(f"  ✓ versement et cheques srid serveur .xlsx : {c3} opérations")
         
         db.session.commit()
         
