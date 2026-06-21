@@ -5,7 +5,7 @@
 <div class="fade-in">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <h1 class="text-2xl font-bold"><i class="fas fa-search text-primary mr-2"></i>Consultation</h1>
-        <a href="{{ url_for('export_excel') }}" class="btn btn-sm btn-outline btn-success mt-2 sm:mt-0">
+        <a id="export-link" href="{{ url_for('export_excel') }}" class="btn btn-sm btn-outline btn-success mt-2 sm:mt-0">
             <i class="fas fa-file-excel mr-1"></i> Exporter Excel
         </a>
     </div>
@@ -113,5 +113,41 @@
             document.getElementById('detail-modal').showModal();
         }
     });
+
+    const exportLink = document.getElementById('export-link');
+    const filterSelectors = [
+        '[name="search"]',
+        '[name="type_operation"]',
+        '[name="societe"]',
+        '[name="statut"]',
+        '[name="date_debut"]',
+        '[name="date_fin"]'
+    ];
+
+    function updateExportLink() {
+        if (!exportLink) return;
+        const url = new URL(exportLink.getAttribute('href'), window.location.origin);
+        url.search = '';
+
+        filterSelectors.forEach((selector) => {
+            const field = document.querySelector(selector);
+            if (!field) return;
+            const value = field.value.trim();
+            if (value) {
+                url.searchParams.set(field.name, value);
+            }
+        });
+
+        exportLink.setAttribute('href', url.pathname + url.search);
+    }
+
+    filterSelectors.forEach((selector) => {
+        const field = document.querySelector(selector);
+        if (!field) return;
+        field.addEventListener('input', updateExportLink);
+        field.addEventListener('change', updateExportLink);
+    });
+
+    updateExportLink();
 </script>
 {% endblock %}

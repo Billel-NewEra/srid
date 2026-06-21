@@ -839,12 +839,36 @@ def historique():
 @login_required
 def export_excel():
     query = Operation.query
+    search = request.args.get('search', '').strip()
+    if search:
+        query = query.filter(or_(
+            Operation.client.ilike(f'%{search}%'),
+            Operation.remettant.ilike(f'%{search}%'),
+            Operation.banque.ilike(f'%{search}%'),
+            Operation.numero_piece.ilike(f'%{search}%'),
+            Operation.remarque.ilike(f'%{search}%'),
+            Operation.societe.ilike(f'%{search}%'),
+        ))
+
     type_op = request.args.get('type_operation', '').strip()
     if type_op:
         query = query.filter(Operation.type_operation == type_op)
+
     societe = request.args.get('societe', '').strip()
     if societe:
         query = query.filter(Operation.societe == societe)
+
+    statut = request.args.get('statut', '').strip()
+    if statut:
+        query = query.filter(Operation.statut == statut)
+
+    date_debut = request.args.get('date_debut', '').strip()
+    if date_debut:
+        query = query.filter(Operation.date_operation >= date_debut)
+
+    date_fin = request.args.get('date_fin', '').strip()
+    if date_fin:
+        query = query.filter(Operation.date_operation <= date_fin)
 
     operations = query.order_by(Operation.date_operation.desc()).all()
 
@@ -867,10 +891,11 @@ def export_excel():
     wb.save(output)
     output.seek(0)
     filename = f'operations_{date.today().strftime("%Y%m%d")}.xlsx'
-    response = make_response(output.getvalue())
+    file_bytes = output.getvalue()
+    response = make_response(file_bytes)
     response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
     response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
-    response.headers['Content-Length'] = str(output.tell())
+    response.headers['Content-Length'] = str(len(file_bytes))
     response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
     return response
 
