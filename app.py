@@ -14,7 +14,39 @@ app.config.from_object(Config)
 db.init_app(app)
 
 
+ROLE_ALIASES = {
+    'boss': 'admin',
+    'admin': 'admin',
+    'saisisseur': 'saisie',
+    'saisie': 'saisie',
+    'consultation': 'consultation',
+    'consultant': 'consultation',
+    'viewer': 'consultation',
+}
+
+ROLE_LABELS = {
+    'admin': 'Admin',
+    'saisie': 'Saisie',
+    'consultation': 'Consultation',
+}
+
+
 # --- Décorateurs d'authentification ---
+
+
+def _normalize_role(role):
+    return ROLE_ALIASES.get((role or '').strip().lower(), 'consultation')
+
+
+def _current_role():
+    return _normalize_role(session.get('user_role', ''))
+
+
+def _forbidden_response():
+    if request.path.startswith('/api/') or request.headers.get('HX-Request'):
+        return ('Accès refusé.', 403)
+    flash('Accès refusé pour ce rôle.', 'error')
+    return redirect(url_for('dashboard'))
 
 def login_required(f):
     @wraps(f)
@@ -25,14 +57,38 @@ def login_required(f):
     return decorated_function
 
 
+def role_required(*allowed_roles):
+    allowed = {_normalize_role(r) for r in allowed_roles}
+
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'user_id' not in session:
+                return redirect(url_for('login'))
+            if _current_role() not in allowed:
+                return _forbidden_response()
+            return f(*args, **kwargs)
+
+        return decorated_function
+
+    return decorator
+
+
 # --- Contexte global templates ---
 
 @app.context_processor
 def inject_globals():
     from datetime import datetime
+    role_key = _current_role()
     return {
+        'current_user_id': session.get('user_id'),
         'current_user': session.get('user_nom', ''),
-        'current_role': session.get('user_role', ''),
+        'current_role': ROLE_LABELS.get(role_key, 'Consultation'),
+        'current_role_key': role_key,
+        'can_write': role_key in {'admin', 'saisie'},
+        'can_delete': role_key == 'admin',
+        'is_admin': role_key == 'admin',
+        'can_manage_users': role_key == 'admin',
         'is_logged_in': 'user_id' in session,
         'now': datetime.now,
     }
@@ -105,6 +161,10 @@ def _get_bank_suggestions():
     return sorted(values)
 
 
+def _admin_users_count():
+    return User.query.filter_by(role='admin').count()
+
+
 # --- Routes Auth ---
 
 @app.route('/sw.js')
@@ -123,7 +183,7 @@ def login():
         if user and user.check_password(password):
             session['user_id'] = user.id
             session['user_nom'] = user.nom_complet or user.username
-            session['user_role'] = user.role
+            session['user_role'] = _normalize_role(user.role)
             flash(f'Bienvenue, {user.nom_complet or user.username} !', 'success')
             return redirect(url_for('dashboard'))
         flash('Identifiants incorrects.', 'error')
@@ -134,6 +194,109 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for('login'))
+
+
+@app.route('/utilisateurs', methods=['GET', 'POST'])
+@role_required('admin')
+def manage_users():
+    role_choices = ['admin', 'saisie', 'consultation']
+
+    if request.method == 'POST':
+        username = request.form.get('username', '').strip().lower()
+        nom_complet = request.form.get('nom_complet', '').strip()
+        password = request.form.get('password', '')
+        role = _normalize_role(request.form.get('role', 'consultation'))
+
+        if not username or len(username) < 3:
+            flash('Nom utilisateur invalide (min 3 caractères).', 'error')
+            return redirect(url_for('manage_users'))
+        if role not in role_choices:
+            flash('Rôle invalide.', 'error')
+            return redirect(url_for('manage_users'))
+        if len(password) < 6:
+            flash('Mot de passe trop court (min 6 caractères).', 'error')
+            return redirect(url_for('manage_users'))
+        if User.query.filter_by(username=username).first():
+            flash('Ce nom utilisateur existe déjà.', 'error')
+            return redirect(url_for('manage_users'))
+
+        user = User(
+            username=username,
+            nom_complet=nom_complet or username,
+            role=role,
+        )
+        user.set_password(password)
+        db.session.add(user)
+        db.session.commit()
+        flash(f'Utilisateur {username} créé avec rôle {ROLE_LABELS.get(role, role)}.', 'success')
+        return redirect(url_for('manage_users'))
+
+    users = User.query.order_by(User.username.asc()).all()
+    return render_template('users.html', users=users, role_labels=ROLE_LABELS)
+
+
+@app.route('/utilisateurs/<int:user_id>/role', methods=['POST'])
+@role_required('admin')
+def update_user_role(user_id):
+    user = User.query.get_or_404(user_id)
+    new_role = _normalize_role(request.form.get('role', 'consultation'))
+    if new_role not in {'admin', 'saisie', 'consultation'}:
+        flash('Rôle invalide.', 'error')
+        return redirect(url_for('manage_users'))
+
+    if user.id == session.get('user_id'):
+        flash('Vous ne pouvez pas modifier votre propre rôle.', 'error')
+        return redirect(url_for('manage_users'))
+
+    if user.role == 'admin' and new_role != 'admin' and _admin_users_count() <= 1:
+        flash('Impossible de retirer le dernier administrateur.', 'error')
+        return redirect(url_for('manage_users'))
+
+    user.role = new_role
+    db.session.commit()
+    flash(
+        f'Rôle mis à jour pour {user.username}. Le nouvel accès sera effectif après reconnexion de cet utilisateur.',
+        'success'
+    )
+    return redirect(url_for('manage_users'))
+
+
+@app.route('/utilisateurs/<int:user_id>/password', methods=['POST'])
+@role_required('admin')
+def update_user_password(user_id):
+    user = User.query.get_or_404(user_id)
+    new_password = request.form.get('password', '')
+    if len(new_password) < 6:
+        flash('Mot de passe trop court (min 6 caractères).', 'error')
+        return redirect(url_for('manage_users'))
+
+    user.set_password(new_password)
+    db.session.commit()
+    flash(
+        f'Mot de passe mis à jour pour {user.username}. Le changement sera pris en compte après reconnexion.',
+        'success'
+    )
+    return redirect(url_for('manage_users'))
+
+
+@app.route('/utilisateurs/<int:user_id>/delete', methods=['POST'])
+@role_required('admin')
+def delete_user(user_id):
+    user = User.query.get_or_404(user_id)
+
+    if user.id == session.get('user_id'):
+        flash('Vous ne pouvez pas supprimer votre propre compte.', 'error')
+        return redirect(url_for('manage_users'))
+
+    if user.role == 'admin' and _admin_users_count() <= 1:
+        flash('Impossible de supprimer le dernier administrateur.', 'error')
+        return redirect(url_for('manage_users'))
+
+    username = user.username
+    db.session.delete(user)
+    db.session.commit()
+    flash(f'Utilisateur {username} supprimé.', 'success')
+    return redirect(url_for('manage_users'))
 
 
 # --- Dashboard ---
@@ -451,7 +614,7 @@ def api_dashboard_types():
 # --- Saisie ---
 
 @app.route('/saisie', methods=['GET', 'POST'])
-@login_required
+@role_required('admin', 'saisie')
 def saisie():
     if request.method == 'POST':
         op = Operation(
@@ -489,7 +652,7 @@ def saisie():
 # --- Modification ---
 
 @app.route('/edit/<int:op_id>', methods=['GET', 'POST'])
-@login_required
+@role_required('admin', 'saisie')
 def edit_operation(op_id):
     op = Operation.query.get_or_404(op_id)
     if request.method == 'POST':
@@ -527,7 +690,7 @@ def edit_operation(op_id):
 # --- Suppression ---
 
 @app.route('/delete/<int:op_id>', methods=['DELETE', 'POST'])
-@login_required
+@role_required('admin')
 def delete_operation(op_id):
     op = Operation.query.get_or_404(op_id)
     _log_audit(op.id, 'suppression', f"{op.type_operation} - {op.client} - {op.montant}")
@@ -629,7 +792,7 @@ def api_operation_detail(op_id):
 # --- Import Excel ---
 
 @app.route('/import', methods=['GET', 'POST'])
-@login_required
+@role_required('admin', 'saisie')
 def import_excel():
     if request.method == 'POST':
         file = request.files.get('file')
@@ -777,14 +940,35 @@ def _parse_excel_row(row, sheet_name):
 # --- Initialisation ---
 with app.app_context():
     db.create_all()
-    if not User.query.filter_by(username='boss').first():
-        boss = User(username='boss', nom_complet='Boss', role='boss')
-        boss.set_password('srid2024boss')
-        db.session.add(boss)
+
+    # Normalise legacy roles to the new 3-role model.
+    for u in User.query.all():
+        normalized = _normalize_role(u.role)
+        if u.role != normalized:
+            u.role = normalized
+
+    # Rename legacy admin account boss -> mehdi (keeping password hash).
+    legacy_boss = User.query.filter_by(username='boss').first()
+    mehdi_user = User.query.filter_by(username='mehdi').first()
+    if legacy_boss and not mehdi_user:
+        legacy_boss.username = 'mehdi'
+        if not legacy_boss.nom_complet or legacy_boss.nom_complet.strip().lower() == 'boss':
+            legacy_boss.nom_complet = 'Mehdi'
+        legacy_boss.role = 'admin'
+
+    if not User.query.filter_by(username='mehdi').first():
+        mehdi = User(username='mehdi', nom_complet='Mehdi', role='admin')
+        mehdi.set_password('srid2024mehdi')
+        db.session.add(mehdi)
+
     if not User.query.filter_by(username='sabrina').first():
-        sabrina = User(username='sabrina', nom_complet='Sabrina', role='saisisseur')
+        sabrina = User(username='sabrina', nom_complet='Sabrina', role='saisie')
         sabrina.set_password('srid2024sab')
         db.session.add(sabrina)
+    else:
+        sabrina = User.query.filter_by(username='sabrina').first()
+        sabrina.role = 'saisie'
+
     db.session.commit()
 
 

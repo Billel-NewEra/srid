@@ -1,0 +1,214 @@
+{% extends "base.html" %}
+{% block title %}Utilisateurs - SRID COM{% endblock %}
+
+{% block content %}
+<div class="fade-in space-y-6">
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+        <h1 class="text-2xl font-bold"><i class="fas fa-users-cog text-primary mr-2"></i>Gestion des utilisateurs</h1>
+        <div class="badge badge-outline">Admin uniquement</div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="card bg-base-100 shadow border border-base-300 lg:col-span-1">
+            <div class="card-body">
+                <h2 class="card-title text-sm"><i class="fas fa-user-plus mr-2 text-emerald-500"></i>Créer un utilisateur</h2>
+                <form method="POST" action="{{ url_for('manage_users') }}" class="space-y-3">
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Nom utilisateur</span></label>
+                        <input type="text" name="username" class="input input-bordered" placeholder="ex: mehdi" required>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Nom complet</span></label>
+                        <input type="text" name="nom_complet" class="input input-bordered" placeholder="ex: Mehdi">
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Rôle</span></label>
+                        <select name="role" class="select select-bordered" required>
+                            <option value="admin">Admin (full access)</option>
+                            <option value="saisie">Saisie (créer/modifier)</option>
+                            <option value="consultation">Consultation (lecture seule)</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text">Mot de passe</span></label>
+                        <input type="password" name="password" class="input input-bordered" minlength="6" required>
+                        <label class="label"><span class="label-text-alt opacity-70">Minimum 6 caractères</span></label>
+                    </div>
+                    <div class="pt-2">
+                        <button type="submit" class="btn btn-primary w-full">
+                            <i class="fas fa-save mr-1"></i>Créer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card bg-base-100 shadow border border-base-300 lg:col-span-2">
+            <div class="card-body">
+                <h2 class="card-title text-sm"><i class="fas fa-list mr-2 text-sky-500"></i>Utilisateurs existants</h2>
+                <div class="overflow-x-auto">
+                    <table class="table table-sm">
+                        <thead>
+                            <tr>
+                                <th>Username</th>
+                                <th>Nom</th>
+                                <th>Rôle</th>
+                                <th>Changer rôle</th>
+                                <th>Nouveau mot de passe</th>
+                                <th>Suppression</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for u in users %}
+                            <tr>
+                                <td class="font-mono text-xs">{{ u.username }}</td>
+                                <td>{{ u.nom_complet or '-' }}</td>
+                                <td>
+                                    <span class="badge badge-sm {% if u.role == 'admin' %}badge-error{% elif u.role == 'saisie' %}badge-warning{% else %}badge-ghost{% endif %}">
+                                        {{ role_labels.get(u.role, u.role) }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('update_user_role', user_id=u.id) }}" class="flex gap-2 items-center" data-role-form>
+                                        <select name="role" class="select select-xs select-bordered" data-role-select data-original-role="{{ u.role }}" data-username="{{ u.username }}" {% if u.id == current_user_id %}disabled{% endif %}>
+                                            <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>Admin</option>
+                                            <option value="saisie" {% if u.role == 'saisie' %}selected{% endif %}>Saisie</option>
+                                            <option value="consultation" {% if u.role == 'consultation' %}selected{% endif %}>Consultation</option>
+                                        </select>
+                                    </form>
+                                </td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('update_user_password', user_id=u.id) }}" class="flex gap-2 items-center" data-password-form data-username="{{ u.username }}">
+                                        <input type="password" name="password" minlength="6" class="input input-xs input-bordered w-28" placeholder="Nouveau mdp" required>
+                                        <button type="submit" class="btn btn-xs btn-outline">MAJ</button>
+                                    </form>
+                                </td>
+                                <td>
+                                    <form method="POST" action="{{ url_for('delete_user', user_id=u.id) }}" data-delete-form data-username="{{ u.username }}">
+                                        <button type="submit" class="btn btn-xs btn-error" {% if u.id == current_user_id %}disabled{% endif %}>Supprimer</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center opacity-60 py-8">Aucun utilisateur</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <dialog id="confirm-modal" class="modal">
+        <div class="modal-box max-w-md border border-base-300">
+            <h3 class="font-bold text-lg flex items-center gap-2">
+                <i id="confirm-icon" class="fas fa-circle-question text-warning"></i>
+                Confirmation
+            </h3>
+            <p id="confirm-message" class="py-3 text-sm opacity-90"></p>
+            <div class="modal-action">
+                <button id="confirm-cancel" type="button" class="btn btn-ghost">Annuler</button>
+                <button id="confirm-accept" type="button" class="btn btn-primary">Confirmer</button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    const confirmModal = document.getElementById('confirm-modal');
+    const confirmMessage = document.getElementById('confirm-message');
+    const confirmIcon = document.getElementById('confirm-icon');
+    const confirmAccept = document.getElementById('confirm-accept');
+    const confirmCancel = document.getElementById('confirm-cancel');
+
+    let pendingAction = null;
+
+    function openConfirm(message, onAccept, onCancel, variant = 'normal') {
+        pendingAction = { onAccept, onCancel };
+        confirmMessage.textContent = message;
+
+        if (variant === 'danger') {
+            confirmIcon.className = 'fas fa-trash text-error';
+            confirmAccept.classList.remove('btn-primary');
+            confirmAccept.classList.add('btn-error');
+        } else {
+            confirmIcon.className = 'fas fa-circle-question text-warning';
+            confirmAccept.classList.remove('btn-error');
+            confirmAccept.classList.add('btn-primary');
+        }
+
+        confirmModal.showModal();
+    }
+
+    function closeConfirm() {
+        confirmModal.close();
+    }
+
+    confirmAccept.addEventListener('click', () => {
+        if (pendingAction && typeof pendingAction.onAccept === 'function') {
+            pendingAction.onAccept();
+        }
+        pendingAction = null;
+        closeConfirm();
+    });
+
+    confirmCancel.addEventListener('click', () => {
+        if (pendingAction && typeof pendingAction.onCancel === 'function') {
+            pendingAction.onCancel();
+        }
+        pendingAction = null;
+        closeConfirm();
+    });
+
+    document.querySelectorAll('[data-role-select]').forEach((selectEl) => {
+        selectEl.addEventListener('change', () => {
+            const originalRole = selectEl.dataset.originalRole;
+            const newRole = selectEl.value;
+            const username = selectEl.dataset.username || 'cet utilisateur';
+
+            if (newRole === originalRole) return;
+
+            const form = selectEl.closest('form[data-role-form]');
+            if (!form) return;
+
+            openConfirm(
+                `Confirmer le changement de rôle pour ${username} ?`,
+                () => form.submit(),
+                () => { selectEl.value = originalRole; }
+            );
+        });
+    });
+
+    document.querySelectorAll('[data-delete-form]').forEach((formEl) => {
+        formEl.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const username = formEl.dataset.username || 'cet utilisateur';
+
+            openConfirm(
+                `Supprimer définitivement ${username} ?`,
+                () => formEl.submit(),
+                null,
+                'danger'
+            );
+        });
+    });
+
+    document.querySelectorAll('[data-password-form]').forEach((formEl) => {
+        formEl.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const username = formEl.dataset.username || 'cet utilisateur';
+            const password = formEl.querySelector('input[name="password"]')?.value || '';
+            if (password.length < 6) {
+                openConfirm('Mot de passe trop court (minimum 6 caractères).', () => {}, null, 'danger');
+                return;
+            }
+            openConfirm(`Mettre à jour le mot de passe pour ${username} ?`, () => formEl.submit());
+        });
+    });
+</script>
+{% endblock %}

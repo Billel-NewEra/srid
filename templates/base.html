@@ -355,9 +355,16 @@
                 </div>
                 <ul tabindex="0" class="menu menu-sm dropdown-content mt-3 z-[1] p-2 shadow-lg bg-base-100 text-base-content rounded-box w-56 border-2 border-base-300">
                     <li><a href="{{ url_for('dashboard') }}"><i class="fas fa-chart-line"></i> Dashboard</a></li>
+                    {% if can_write %}
                     <li><a href="{{ url_for('saisie') }}"><i class="fas fa-plus-circle"></i> Saisie</a></li>
+                    {% endif %}
                     <li><a href="{{ url_for('consultation') }}"><i class="fas fa-search"></i> Consultation</a></li>
+                    {% if can_write %}
                     <li><a href="{{ url_for('import_excel') }}"><i class="fas fa-file-import"></i> Import</a></li>
+                    {% endif %}
+                    {% if can_manage_users %}
+                    <li><a href="{{ url_for('manage_users') }}"><i class="fas fa-users-cog"></i> Utilisateurs</a></li>
+                    {% endif %}
                     <li><a href="{{ url_for('historique') }}"><i class="fas fa-history"></i> Historique</a></li>
                 </ul>
             </div>
@@ -373,21 +380,32 @@
                         <i class="fas fa-chart-line"></i> Dashboard
                     </a>
                 </li>
+                {% if can_write %}
                 <li>
                     <a href="{{ url_for('saisie') }}" class="{% if request.endpoint == 'saisie' %}bg-primary/10 text-primary{% endif %} rounded-lg">
                         <i class="fas fa-plus-circle"></i> Saisie
                     </a>
                 </li>
+                {% endif %}
                 <li>
                     <a href="{{ url_for('consultation') }}" class="{% if request.endpoint == 'consultation' %}bg-primary/10 text-primary{% endif %} rounded-lg">
                         <i class="fas fa-search"></i> Consultation
                     </a>
                 </li>
+                {% if can_write %}
                 <li>
                     <a href="{{ url_for('import_excel') }}" class="{% if request.endpoint == 'import_excel' %}bg-primary/10 text-primary{% endif %} rounded-lg">
                         <i class="fas fa-file-import"></i> Import
                     </a>
                 </li>
+                {% endif %}
+                {% if can_manage_users %}
+                <li>
+                    <a href="{{ url_for('manage_users') }}" class="{% if request.endpoint == 'manage_users' %}bg-primary/10 text-primary{% endif %} rounded-lg">
+                        <i class="fas fa-users-cog"></i> Utilisateurs
+                    </a>
+                </li>
+                {% endif %}
                 <li>
                     <a href="{{ url_for('historique') }}" class="{% if request.endpoint == 'historique' %}bg-primary/10 text-primary{% endif %} rounded-lg">
                         <i class="fas fa-history"></i> Historique
@@ -416,9 +434,13 @@
                         </div>
                     </div>
                     <span class="hidden sm:inline text-sm">{{ current_user }}</span>
+                    <span class="badge badge-sm badge-outline px-2 py-1 hidden md:inline-flex items-center leading-none">{{ current_role }}</span>
                 </div>
                 <ul tabindex="0" class="dropdown-content z-[1] menu p-2 rounded-box w-48 mt-2 text-base-content bg-base-100 border-2 border-base-300" style="box-shadow: 0 10px 40px rgba(0,0,0,0.25);">
-                    <li class="menu-title"><span class="text-xs font-semibold">{{ current_role | capitalize }}</span></li>
+                    <li class="menu-title">
+                        <span class="text-xs font-semibold">{{ current_user }}</span>
+                        <span class="text-[10px] opacity-60">{{ current_role }}</span>
+                    </li>
                     <li><a href="{{ url_for('logout') }}" class="text-red-500 hover:bg-red-500/10 hover:text-red-400 font-medium"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></li>
                 </ul>
             </div>

@@ -118,9 +118,11 @@
     </div>
 
     <div class="modal-action flex gap-2">
+        {% if can_write %}
         <a href="{{ url_for('edit_operation', op_id=operation.id) }}" class="btn btn-sm btn-warning">
             <i class="fas fa-edit mr-1"></i>Modifier
         </a>
+        {% endif %}
         <form method="dialog">
             <button class="btn btn-sm">Fermer</button>
         </form>
