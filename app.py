@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, send_file, send_from_directory
+from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, send_file, send_from_directory, make_response
 from config import Config
 from models import db, Operation, User, AuditLog
 from datetime import datetime, date, timedelta
@@ -867,8 +867,12 @@ def export_excel():
     wb.save(output)
     output.seek(0)
     filename = f'operations_{date.today().strftime("%Y%m%d")}.xlsx'
-    return send_file(output, download_name=filename, as_attachment=True,
-                     mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response = make_response(output.getvalue())
+    response.headers['Content-Type'] = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    response.headers['Content-Disposition'] = f'attachment; filename="{filename}"'
+    response.headers['Content-Length'] = str(output.tell())
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    return response
 
 
 # --- Utilitaires ---
