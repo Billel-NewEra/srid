@@ -34,7 +34,12 @@
         </div>
         <div class="form-control">
             <label class="label label-text text-xs">Banque</label>
-            <input type="text" name="banque" class="input input-bordered input-sm w-full" value="{{ operation.banque or '' }}">
+            <input type="text" name="banque" class="input input-bordered input-sm w-full" value="{{ operation.banque or '' }}" autocomplete="off" data-bank-input-edit>
+            <div class="mt-1 hidden max-h-40 overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-sm" data-bank-list-edit>
+                {% for bank in bank_options %}
+                <button type="button" class="block w-full px-3 py-2 text-left text-xs hover:bg-base-200" data-bank-option-edit="{{ bank }}">{{ bank }}</button>
+                {% endfor %}
+            </div>
         </div>
         <div class="form-control">
             <label class="label label-text text-xs">N° Pièce</label>
@@ -61,3 +66,43 @@
         <button type="submit" class="btn btn-primary btn-sm"><i class="fas fa-save mr-1"></i>Enregistrer</button>
     </div>
 </form>
+
+<script>
+    (function () {
+        const input = document.querySelector('[data-bank-input-edit]');
+        const list = document.querySelector('[data-bank-list-edit]');
+        if (!input || !list) return;
+
+        const options = Array.from(list.querySelectorAll('[data-bank-option-edit]'));
+
+        function filterBanksEdit() {
+            const query = input.value.trim().toUpperCase();
+            let visible = 0;
+
+            options.forEach((btn) => {
+                const text = btn.dataset.bankOptionEdit.toUpperCase();
+                const show = !query || text.includes(query);
+                btn.classList.toggle('hidden', !show);
+                if (show) visible += 1;
+            });
+
+            list.classList.toggle('hidden', visible === 0);
+        }
+
+        input.addEventListener('focus', filterBanksEdit);
+        input.addEventListener('input', filterBanksEdit);
+
+        options.forEach((btn) => {
+            btn.addEventListener('click', () => {
+                input.value = btn.dataset.bankOptionEdit;
+                list.classList.add('hidden');
+            });
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!list.contains(event.target) && event.target !== input) {
+                list.classList.add('hidden');
+            }
+        });
+    })();
+</script>

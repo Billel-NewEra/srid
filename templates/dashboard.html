@@ -3,6 +3,62 @@
 
 {% block content %}
 <div class="fade-in">
+    <style>
+        .year-dropdown {
+            position: relative;
+            min-width: 96px;
+        }
+        .year-dropdown-btn {
+            width: 100%;
+            justify-content: space-between;
+        }
+        .year-dropdown-menu {
+            position: absolute;
+            top: calc(100% + 4px);
+            right: 0;
+            z-index: 60;
+            width: 100%;
+            max-height: 20rem;
+            overflow-y: auto;
+            background-color: #0f172a;
+            color: #f8fafc;
+            border: 1px solid #334155;
+            border-radius: 0.5rem;
+            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+            opacity: 1;
+            backdrop-filter: none;
+            padding: 0.25rem;
+        }
+        .year-dropdown-menu[hidden] {
+            display: none;
+        }
+        .year-dropdown-item {
+            width: 100%;
+            text-align: left;
+            font-size: 0.75rem;
+            line-height: 1rem;
+            border-radius: 0.375rem;
+            padding: 0.375rem 0.5rem;
+        }
+        .year-dropdown-item:hover,
+        .year-dropdown-item.is-selected {
+            background-color: #1e293b;
+        }
+        .year-dropdown-menu::-webkit-scrollbar {
+            width: 8px;
+        }
+        .year-dropdown-menu::-webkit-scrollbar-track {
+            background: #0b1220;
+            border-radius: 999px;
+        }
+        .year-dropdown-menu::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 999px;
+        }
+        .year-dropdown-menu::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+    </style>
     <!-- Titre -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
         <h1 class="text-2xl font-bold"><i class="fas fa-chart-line text-primary mr-2"></i>Dashboard</h1>
@@ -11,141 +67,157 @@
         </div>
     </div>
 
-    <!-- KPIs principaux -->
-    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <div class="stat rounded-xl shadow-lg border border-emerald-500/20" style="background: linear-gradient(135deg, rgba(16,185,129,0.08), rgba(16,185,129,0.02));">
-            <div class="stat-figure text-emerald-400">
-                <i class="fas fa-receipt text-3xl"></i>
+    <!-- KPI unique : vue d'ensemble -->
+    <div class="card bg-base-100 shadow-lg mb-6">
+        <div class="card-body p-5">
+            <h2 class="card-title text-sm mb-3"><i class="fas fa-layer-group mr-2 text-primary"></i>Vue d'ensemble</h2>
+            <div class="overflow-x-auto">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th></th>
+                            <th class="text-right">Opérations</th>
+                            <th class="text-right">Montant</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="font-bold border-b-2 border-primary/30">
+                            <td><i class="fas fa-layer-group text-emerald-500 mr-2"></i>Total</td>
+                            <td class="text-right" data-count="{{ total_ops }}">0</td>
+                            <td class="text-right text-emerald-400" data-count="{{ total_montant }}" data-decimal="true" data-suffix=" DA">0</td>
+                        </tr>
+                        <tr>
+                            <td><i class="fas fa-building text-blue-400 mr-2"></i>SRID</td>
+                            <td class="text-right" data-count="{{ ops_srid }}">0</td>
+                            <td class="text-right text-blue-400" data-count="{{ montant_srid }}" data-decimal="true" data-suffix=" DA">0</td>
+                        </tr>
+                        <tr>
+                            <td><i class="fas fa-dna text-pink-400 mr-2"></i>SRID Genetics</td>
+                            <td class="text-right" data-count="{{ ops_genetics }}">0</td>
+                            <td class="text-right text-pink-400" data-count="{{ montant_genetics }}" data-decimal="true" data-suffix=" DA">0</td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
-            <div class="stat-title">Total Opérations</div>
-            <div class="stat-value text-emerald-400" data-count="{{ total_ops }}">0</div>
         </div>
-        <div class="stat rounded-xl shadow-lg border border-amber-500/20" style="background: linear-gradient(135deg, rgba(245,158,11,0.08), rgba(245,158,11,0.02));">
-            <div class="stat-figure text-amber-400">
-                <i class="fas fa-coins text-3xl"></i>
-            </div>
-            <div class="stat-title">Montant Total</div>
-            <div class="stat-value text-amber-400 text-lg" data-count="{{ total_montant }}" data-decimal="true">0</div>
-        </div>
-        <div class="stat rounded-xl shadow-lg border border-sky-500/20" style="background: linear-gradient(135deg, rgba(14,165,233,0.08), rgba(14,165,233,0.02));">
-            <div class="stat-figure text-sky-400">
-                <i class="fas fa-calculator text-3xl"></i>
-            </div>
-            <div class="stat-title">Moyenne / opération</div>
-            <div class="stat-value text-sky-400 text-lg" data-count="{{ montant_moyen }}" data-decimal="true">0</div>
-        </div>
-        <div class="stat rounded-xl shadow-lg border border-violet-500/20" style="background: linear-gradient(135deg, rgba(139,92,246,0.08), rgba(139,92,246,0.02));">
-            <div class="stat-figure text-violet-400">
-                <div class="radial-progress text-violet-400" style="--value:{{ taux_encaissement }};--size:3.5rem;--thickness:4px;" role="progressbar">
-                    <span class="text-xs font-bold">{{ taux_encaissement }}%</span>
+    </div>
+
+    <!-- Indicateurs statuts avec ventilation par société -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {% set statut_colors = {'Encaissé': 'emerald', 'En attente': 'amber', 'Rejeté': 'red', 'En cours': 'sky'} %}
+        {% set statut_icons = {'Encaissé': 'fa-check-circle', 'En attente': 'fa-clock', 'Rejeté': 'fa-times-circle', 'En cours': 'fa-spinner'} %}
+        {% for statut, info in statuts_info.items() if statut != 'Annulé' %}
+        <div class="card bg-base-100 shadow-sm border border-base-300">
+            <div class="card-body p-4">
+                <div class="flex items-center gap-2 mb-2">
+                    <div class="w-3 h-3 rounded-full bg-{{ statut_colors[statut] }}-500"></div>
+                    <span class="font-bold text-sm">{{ statut }}s</span>
+                    <span class="ml-auto badge badge-sm badge-ghost">{{ info.count }}</span>
+                </div>
+                <p class="font-bold text-lg text-{{ statut_colors[statut] }}-400 mb-2">{{ "{:,.0f}".format(info.montant) }} DA</p>
+                <div class="space-y-1 text-xs border-t border-base-300 pt-2">
+                    <div class="flex justify-between">
+                        <span class="text-blue-400">SRID</span>
+                        <span>{{ info.srid_count }} ops · <span class="font-semibold text-blue-400">{{ "{:,.0f}".format(info.srid_montant) }} DA</span></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-pink-400">Genetics</span>
+                        <span>{{ info.genetics_count }} ops · <span class="font-semibold text-pink-400">{{ "{:,.0f}".format(info.genetics_montant) }} DA</span></span>
+                    </div>
                 </div>
             </div>
-            <div class="stat-title">Taux d'encaissement</div>
-            <div class="stat-value text-violet-400">{{ taux_encaissement }}%</div>
         </div>
+        {% endfor %}
     </div>
 
-    <!-- KPIs secondaires - Statuts -->
-    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-        <div class="flex items-center gap-3 p-3 rounded-lg bg-base-100 shadow-sm border border-base-300">
-            <div class="w-3 h-3 rounded-full bg-emerald-500"></div>
-            <div>
-                <p class="text-xs opacity-60">Encaissés</p>
-                <p class="font-bold text-lg">{{ encaisses }}</p>
-            </div>
-        </div>
-        <div class="flex items-center gap-3 p-3 rounded-lg bg-base-100 shadow-sm border border-base-300">
-            <div class="w-3 h-3 rounded-full bg-amber-500"></div>
-            <div>
-                <p class="text-xs opacity-60">En attente</p>
-                <p class="font-bold text-lg">{{ en_attente }}</p>
-            </div>
-        </div>
-        <div class="flex items-center gap-3 p-3 rounded-lg bg-base-100 shadow-sm border border-base-300">
-            <div class="w-3 h-3 rounded-full bg-red-500"></div>
-            <div>
-                <p class="text-xs opacity-60">Rejetés</p>
-                <p class="font-bold text-lg">{{ rejetes }}</p>
-            </div>
-        </div>
-        <div class="flex items-center gap-3 p-3 rounded-lg bg-base-100 shadow-sm border border-base-300">
-            <div class="w-3 h-3 rounded-full bg-sky-500"></div>
-            <div>
-                <p class="text-xs opacity-60">En cours</p>
-                <p class="font-bold text-lg">{{ en_cours }}</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Répartition par type -->
+    <!-- Types avec montants par société -->
     <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+        {% for type_op, info in types_info.items() %}
         <div class="card bg-base-100 shadow-sm">
-            <div class="card-body p-4 flex flex-row items-center gap-3">
-                <div class="badge badge-lg bg-blue-600 text-white border-blue-700"><i class="fas fa-money-check"></i></div>
-                <div>
-                    <p class="text-sm opacity-70">Chèques</p>
-                    <p class="text-xl font-bold">{{ total_cheques }}</p>
+            <div class="card-body p-4">
+                <div class="flex items-center gap-3 mb-3">
+                    <div class="badge badge-lg {% if type_op == 'Chèque' %}bg-blue-600 text-white border-blue-700{% elif type_op == 'Virement' %}bg-purple-600 text-white border-purple-700{% else %}bg-orange-500 text-white border-orange-600{% endif %}">
+                        <i class="fas {% if type_op == 'Chèque' %}fa-money-check{% elif type_op == 'Virement' %}fa-exchange-alt{% else %}fa-piggy-bank{% endif %}"></i>
+                    </div>
+                    <div>
+                        <p class="font-bold">{{ type_op }}s</p>
+                        <p class="text-xs opacity-60">{{ info.total.count }} opérations</p>
+                    </div>
+                </div>
+                <div class="space-y-1 text-sm">
+                    <div class="flex justify-between">
+                        <span class="opacity-70">Total</span>
+                        <span class="font-bold">{{ "{:,.0f}".format(info.total.montant) }} DA</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-blue-400">SRID</span>
+                        <span class="font-semibold text-blue-400">{{ "{:,.0f}".format(info.SRID.montant) }} DA</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-pink-400">Genetics</span>
+                        <span class="font-semibold text-pink-400">{{ "{:,.0f}".format(info.Genetics.montant) }} DA</span>
+                    </div>
                 </div>
             </div>
         </div>
-        <div class="card bg-base-100 shadow-sm">
-            <div class="card-body p-4 flex flex-row items-center gap-3">
-                <div class="badge badge-lg bg-purple-600 text-white border-purple-700"><i class="fas fa-exchange-alt"></i></div>
-                <div>
-                    <p class="text-sm opacity-70">Virements</p>
-                    <p class="text-xl font-bold">{{ total_virements }}</p>
-                </div>
-            </div>
-        </div>
-        <div class="card bg-base-100 shadow-sm">
-            <div class="card-body p-4 flex flex-row items-center gap-3">
-                <div class="badge badge-lg bg-orange-500 text-white border-orange-600"><i class="fas fa-piggy-bank"></i></div>
-                <div>
-                    <p class="text-sm opacity-70">Versements</p>
-                    <p class="text-xl font-bold">{{ total_versements }}</p>
-                </div>
-            </div>
-        </div>
+        {% endfor %}
     </div>
 
     <!-- Graphiques principaux -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+
+        <!-- Évolution des montants N vs N-1 -->
         <div class="card bg-base-100 shadow">
             <div class="card-body">
-                <h2 class="card-title text-sm"><i class="fas fa-chart-area mr-2 text-emerald-500"></i>Montants mensuels — {{ year }} vs {{ previous_year }}</h2>
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="card-title text-sm"><i class="fas fa-chart-area mr-2 text-emerald-500"></i>Évolution des montants — N vs N-1</h2>
+                    <select id="yearFilterMonthly" class="select select-xs select-bordered">
+                        {% for y in available_years %}
+                        <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
                 <canvas id="compareChart" class="w-full" height="220"></canvas>
             </div>
         </div>
+
+        <!-- Répartition des montants par statut par mois -->
         <div class="card bg-base-100 shadow">
             <div class="card-body">
-                <h2 class="card-title text-sm"><i class="fas fa-chart-pie mr-2 text-violet-500"></i>Statut des opérations</h2>
-                <canvas id="statutChart" class="w-full" height="220"></canvas>
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="card-title text-sm"><i class="fas fa-chart-bar mr-2 text-violet-500"></i>Montants par statut — par mois</h2>
+                    <div class="flex gap-2">
+                        <select id="statutViewFilter" class="select select-xs select-bordered">
+                            <option value="total" selected>Total</option>
+                            <option value="srid">SRID</option>
+                            <option value="genetics">Genetics</option>
+                        </select>
+                        <select id="yearFilterStatuts" class="select select-xs select-bordered">
+                            {% for y in available_years %}
+                            <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <canvas id="statutMonthlyChart" class="w-full" height="220"></canvas>
             </div>
         </div>
     </div>
 
     <!-- Graphiques secondaires -->
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <!-- Montants mensuels par société -->
         <div class="card bg-base-100 shadow">
             <div class="card-body">
-                <h2 class="card-title text-sm"><i class="fas fa-building mr-2 text-sky-500"></i>Montants par société — {{ year }}</h2>
-                <div class="flex gap-4 mb-2">
-                    <div class="flex items-center gap-2">
-                        <div class="w-3 h-3 rounded-full bg-blue-500"></div>
-                        <span class="text-xs">SRID — {{ "{:,.0f}".format(montant_srid) }}</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <div class="w-3 h-3 rounded-full bg-pink-500"></div>
-                        <span class="text-xs">Genetics — {{ "{:,.0f}".format(montant_genetics) }}</span>
-                    </div>
+                <div class="flex justify-between items-center mb-2">
+                    <h2 class="card-title text-sm"><i class="fas fa-building mr-2 text-sky-500"></i>Montants mensuels par société</h2>
+                    <select id="yearFilterSocietes" class="select select-xs select-bordered">
+                        {% for y in available_years %}
+                        <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                        {% endfor %}
+                    </select>
                 </div>
                 <canvas id="societeChart" class="w-full" height="200"></canvas>
-            </div>
-        </div>
-        <div class="card bg-base-100 shadow">
-            <div class="card-body">
-                <h2 class="card-title text-sm"><i class="fas fa-chart-pie mr-2 text-amber-500"></i>Chèques · Virements · Versements</h2>
-                <canvas id="typeChart" class="w-full" height="200"></canvas>
             </div>
         </div>
     </div>
@@ -154,15 +226,30 @@
     <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         <div class="card bg-base-100 shadow">
             <div class="card-body">
-                <h2 class="card-title text-sm mb-4"><i class="fas fa-trophy mr-2 text-amber-500"></i>Top 5 clients par montant — {{ year }}</h2>
-                <div class="space-y-3">
+                <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
+                    <h2 class="card-title text-sm"><i class="fas fa-trophy mr-2 text-amber-500"></i>Top 5 clients</h2>
+                    <div class="flex gap-2">
+                        <select id="topYearFilter" class="select select-xs select-bordered">
+                            {% for y in available_years %}
+                            <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                        <select id="topMonthFilter" class="select select-xs select-bordered">
+                            <option value="0">Tous mois</option>
+                            {% for m in range(1, 13) %}
+                            <option value="{{ m }}">{{ ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'][m-1] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+                <div id="topClientsContainer" class="space-y-3">
                     {% for client_name, total, nb_ops in top_clients %}
                     <div class="flex items-center gap-3">
                         <div class="badge badge-sm badge-primary font-bold w-6 h-6">{{ loop.index }}</div>
                         <div class="flex-1">
                             <div class="flex justify-between items-center mb-1">
                                 <span class="text-sm font-medium truncate max-w-[180px]">{{ client_name or 'N/A' }}</span>
-                                <span class="text-sm font-bold">{{ "{:,.0f}".format(total) }}</span>
+                                <span class="text-sm font-bold">{{ "{:,.0f}".format(total) }} DA</span>
                             </div>
                             <progress class="progress progress-primary w-full h-2" value="{{ total }}" max="{{ top_clients[0][1] if top_clients else 1 }}"></progress>
                         </div>
@@ -174,7 +261,7 @@
         </div>
         <div class="card bg-base-100 shadow">
             <div class="card-body">
-                <h2 class="card-title text-sm"><i class="fas fa-bolt mr-2 text-sky-500"></i>Opérations par jour — 30 derniers jours</h2>
+                <h2 class="card-title text-sm"><i class="fas fa-bolt mr-2 text-sky-500"></i>Activité journalière — 30 derniers jours (montants)</h2>
                 <canvas id="activityChart" class="w-full" height="200"></canvas>
             </div>
         </div>
@@ -183,12 +270,13 @@
     <!-- Dernières opérations -->
     <div class="card bg-base-100 shadow">
         <div class="card-body">
-            <h2 class="card-title text-sm mb-4"><i class="fas fa-history mr-2"></i>Dernières opérations</h2>
+            <h2 class="card-title text-sm mb-4"><i class="fas fa-history mr-2"></i>Dernières opérations (par date d'échéance)</h2>
             <div class="overflow-x-auto">
                 <table class="table table-sm">
                     <thead>
                         <tr>
-                            <th>Date</th>
+                            <th>Date échéance</th>
+                            <th>Date réception</th>
                             <th>Type</th>
                             <th>Société</th>
                             <th>Client</th>
@@ -199,7 +287,8 @@
                     <tbody>
                         {% for op in dernieres %}
                         <tr class="hover">
-                            <td>{{ op.date_operation.strftime('%d/%m/%Y') if op.date_operation else '-' }}</td>
+                            <td class="whitespace-nowrap">{{ op.date_operation.strftime('%d/%m/%Y') if op.date_operation else '-' }}</td>
+                            <td class="whitespace-nowrap text-xs opacity-70">{{ op.date_reception.strftime('%d/%m/%Y') if op.date_reception else '-' }}</td>
                             <td>
                                 <span class="badge badge-sm font-semibold whitespace-nowrap
                                     {% if op.type_operation == 'Chèque' %}bg-blue-600 text-white border-blue-700
@@ -209,8 +298,8 @@
                                 </span>
                             </td>
                             <td class="text-xs">{{ op.societe }}</td>
-                            <td>{{ op.client }}</td>
-                            <td class="font-mono">{{ "{:,.2f}".format(op.montant) }}</td>
+                            <td class="max-w-32 truncate">{{ op.client }}</td>
+                            <td class="text-right font-mono font-semibold">{{ "{:,.2f}".format(op.montant) }}</td>
                             <td>
                                 <span class="badge badge-sm font-semibold whitespace-nowrap
                                     {% if op.statut == 'Encaissé' %}bg-emerald-600 text-white border-emerald-700
@@ -223,7 +312,7 @@
                             </td>
                         </tr>
                         {% else %}
-                        <tr><td colspan="6" class="text-center opacity-50 py-8">Aucune opération enregistrée</td></tr>
+                        <tr><td colspan="7" class="text-center opacity-50 py-8">Aucune opération enregistrée</td></tr>
                         {% endfor %}
                     </tbody>
                 </table>
@@ -248,8 +337,10 @@
         gray: 'rgb(107, 114, 128)',
     };
     const gridColor = 'rgba(148, 163, 184, 0.1)';
+    const months = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
+    const fmtVal = v => v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':v;
 
-    // 1. Évolution N vs N-1
+    // === 1. Évolution des montants N vs N-1 ===
     const compareCtx = document.getElementById('compareChart').getContext('2d');
     const g1 = compareCtx.createLinearGradient(0, 0, 0, 300);
     g1.addColorStop(0, 'rgba(16, 185, 129, 0.3)');
@@ -258,104 +349,210 @@
     g2.addColorStop(0, 'rgba(148, 163, 184, 0.2)');
     g2.addColorStop(1, 'rgba(148, 163, 184, 0.01)');
 
-    new Chart(compareCtx, {
+    const compareChart = new Chart(compareCtx, {
         type: 'line',
-        data: {
-            labels: ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'],
-            datasets: [{
-                label: '{{ year }}',
-                data: {{ monthly_data | tojson }},
-                backgroundColor: g1, borderColor: chartColors.emerald, borderWidth: 2.5,
-                fill: true, tension: 0.4, pointBackgroundColor: chartColors.emerald,
-                pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 7,
-            }, {
-                label: '{{ previous_year }}',
-                data: {{ monthly_data_prev | tojson }},
-                backgroundColor: g2, borderColor: 'rgba(148,163,184,0.6)', borderWidth: 1.5,
-                borderDash: [5,5], fill: true, tension: 0.4, pointRadius: 2, pointHoverRadius: 5,
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 15 } } },
-            scales: {
-                y: { beginAtZero: true, grid: { color: gridColor }, ticks: { callback: v => v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':v } },
-                x: { grid: { display: false } }
-            },
-            interaction: { intersect: false, mode: 'index' }
-        }
+        data: { labels: months, datasets: [{
+            label: '{{ year }}', data: {{ monthly_data | tojson }},
+            backgroundColor: g1, borderColor: chartColors.emerald, borderWidth: 2.5,
+            fill: true, tension: 0.4, pointBackgroundColor: chartColors.emerald,
+            pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 7,
+        }, {
+            label: '{{ previous_year }}', data: {{ monthly_data_prev | tojson }},
+            backgroundColor: g2, borderColor: 'rgba(148,163,184,0.6)', borderWidth: 1.5,
+            borderDash: [5,5], fill: true, tension: 0.4, pointRadius: 2, pointHoverRadius: 5,
+        }] },
+        options: { responsive: true, maintainAspectRatio: true,
+            plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 15 } },
+                tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toLocaleString('fr-FR')} DA` } } },
+            scales: { y: { beginAtZero: true, grid: { color: gridColor }, ticks: { callback: fmtVal } }, x: { grid: { display: false } } },
+            interaction: { intersect: false, mode: 'index' } }
     });
 
-    // 2. Répartition par statut
-    new Chart(document.getElementById('statutChart').getContext('2d'), {
-        type: 'doughnut',
-        data: {
-            labels: ['Encaissé','En attente','Rejeté','Annulé','En cours'],
-            datasets: [{ data: [{{ statut_data['Encaissé'] }},{{ statut_data['En attente'] }},{{ statut_data['Rejeté'] }},{{ statut_data['Annulé'] }},{{ statut_data['En cours'] }}],
-                backgroundColor: [chartColors.emerald, chartColors.amber, chartColors.red, chartColors.gray, chartColors.sky],
-                borderWidth: 2, borderColor: 'rgba(30,41,59,0.8)', hoverOffset: 10 }]
-        },
-        options: { responsive: true, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { padding: 15, usePointStyle: true, pointStyle: 'circle' } } } }
+    document.getElementById('yearFilterMonthly').addEventListener('change', async function() {
+        const res = await fetch(`{{ url_for('api_dashboard_monthly') }}?year=${this.value}`);
+        const d = await res.json();
+        compareChart.data.datasets[0].label = String(d.year);
+        compareChart.data.datasets[0].data = d.data;
+        compareChart.data.datasets[1].label = String(d.prev_year);
+        compareChart.data.datasets[1].data = d.data_prev;
+        compareChart.update();
     });
 
-    // 3. SRID vs Genetics
-    new Chart(document.getElementById('societeChart').getContext('2d'), {
+
+    // === 2. Montants par statut par mois ===
+    const statusKeys = ['Encaissé', 'En attente', 'Rejeté', 'En cours'];
+    let monthlyStatutsViews = {{ monthly_statuts_views | tojson }};
+
+    const statutMonthlyChart = new Chart(document.getElementById('statutMonthlyChart').getContext('2d'), {
         type: 'bar',
-        data: {
-            labels: ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'],
-            datasets: [{
-                label: 'SRID', data: {{ monthly_srid | tojson }},
-                backgroundColor: chartColors.blueAlpha, borderColor: chartColors.blue, borderWidth: 1.5, borderRadius: 4,
-            }, {
-                label: 'Genetics', data: {{ monthly_genetics | tojson }},
-                backgroundColor: chartColors.pinkAlpha, borderColor: chartColors.pink, borderWidth: 1.5, borderRadius: 4,
-            }]
-        },
-        options: {
-            responsive: true,
-            plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 15 } } },
-            scales: {
-                y: { beginAtZero: true, stacked: true, grid: { color: gridColor }, ticks: { callback: v => v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':v } },
-                x: { stacked: true, grid: { display: false } }
-            }
-        }
+        data: { labels: months, datasets: [
+            { label: 'Encaissé', data: {{ monthly_statuts['Encaissé'] | tojson }}, backgroundColor: chartColors.emerald, borderRadius: 3 },
+            { label: 'En attente', data: {{ monthly_statuts['En attente'] | tojson }}, backgroundColor: chartColors.amber, borderRadius: 3 },
+            { label: 'Rejeté', data: {{ monthly_statuts['Rejeté'] | tojson }}, backgroundColor: chartColors.red, borderRadius: 3 },
+            { label: 'En cours', data: {{ monthly_statuts['En cours'] | tojson }}, backgroundColor: chartColors.sky, borderRadius: 3 },
+        ] },
+        options: { responsive: true, maintainAspectRatio: true,
+            plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 10 } } },
+                tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toLocaleString('fr-FR')} DA` } } },
+            scales: { y: { beginAtZero: true, stacked: true, grid: { color: gridColor }, ticks: { callback: fmtVal } }, x: { stacked: true, grid: { display: false } } } }
     });
 
-    // 4. Répartition par type
-    new Chart(document.getElementById('typeChart').getContext('2d'), {
-        type: 'doughnut',
-        data: {
-            labels: ['Chèques','Virements','Versements'],
-            datasets: [{ data: [{{ type_data['Chèque'] }},{{ type_data['Virement'] }},{{ type_data['Versement'] }}],
-                backgroundColor: [chartColors.blue, chartColors.violet, chartColors.amber],
-                borderWidth: 2, borderColor: 'rgba(30,41,59,0.8)', hoverOffset: 10 }]
-        },
-        options: { responsive: true, cutout: '60%', plugins: { legend: { position: 'bottom', labels: { padding: 15, usePointStyle: true, pointStyle: 'circle' } } } }
+    function applyStatutsView(viewKey) {
+        const viewData = monthlyStatutsViews[viewKey] || monthlyStatutsViews.total || {};
+        statusKeys.forEach((status, i) => {
+            statutMonthlyChart.data.datasets[i].data = viewData[status] || [];
+        });
+        statutMonthlyChart.update();
+    }
+
+    document.getElementById('statutViewFilter').addEventListener('change', function() {
+        applyStatutsView(this.value);
     });
 
-    // 5. Activité 30 jours
-    const actCtx = document.getElementById('activityChart').getContext('2d');
-    const actG = actCtx.createLinearGradient(0, 0, 0, 200);
-    actG.addColorStop(0, 'rgba(14,165,233,0.6)');
-    actG.addColorStop(1, 'rgba(14,165,233,0.05)');
-    new Chart(actCtx, {
+    document.getElementById('yearFilterStatuts').addEventListener('change', async function() {
+        const res = await fetch(`{{ url_for('api_dashboard_statuts_monthly') }}?year=${this.value}`);
+        const d = await res.json();
+        monthlyStatutsViews = d.views || { total: d.data };
+        applyStatutsView(document.getElementById('statutViewFilter').value);
+    });
+
+
+    // === 3. Montants mensuels par société ===
+    const societeChart = new Chart(document.getElementById('societeChart').getContext('2d'), {
         type: 'bar',
-        data: { labels: {{ daily_labels | tojson }}, datasets: [{ label: 'Opérations', data: {{ daily_activity | tojson }}, backgroundColor: actG, borderColor: chartColors.sky, borderWidth: 1, borderRadius: 3 }] },
-        options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, grid: { color: gridColor }, ticks: { stepSize: 1 } }, x: { grid: { display: false }, ticks: { maxTicksLimit: 10, maxRotation: 0 } } } }
+        data: { labels: months, datasets: [
+            { label: 'SRID', data: {{ monthly_srid | tojson }}, backgroundColor: chartColors.blueAlpha, borderColor: chartColors.blue, borderWidth: 1.5, borderRadius: 4 },
+            { label: 'Genetics', data: {{ monthly_genetics | tojson }}, backgroundColor: chartColors.pinkAlpha, borderColor: chartColors.pink, borderWidth: 1.5, borderRadius: 4 },
+        ] },
+        options: { responsive: true, maintainAspectRatio: true,
+            plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 15 } },
+                tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toLocaleString('fr-FR')} DA` } } },
+            scales: { y: { beginAtZero: true, stacked: true, grid: { color: gridColor }, ticks: { callback: fmtVal } }, x: { stacked: true, grid: { display: false } } } }
     });
 
-    // Compteurs animés
+    document.getElementById('yearFilterSocietes').addEventListener('change', async function() {
+        const res = await fetch(`{{ url_for('api_dashboard_societes') }}?year=${this.value}`);
+        const d = await res.json();
+        societeChart.data.datasets[0].data = d.srid;
+        societeChart.data.datasets[1].data = d.genetics;
+        societeChart.update();
+    });
+
+
+    // === 4. Activité 30 jours (montant, 3 courbes) ===
+    new Chart(document.getElementById('activityChart').getContext('2d'), {
+        type: 'line',
+        data: { labels: {{ daily_labels | tojson }}, datasets: [
+            { label: 'Total', data: {{ daily_total | tojson }}, borderColor: chartColors.emerald, backgroundColor: 'rgba(16,185,129,0.1)', borderWidth: 2, fill: true, tension: 0.3, pointRadius: 1 },
+            { label: 'SRID', data: {{ daily_srid | tojson }}, borderColor: chartColors.blue, borderWidth: 1.5, tension: 0.3, pointRadius: 0 },
+            { label: 'Genetics', data: {{ daily_genetics | tojson }}, borderColor: chartColors.pink, borderWidth: 1.5, tension: 0.3, pointRadius: 0 },
+        ] },
+        options: { responsive: true, plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 10 } } },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toLocaleString('fr-FR')} DA` } } },
+            scales: { y: { beginAtZero: true, grid: { color: gridColor }, ticks: { callback: fmtVal } }, x: { grid: { display: false }, ticks: { maxTicksLimit: 10, maxRotation: 0 } } },
+            interaction: { intersect: false, mode: 'index' } }
+    });
+
+    // === 5. Top 5 clients (fetch dynamique) ===
+    async function refreshTopClients() {
+        const year = document.getElementById('topYearFilter').value;
+        const month = document.getElementById('topMonthFilter').value;
+        const res = await fetch(`{{ url_for('api_dashboard_top_clients') }}?year=${year}&month=${month}`);
+        document.getElementById('topClientsContainer').innerHTML = await res.text();
+    }
+    document.getElementById('topYearFilter').addEventListener('change', refreshTopClients);
+    document.getElementById('topMonthFilter').addEventListener('change', refreshTopClients);
+
+    // === 6. Menus année/mois scrollables ===
+    function initScrollableYearFilter(selectId) {
+        const select = document.getElementById(selectId);
+        if (!select || select.dataset.enhanced === '1') return;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'year-dropdown';
+
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'btn btn-xs btn-outline year-dropdown-btn';
+
+        const label = document.createElement('span');
+        label.textContent = select.options[select.selectedIndex]?.text || '';
+
+        const icon = document.createElement('span');
+        icon.innerHTML = '<i class="fas fa-chevron-down text-[10px]"></i>';
+
+        button.appendChild(label);
+        button.appendChild(icon);
+
+        const menu = document.createElement('div');
+        menu.className = 'year-dropdown-menu';
+        menu.hidden = true;
+
+        // For months, keep the exact same style but show all 12 options without scrolling.
+        if (selectId === 'topMonthFilter') {
+            menu.style.maxHeight = 'none';
+            menu.style.overflowY = 'visible';
+        }
+
+        Array.from(select.options).forEach(opt => {
+            const item = document.createElement('button');
+            item.type = 'button';
+            item.className = 'year-dropdown-item';
+            item.textContent = opt.text;
+            item.dataset.value = opt.value;
+            if (opt.selected) item.classList.add('is-selected');
+
+            item.addEventListener('click', () => {
+                select.value = opt.value;
+                label.textContent = opt.text;
+                menu.querySelectorAll('.year-dropdown-item').forEach(el => el.classList.remove('is-selected'));
+                item.classList.add('is-selected');
+                menu.hidden = true;
+                select.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+
+            menu.appendChild(item);
+        });
+
+        button.addEventListener('click', e => {
+            e.stopPropagation();
+            menu.hidden = !menu.hidden;
+        });
+
+        document.addEventListener('click', e => {
+            if (!wrapper.contains(e.target)) menu.hidden = true;
+        });
+
+        select.addEventListener('change', () => {
+            const selected = select.options[select.selectedIndex];
+            label.textContent = selected ? selected.text : '';
+            menu.querySelectorAll('.year-dropdown-item').forEach(el => {
+                el.classList.toggle('is-selected', el.dataset.value === select.value);
+            });
+        });
+
+        wrapper.appendChild(button);
+        wrapper.appendChild(menu);
+        select.classList.add('hidden');
+        select.insertAdjacentElement('afterend', wrapper);
+        select.dataset.enhanced = '1';
+    }
+
+    ['yearFilterMonthly', 'yearFilterStatuts', 'yearFilterSocietes', 'topYearFilter', 'topMonthFilter'].forEach(initScrollableYearFilter);
+
+    // === Compteurs animés ===
     document.querySelectorAll('[data-count]').forEach(el => {
         const target = parseFloat(el.dataset.count);
         const isDecimal = el.dataset.decimal === 'true';
+        const suffix = el.dataset.suffix || '';
         const duration = 1200;
         const start = performance.now();
         function animate(now) {
             const progress = Math.min((now - start) / duration, 1);
             const eased = 1 - Math.pow(1 - progress, 3);
             const current = target * eased;
-            if (isDecimal) el.textContent = current.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-            else el.textContent = Math.floor(current).toLocaleString('fr-FR');
+            if (isDecimal) el.textContent = current.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + suffix;
+            else el.textContent = Math.floor(current).toLocaleString('fr-FR') + suffix;
             if (progress < 1) requestAnimationFrame(animate);
         }
         requestAnimationFrame(animate);

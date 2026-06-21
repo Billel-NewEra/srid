@@ -5,6 +5,7 @@ from datetime import datetime, date, timedelta
 from sqlalchemy import or_, func, extract, desc
 from functools import wraps
 import io
+import re
 from openpyxl import Workbook, load_workbook
 
 
@@ -35,6 +36,73 @@ def inject_globals():
         'is_logged_in': 'user_id' in session,
         'now': datetime.now,
     }
+
+
+def _normalize_bank_name(raw):
+    """Normalise les variantes de banques vers un nom canonique."""
+    if raw is None:
+        return None
+    source = str(raw).strip()
+    if not source:
+        return None
+
+    cleaned = " ".join(source.split()).upper()
+    compact = re.sub(r'[^A-Z0-9]', '', cleaned)
+    compact = re.sub(r'\d+$', '', compact)
+    if not compact:
+        return None
+
+    if compact.startswith('BADR') or compact.startswith('BAXDR'):
+        return 'BADR'
+    if compact.startswith('HOUSING') or compact in {'HB', 'HH', 'HBTF', 'HTBF'}:
+        return 'HOUSING BANK'
+    if compact.startswith('BNA'):
+        return 'BNA'
+    if compact.startswith('BDL'):
+        return 'BDL'
+    if compact.startswith('CPA'):
+        return 'CPA'
+    if compact.startswith('BEA'):
+        return 'BEA'
+    if compact.startswith('AGB') or compact.startswith('GBA'):
+        return 'AGB'
+    if compact.startswith('SGA') or compact == 'SG':
+        return 'SGA'
+    if compact.startswith('ALSALAMBANK') or compact.startswith('SALAMBANK'):
+        return 'AL SALAM BANK'
+    if compact.startswith('ALBARAKA') or compact.startswith('ELBARAKA'):
+        return 'AL BARAKA'
+    if compact.startswith('TRUST'):
+        return 'TRUST BANK'
+    if compact.startswith('FRANSABANK') or compact == 'FB':
+        return 'FRANSABANK'
+    if compact.startswith('ARABBANK'):
+        return 'ARAB BANK'
+    if compact.startswith('CNEP'):
+        return 'CNEP'
+    if compact.startswith('CCP'):
+        return 'CCP'
+    if compact.startswith('CITIBANK'):
+        return 'CITIBANK'
+    if compact.startswith('BNH'):
+        return 'BNH'
+
+    return cleaned
+
+
+def _get_bank_suggestions():
+    """Construit une liste unique de banques normalisées pour les formulaires."""
+    rows = db.session.query(Operation.banque).filter(Operation.banque.isnot(None)).all()
+    values = {_normalize_bank_name(v) for (v,) in rows}
+    values.discard(None)
+
+    defaults = {
+        'BADR', 'HOUSING BANK', 'BNA', 'BDL', 'CPA', 'BEA',
+        'AGB', 'SGA', 'AL BARAKA', 'AL SALAM BANK', 'TRUST BANK',
+        'FRANSABANK', 'ARAB BANK', 'CNEP'
+    }
+    values.update(defaults)
+    return sorted(values)
 
 
 # --- Routes Auth ---
@@ -74,30 +142,55 @@ def logout():
 @login_required
 def dashboard():
     current_year = date.today().year
+
+    # Années disponibles (toutes les années présentes en base)
+    years_raw = db.session.query(
+        extract('year', Operation.date_operation)
+    ).distinct().order_by(extract('year', Operation.date_operation).desc()).all()
+    available_years = [int(y[0]) for y in years_raw if y[0]]
+
+    # --- KPIs par société ---
     total_ops = Operation.query.count()
     total_montant = db.session.query(func.sum(Operation.montant)).scalar() or 0
-    total_cheques = Operation.query.filter_by(type_operation='Chèque').count()
-    total_virements = Operation.query.filter_by(type_operation='Virement').count()
-    total_versements = Operation.query.filter_by(type_operation='Versement').count()
-    en_attente = Operation.query.filter_by(statut='En attente').count()
-    encaisses = Operation.query.filter_by(statut='Encaissé').count()
-    rejetes = Operation.query.filter_by(statut='Rejeté').count()
-    annules = Operation.query.filter_by(statut='Annulé').count()
-    en_cours = Operation.query.filter_by(statut='En cours').count()
-
-    # Taux d'encaissement
-    taux_encaissement = round((encaisses / total_ops * 100), 1) if total_ops > 0 else 0
-
-    # Montant moyen
-    montant_moyen = round(total_montant / total_ops, 2) if total_ops > 0 else 0
-
-    # Données par société
-    montant_srid = db.session.query(func.sum(Operation.montant)).filter_by(societe='SRID').scalar() or 0
-    montant_genetics = db.session.query(func.sum(Operation.montant)).filter_by(societe='Genetics').scalar() or 0
     ops_srid = Operation.query.filter_by(societe='SRID').count()
     ops_genetics = Operation.query.filter_by(societe='Genetics').count()
+    montant_srid = db.session.query(func.sum(Operation.montant)).filter_by(societe='SRID').scalar() or 0
+    montant_genetics = db.session.query(func.sum(Operation.montant)).filter_by(societe='Genetics').scalar() or 0
 
-    # Top 5 clients par montant (année en cours, exclure les sociétés)
+    # --- Statuts avec montants par société ---
+    statuts_info = {}
+    for statut in ['Encaissé', 'En attente', 'Rejeté', 'Annulé', 'En cours']:
+        count = Operation.query.filter_by(statut=statut).count()
+        montant = db.session.query(func.sum(Operation.montant)).filter_by(statut=statut).scalar() or 0
+        count_srid = Operation.query.filter_by(statut=statut, societe='SRID').count()
+        montant_srid_s = db.session.query(func.sum(Operation.montant)).filter_by(statut=statut, societe='SRID').scalar() or 0
+        count_gen = Operation.query.filter_by(statut=statut, societe='Genetics').count()
+        montant_gen_s = db.session.query(func.sum(Operation.montant)).filter_by(statut=statut, societe='Genetics').scalar() or 0
+        statuts_info[statut] = {
+            'count': count, 'montant': float(montant),
+            'srid_count': count_srid, 'srid_montant': float(montant_srid_s),
+            'genetics_count': count_gen, 'genetics_montant': float(montant_gen_s)
+        }
+
+    # --- Types avec montants par société ---
+    types_info = {}
+    for type_op in ['Chèque', 'Virement', 'Versement']:
+        total_count = Operation.query.filter_by(type_operation=type_op).count()
+        total_mt = db.session.query(func.sum(Operation.montant)).filter_by(type_operation=type_op).scalar() or 0
+        srid_count = Operation.query.filter_by(type_operation=type_op, societe='SRID').count()
+        srid_mt = db.session.query(func.sum(Operation.montant)).filter_by(type_operation=type_op, societe='SRID').scalar() or 0
+        gen_count = Operation.query.filter_by(type_operation=type_op, societe='Genetics').count()
+        gen_mt = db.session.query(func.sum(Operation.montant)).filter_by(type_operation=type_op, societe='Genetics').scalar() or 0
+        types_info[type_op] = {
+            'total': {'count': total_count, 'montant': float(total_mt)},
+            'SRID': {'count': srid_count, 'montant': float(srid_mt)},
+            'Genetics': {'count': gen_count, 'montant': float(gen_mt)}
+        }
+
+    # --- Taux d'encaissement ---
+    taux_encaissement = round((statuts_info['Encaissé']['count'] / total_ops * 100), 1) if total_ops > 0 else 0
+
+    # --- Top 5 clients (année en cours, tous mois) ---
     top_clients = db.session.query(
         Operation.client,
         func.sum(Operation.montant).label('total'),
@@ -110,10 +203,10 @@ def dashboard():
         ~func.lower(Operation.client).like('%genetics%')
     ).group_by(Operation.client).order_by(desc('total')).limit(5).all()
 
-    # Dernières opérations
-    dernieres = Operation.query.order_by(Operation.date_creation.desc()).limit(10).all()
+    # --- Dernières opérations (par date échéance desc) ---
+    dernieres = Operation.query.order_by(Operation.date_operation.desc()).limit(10).all()
 
-    # Données mensuelles année en cours
+    # --- Données mensuelles année courante ---
     monthly_data = []
     for month in range(1, 13):
         total = db.session.query(func.sum(Operation.montant)).filter(
@@ -122,7 +215,7 @@ def dashboard():
         ).scalar() or 0
         monthly_data.append(float(total))
 
-    # Données mensuelles année précédente (comparaison N vs N-1)
+    # --- Données mensuelles année précédente ---
     previous_year = current_year - 1
     monthly_data_prev = []
     for month in range(1, 13):
@@ -132,7 +225,7 @@ def dashboard():
         ).scalar() or 0
         monthly_data_prev.append(float(total))
 
-    # Données mensuelles par société (année en cours)
+    # --- Données mensuelles par société ---
     monthly_srid = []
     monthly_genetics = []
     for month in range(1, 13):
@@ -149,44 +242,210 @@ def dashboard():
         monthly_srid.append(float(t_srid))
         monthly_genetics.append(float(t_genetics))
 
-    # Activité 30 derniers jours (sparkline)
+    # --- Statuts par mois (année courante) : total + SRID + Genetics ---
+    status_labels = ['Encaissé', 'En attente', 'Rejeté', 'En cours']
+    monthly_statuts_views = {
+        'total': {s: [] for s in status_labels},
+        'srid': {s: [] for s in status_labels},
+        'genetics': {s: [] for s in status_labels},
+    }
+    for month in range(1, 13):
+        for statut in status_labels:
+            total_mt = db.session.query(func.sum(Operation.montant)).filter(
+                extract('year', Operation.date_operation) == current_year,
+                extract('month', Operation.date_operation) == month,
+                Operation.statut == statut
+            ).scalar() or 0
+            srid_mt = db.session.query(func.sum(Operation.montant)).filter(
+                extract('year', Operation.date_operation) == current_year,
+                extract('month', Operation.date_operation) == month,
+                Operation.statut == statut,
+                Operation.societe == 'SRID'
+            ).scalar() or 0
+            genetics_mt = db.session.query(func.sum(Operation.montant)).filter(
+                extract('year', Operation.date_operation) == current_year,
+                extract('month', Operation.date_operation) == month,
+                Operation.statut == statut,
+                Operation.societe == 'Genetics'
+            ).scalar() or 0
+            monthly_statuts_views['total'][statut].append(float(total_mt))
+            monthly_statuts_views['srid'][statut].append(float(srid_mt))
+            monthly_statuts_views['genetics'][statut].append(float(genetics_mt))
+
+    monthly_statuts = monthly_statuts_views['total']
+
+    # --- Activité 30 jours par montant et société ---
     today = date.today()
-    daily_activity = []
     daily_labels = []
+    daily_total = []
+    daily_srid = []
+    daily_genetics = []
     for i in range(29, -1, -1):
         d = today - timedelta(days=i)
-        count = Operation.query.filter(
+        mt_total = db.session.query(func.sum(Operation.montant)).filter(
             func.date(Operation.date_operation) == d
-        ).count()
-        daily_activity.append(count)
+        ).scalar() or 0
+        mt_srid = db.session.query(func.sum(Operation.montant)).filter(
+            func.date(Operation.date_operation) == d,
+            Operation.societe == 'SRID'
+        ).scalar() or 0
+        mt_gen = db.session.query(func.sum(Operation.montant)).filter(
+            func.date(Operation.date_operation) == d,
+            Operation.societe == 'Genetics'
+        ).scalar() or 0
         daily_labels.append(d.strftime('%d/%m'))
-
-    type_data = {'Chèque': total_cheques, 'Virement': total_virements, 'Versement': total_versements}
-    statut_data = {
-        'Encaissé': encaisses,
-        'En attente': en_attente,
-        'Rejeté': rejetes,
-        'Annulé': annules,
-        'En cours': en_cours
-    }
+        daily_total.append(float(mt_total))
+        daily_srid.append(float(mt_srid))
+        daily_genetics.append(float(mt_gen))
 
     return render_template('dashboard.html',
-                           total_ops=total_ops, total_montant=total_montant,
-                           total_cheques=total_cheques, total_virements=total_virements,
-                           total_versements=total_versements, en_attente=en_attente,
-                           encaisses=encaisses, rejetes=rejetes, annules=annules,
-                           en_cours=en_cours, taux_encaissement=taux_encaissement,
-                           montant_moyen=montant_moyen,
-                           montant_srid=float(montant_srid), montant_genetics=float(montant_genetics),
+                           total_ops=total_ops, total_montant=float(total_montant),
                            ops_srid=ops_srid, ops_genetics=ops_genetics,
-                           top_clients=top_clients,
-                           dernieres=dernieres,
+                           montant_srid=float(montant_srid), montant_genetics=float(montant_genetics),
+                           statuts_info=statuts_info, types_info=types_info,
+                           taux_encaissement=taux_encaissement,
+                           top_clients=top_clients, dernieres=dernieres,
                            monthly_data=monthly_data, monthly_data_prev=monthly_data_prev,
                            monthly_srid=monthly_srid, monthly_genetics=monthly_genetics,
-                           type_data=type_data, statut_data=statut_data,
-                           daily_activity=daily_activity, daily_labels=daily_labels,
+                           monthly_statuts=monthly_statuts,
+                           monthly_statuts_views=monthly_statuts_views,
+                           daily_labels=daily_labels, daily_total=daily_total,
+                           daily_srid=daily_srid, daily_genetics=daily_genetics,
                            today=date.today().strftime('%d/%m/%Y'),
-                           year=current_year, previous_year=previous_year)
+                           year=current_year, previous_year=previous_year,
+                           available_years=available_years)
+
+
+# --- API Dashboard (filtres HTMX/JS) ---
+
+@app.route('/api/dashboard/monthly')
+@login_required
+def api_dashboard_monthly():
+    year = request.args.get('year', date.today().year, type=int)
+    prev_year = year - 1
+    monthly_data = []
+    monthly_data_prev = []
+    for month in range(1, 13):
+        total = db.session.query(func.sum(Operation.montant)).filter(
+            extract('year', Operation.date_operation) == year,
+            extract('month', Operation.date_operation) == month
+        ).scalar() or 0
+        total_prev = db.session.query(func.sum(Operation.montant)).filter(
+            extract('year', Operation.date_operation) == prev_year,
+            extract('month', Operation.date_operation) == month
+        ).scalar() or 0
+        monthly_data.append(float(total))
+        monthly_data_prev.append(float(total_prev))
+    return jsonify({'year': year, 'prev_year': prev_year, 'data': monthly_data, 'data_prev': monthly_data_prev})
+
+
+@app.route('/api/dashboard/societes')
+@login_required
+def api_dashboard_societes():
+    year = request.args.get('year', date.today().year, type=int)
+    monthly_srid = []
+    monthly_genetics = []
+    for month in range(1, 13):
+        t_srid = db.session.query(func.sum(Operation.montant)).filter(
+            extract('year', Operation.date_operation) == year,
+            extract('month', Operation.date_operation) == month,
+            Operation.societe == 'SRID'
+        ).scalar() or 0
+        t_genetics = db.session.query(func.sum(Operation.montant)).filter(
+            extract('year', Operation.date_operation) == year,
+            extract('month', Operation.date_operation) == month,
+            Operation.societe == 'Genetics'
+        ).scalar() or 0
+        monthly_srid.append(float(t_srid))
+        monthly_genetics.append(float(t_genetics))
+    return jsonify({'year': year, 'srid': monthly_srid, 'genetics': monthly_genetics})
+
+
+@app.route('/api/dashboard/statuts-monthly')
+@login_required
+def api_dashboard_statuts_monthly():
+    year = request.args.get('year', date.today().year, type=int)
+    status_labels = ['Encaissé', 'En attente', 'Rejeté', 'En cours']
+    monthly_statuts_views = {
+        'total': {s: [] for s in status_labels},
+        'srid': {s: [] for s in status_labels},
+        'genetics': {s: [] for s in status_labels},
+    }
+    for month in range(1, 13):
+        for statut in status_labels:
+            total_mt = db.session.query(func.sum(Operation.montant)).filter(
+                extract('year', Operation.date_operation) == year,
+                extract('month', Operation.date_operation) == month,
+                Operation.statut == statut
+            ).scalar() or 0
+            srid_mt = db.session.query(func.sum(Operation.montant)).filter(
+                extract('year', Operation.date_operation) == year,
+                extract('month', Operation.date_operation) == month,
+                Operation.statut == statut,
+                Operation.societe == 'SRID'
+            ).scalar() or 0
+            genetics_mt = db.session.query(func.sum(Operation.montant)).filter(
+                extract('year', Operation.date_operation) == year,
+                extract('month', Operation.date_operation) == month,
+                Operation.statut == statut,
+                Operation.societe == 'Genetics'
+            ).scalar() or 0
+            monthly_statuts_views['total'][statut].append(float(total_mt))
+            monthly_statuts_views['srid'][statut].append(float(srid_mt))
+            monthly_statuts_views['genetics'][statut].append(float(genetics_mt))
+    return jsonify({'year': year, 'data': monthly_statuts_views['total'], 'views': monthly_statuts_views})
+
+
+@app.route('/api/dashboard/top-clients')
+@login_required
+def api_dashboard_top_clients():
+    year = request.args.get('year', date.today().year, type=int)
+    month = request.args.get('month', 0, type=int)
+    filters = [
+        extract('year', Operation.date_operation) == year,
+        Operation.client.isnot(None),
+        Operation.client != '',
+        ~func.lower(Operation.client).like('%srid%'),
+        ~func.lower(Operation.client).like('%genetics%')
+    ]
+    if month > 0:
+        filters.append(extract('month', Operation.date_operation) == month)
+    top_clients = db.session.query(
+        Operation.client,
+        func.sum(Operation.montant).label('total'),
+        func.count(Operation.id).label('nb_ops')
+    ).filter(*filters).group_by(Operation.client).order_by(desc('total')).limit(5).all()
+    max_total = float(top_clients[0][1]) if top_clients else 1
+    html = ''
+    for i, (client_name, total, nb_ops) in enumerate(top_clients, 1):
+        pct = float(total) / max_total * 100
+        html += f'''<div class="flex items-center gap-3">
+            <div class="badge badge-sm badge-primary font-bold w-6 h-6">{i}</div>
+            <div class="flex-1">
+                <div class="flex justify-between items-center mb-1">
+                    <span class="text-sm font-medium truncate max-w-[180px]">{client_name or 'N/A'}</span>
+                    <span class="text-sm font-bold">{total:,.0f} DA</span>
+                </div>
+                <progress class="progress progress-primary w-full h-2" value="{pct}" max="100"></progress>
+            </div>
+            <div class="badge badge-ghost badge-sm">{nb_ops} ops</div>
+        </div>'''
+    if not top_clients:
+        html = '<p class="text-center opacity-50 py-4">Aucune donnée</p>'
+    return html
+
+
+@app.route('/api/dashboard/types')
+@login_required
+def api_dashboard_types():
+    societe = request.args.get('societe', 'all')
+    result = {}
+    for type_op in ['Chèque', 'Virement', 'Versement']:
+        q = db.session.query(func.sum(Operation.montant)).filter_by(type_operation=type_op)
+        if societe != 'all':
+            q = q.filter_by(societe=societe)
+        result[type_op] = float(q.scalar() or 0)
+    return jsonify(result)
 
 
 # --- Saisie ---
@@ -206,7 +465,7 @@ def saisie():
             client=request.form.get('client'),
             remettant=request.form.get('remettant') or None,
             montant=float(request.form.get('montant', 0)),
-            banque=request.form.get('banque') or None,
+            banque=_normalize_bank_name(request.form.get('banque')),
             numero_piece=request.form.get('numero_piece') or None,
             statut=request.form.get('statut', 'En attente'),
             type_detail=request.form.get('type_detail') or None,
@@ -224,7 +483,7 @@ def saisie():
         flash('Opération enregistrée !', 'success')
         return redirect(url_for('saisie'))
 
-    return render_template('saisie.html')
+    return render_template('saisie.html', bank_options=_get_bank_suggestions())
 
 
 # --- Modification ---
@@ -244,7 +503,7 @@ def edit_operation(op_id):
         op.client = request.form.get('client')
         op.remettant = request.form.get('remettant') or None
         op.montant = float(request.form.get('montant', 0))
-        op.banque = request.form.get('banque') or None
+        op.banque = _normalize_bank_name(request.form.get('banque'))
         op.numero_piece = request.form.get('numero_piece') or None
         op.statut = request.form.get('statut', 'En attente')
         op.type_detail = request.form.get('type_detail') or None
@@ -261,8 +520,8 @@ def edit_operation(op_id):
         return redirect(url_for('consultation'))
 
     if request.headers.get('HX-Request'):
-        return render_template('partials/edit_form.html', operation=op)
-    return render_template('edit.html', operation=op)
+        return render_template('partials/edit_form.html', operation=op, bank_options=_get_bank_suggestions())
+    return render_template('edit.html', operation=op, bank_options=_get_bank_suggestions())
 
 
 # --- Suppression ---
@@ -508,7 +767,7 @@ def _parse_excel_row(row, sheet_name):
         return Operation(
             type_operation=type_op, societe='ENT',
             date_operation=date_val, client=client_val,
-            montant=montant_val, banque=banque_val,
+            montant=montant_val, banque=_normalize_bank_name(banque_val),
             statut='En attente', cree_par='Import Excel',
         )
     except Exception:

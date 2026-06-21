@@ -92,7 +92,13 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div class="form-control">
                         <label class="label"><span class="label-text font-medium">Banque</span></label>
-                        <input type="text" name="banque" class="input input-bordered w-full" placeholder="Nom de la banque">
+                        <input type="text" name="banque" class="input input-bordered w-full" placeholder="Choisir ou taper une banque" autocomplete="off" data-bank-input>
+                        <div class="mt-1 hidden max-h-48 overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-sm" data-bank-list>
+                            {% for bank in bank_options %}
+                            <button type="button" class="block w-full px-3 py-2 text-left text-sm hover:bg-base-200" data-bank-option="{{ bank }}">{{ bank }}</button>
+                            {% endfor %}
+                        </div>
+                        <label class="label"><span class="label-text-alt opacity-70">Filtre strict: texte continu (ex: "AL SA")</span></label>
                     </div>
                     <div class="form-control">
                         <label class="label"><span class="label-text font-medium">N° Pièce</span></label>
@@ -157,4 +163,46 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        const input = document.querySelector('[data-bank-input]');
+        const list = document.querySelector('[data-bank-list]');
+        if (!input || !list) return;
+
+        const options = Array.from(list.querySelectorAll('[data-bank-option]'));
+
+        function filterBanks() {
+            const query = input.value.trim().toUpperCase();
+            let visible = 0;
+
+            options.forEach((btn) => {
+                const text = btn.dataset.bankOption.toUpperCase();
+                const show = !query || text.includes(query);
+                btn.classList.toggle('hidden', !show);
+                if (show) visible += 1;
+            });
+
+            list.classList.toggle('hidden', visible === 0);
+        }
+
+        input.addEventListener('focus', filterBanks);
+        input.addEventListener('input', filterBanks);
+
+        options.forEach((btn) => {
+            btn.addEventListener('click', () => {
+                input.value = btn.dataset.bankOption;
+                list.classList.add('hidden');
+            });
+        });
+
+        document.addEventListener('click', (event) => {
+            if (!list.contains(event.target) && event.target !== input) {
+                list.classList.add('hidden');
+            }
+        });
+    })();
+</script>
 {% endblock %}
