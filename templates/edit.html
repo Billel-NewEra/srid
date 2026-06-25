@@ -20,44 +20,51 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div class="form-control">
                         <label class="label"><span class="label-text font-medium">Type *</span></label>
-                        <select name="type_operation" class="select select-bordered w-full" required>
+                        <select name="type_operation" class="select select-bordered w-full" required data-type-operation>
                             <option value="Chèque" {% if operation.type_operation == 'Chèque' %}selected{% endif %}>Chèque</option>
                             <option value="Virement" {% if operation.type_operation == 'Virement' %}selected{% endif %}>Virement</option>
                             <option value="Versement" {% if operation.type_operation == 'Versement' %}selected{% endif %}>Versement</option>
+                            <option value="Transfer" {% if operation.type_operation == 'Transfer' %}selected{% endif %}>Transfer</option>
+                            <option value="Autre" {% if operation.type_operation == 'Autre' %}selected{% endif %}>Autre</option>
                         </select>
                     </div>
                     <div class="form-control">
                         <label class="label"><span class="label-text font-medium">Société *</span></label>
                         <select name="societe" class="select select-bordered w-full" required>
-                            <option value="ENT" {% if operation.societe == 'ENT' %}selected{% endif %}>ENT</option>
+                            <option value="SRID" {% if operation.societe == 'SRID' %}selected{% endif %}>SRID</option>
                             <option value="Genetics" {% if operation.societe == 'Genetics' %}selected{% endif %}>Genetics</option>
                         </select>
                     </div>
                     <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Famille</span></label>
-                        <input type="text" name="famille" class="input input-bordered w-full" value="{{ operation.famille or '' }}">
+                        <label class="label"><span class="label-text font-medium">Type chèque</span></label>
+                        <select name="type_cheque" class="select select-bordered w-full" data-type-cheque>
+                            <option value="">-- Aucun --</option>
+                            {% for check_type in check_type_options %}
+                            <option value="{{ check_type }}" {% if operation.type_detail == check_type %}selected{% endif %}>{{ check_type }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                 </div>
 
                 <div class="divider divider-start text-sm font-semibold opacity-70">
                     <i class="fas fa-calendar mr-1"></i> Dates
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Date opération *</span></label>
-                        <input type="date" name="date_operation" class="input input-bordered w-full" value="{{ operation.date_operation.strftime('%Y-%m-%d') if operation.date_operation else '' }}" required>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div class="form-control hidden" data-date-general-wrap>
+                        <label class="label"><span class="label-text font-medium">Date *</span></label>
+                        <input type="date" name="date_operation" class="input input-bordered w-full" value="{{ operation.date_operation.strftime('%Y-%m-%d') if operation.date_operation else '' }}" data-date-general>
                     </div>
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Date réception</span></label>
-                        <input type="date" name="date_reception" class="input input-bordered w-full" value="{{ operation.date_reception.strftime('%Y-%m-%d') if operation.date_reception else '' }}">
+                    <div class="form-control hidden" data-date-reception-wrap>
+                        <label class="label"><span class="label-text font-medium">Date réception *</span></label>
+                        <input type="date" name="date_reception" class="input input-bordered w-full" value="{{ operation.date_reception.strftime('%Y-%m-%d') if operation.date_reception else '' }}" data-date-reception>
                     </div>
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Report encaissement</span></label>
-                        <input type="date" name="date_encaissement" class="input input-bordered w-full" value="{{ operation.date_encaissement.strftime('%Y-%m-%d') if operation.date_encaissement else '' }}">
+                    <div class="form-control hidden" data-date-sortie-wrap>
+                        <label class="label"><span class="label-text font-medium">Date dépôt / virement *</span></label>
+                        <input type="date" name="date_sortie" class="input input-bordered w-full" value="{{ operation.date_sortie.strftime('%Y-%m-%d') if operation.date_sortie else '' }}" data-date-sortie>
                     </div>
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Date sortie</span></label>
-                        <input type="date" name="date_sortie" class="input input-bordered w-full" value="{{ operation.date_sortie.strftime('%Y-%m-%d') if operation.date_sortie else '' }}">
+                    <div class="form-control hidden" data-date-echeance-wrap>
+                        <label class="label"><span class="label-text font-medium">Date échéance *</span></label>
+                        <input type="date" name="date_echeance" class="input input-bordered w-full" value="{{ operation.date_encaissement.strftime('%Y-%m-%d') if operation.date_encaissement else '' }}" data-date-echeance>
                     </div>
                 </div>
 
@@ -67,11 +74,21 @@
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div class="form-control">
                         <label class="label"><span class="label-text font-medium">Client *</span></label>
-                        <input type="text" name="client" class="input input-bordered w-full" value="{{ operation.client }}" required>
+                        <input type="text" name="client" class="input input-bordered w-full" value="{{ operation.client }}" autocomplete="off" required data-client-input>
+                        <div class="mt-1 hidden max-h-44 overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-sm" data-client-list>
+                            {% for client in client_options %}
+                            <button type="button" class="block w-full px-3 py-2 text-left text-sm hover:bg-base-200" data-client-option="{{ client }}">{{ client }}</button>
+                            {% endfor %}
+                        </div>
                     </div>
                     <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Remettant</span></label>
-                        <input type="text" name="remettant" class="input input-bordered w-full" value="{{ operation.remettant or '' }}">
+                        <label class="label"><span class="label-text font-medium">Remettant / Commercial</span></label>
+                        <input type="text" name="remettant_commercial" class="input input-bordered w-full" value="{{ operation.remettant or '' }}" autocomplete="off" data-remettant-input>
+                        <div class="mt-1 hidden max-h-44 overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-sm" data-remettant-list>
+                            {% for remettant in remettant_options %}
+                            <button type="button" class="block w-full px-3 py-2 text-left text-sm hover:bg-base-200" data-remettant-option="{{ remettant }}">{{ remettant }}</button>
+                            {% endfor %}
+                        </div>
                     </div>
                     <div class="form-control">
                         <label class="label"><span class="label-text font-medium">Montant *</span></label>
@@ -97,38 +114,22 @@
                         <input type="text" name="numero_piece" class="input input-bordered w-full" value="{{ operation.numero_piece or '' }}">
                     </div>
                     <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Statut *</span></label>
-                        <select name="statut" class="select select-bordered w-full" required>
-                            <option value="En attente" {% if operation.statut == 'En attente' %}selected{% endif %}>En attente</option>
-                            <option value="Encaissé" {% if operation.statut == 'Encaissé' %}selected{% endif %}>Encaissé</option>
-                            <option value="En cours" {% if operation.statut == 'En cours' %}selected{% endif %}>En cours</option>
-                            <option value="Rejeté" {% if operation.statut == 'Rejeté' %}selected{% endif %}>Rejeté</option>
-                            <option value="Annulé" {% if operation.statut == 'Annulé' %}selected{% endif %}>Annulé</option>
-                        </select>
+                        <label class="label"><span class="label-text font-medium">Statut</span></label>
+                        <input type="text" class="input input-bordered w-full" value="Attribué automatiquement" disabled>
                     </div>
                 </div>
 
                 <div class="divider divider-start text-sm font-semibold opacity-70">
                     <i class="fas fa-info-circle mr-1"></i> Détails
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Type détail</span></label>
-                        <select name="type_detail" class="select select-bordered w-full">
-                            <option value="">-- Aucun --</option>
-                            <option value="Courant" {% if operation.type_detail == 'Courant' %}selected{% endif %}>Courant</option>
-                            <option value="Garantie" {% if operation.type_detail == 'Garantie' %}selected{% endif %}>Garantie</option>
-                        </select>
+                        <label class="label"><span class="label-text font-medium">Entrée (reçu par)</span></label>
+                        <input type="text" name="entree" class="input input-bordered w-full" value="{{ operation.entree or '' }}">
                     </div>
-                    <div class="form-control flex flex-row items-end gap-4">
-                        <label class="label cursor-pointer gap-2">
-                            <input type="checkbox" name="entree" class="checkbox checkbox-primary" {% if operation.entree %}checked{% endif %}>
-                            <span class="label-text">Entrée</span>
-                        </label>
-                        <label class="label cursor-pointer gap-2">
-                            <input type="checkbox" name="sortie" class="checkbox checkbox-secondary" {% if operation.sortie %}checked{% endif %}>
-                            <span class="label-text">Sortie</span>
-                        </label>
+                    <div class="form-control">
+                        <label class="label"><span class="label-text font-medium">Sortie (remis par)</span></label>
+                        <input type="text" name="sortie" class="input input-bordered w-full" value="{{ operation.sortie or '' }}">
                     </div>
                 </div>
                 <div class="form-control">
@@ -151,41 +152,101 @@
 {% block scripts %}
 <script>
     (function () {
-        const input = document.querySelector('[data-bank-input-edit-page]');
-        const list = document.querySelector('[data-bank-list-edit-page]');
-        if (!input || !list) return;
+        function setupSuggestion({ inputSelector, listSelector, optionAttr }) {
+            const input = document.querySelector(inputSelector);
+            const list = document.querySelector(listSelector);
+            if (!input || !list) return;
 
-        const options = Array.from(list.querySelectorAll('[data-bank-option-edit-page]'));
+            const options = Array.from(list.querySelectorAll(`[${optionAttr}]`));
 
-        function filterBanksEditPage() {
-            const query = input.value.trim().toUpperCase();
-            let visible = 0;
+            function filterOptions() {
+                const query = input.value.trim().toUpperCase();
+                let visible = 0;
+                options.forEach((btn) => {
+                    const value = (btn.getAttribute(optionAttr) || '').toUpperCase();
+                    const show = !query || value.includes(query);
+                    btn.classList.toggle('hidden', !show);
+                    if (show) visible += 1;
+                });
+                list.classList.toggle('hidden', visible === 0);
+            }
+
+            input.addEventListener('focus', filterOptions);
+            input.addEventListener('input', filterOptions);
 
             options.forEach((btn) => {
-                const text = btn.dataset.bankOptionEditPage.toUpperCase();
-                const show = !query || text.includes(query);
-                btn.classList.toggle('hidden', !show);
-                if (show) visible += 1;
+                btn.addEventListener('click', () => {
+                    input.value = btn.getAttribute(optionAttr) || '';
+                    list.classList.add('hidden');
+                });
             });
 
-            list.classList.toggle('hidden', visible === 0);
+            document.addEventListener('click', (event) => {
+                if (!list.contains(event.target) && event.target !== input) {
+                    list.classList.add('hidden');
+                }
+            });
         }
 
-        input.addEventListener('focus', filterBanksEditPage);
-        input.addEventListener('input', filterBanksEditPage);
+        setupSuggestion({ inputSelector: '[data-bank-input-edit-page]', listSelector: '[data-bank-list-edit-page]', optionAttr: 'data-bank-option-edit-page' });
+        setupSuggestion({ inputSelector: '[data-client-input]', listSelector: '[data-client-list]', optionAttr: 'data-client-option' });
+        setupSuggestion({ inputSelector: '[data-remettant-input]', listSelector: '[data-remettant-list]', optionAttr: 'data-remettant-option' });
 
-        options.forEach((btn) => {
-            btn.addEventListener('click', () => {
-                input.value = btn.dataset.bankOptionEditPage;
-                list.classList.add('hidden');
-            });
-        });
+        const typeSelect = document.querySelector('[data-type-operation]');
+        const typeChequeSelect = document.querySelector('[data-type-cheque]');
+        const dateGeneralWrap = document.querySelector('[data-date-general-wrap]');
+        const dateGeneralInput = document.querySelector('[data-date-general]');
+        const dateReceptionWrap = document.querySelector('[data-date-reception-wrap]');
+        const dateReceptionInput = document.querySelector('[data-date-reception]');
+        const dateSortieWrap = document.querySelector('[data-date-sortie-wrap]');
+        const dateSortieInput = document.querySelector('[data-date-sortie]');
+        const dateEcheanceWrap = document.querySelector('[data-date-echeance-wrap]');
+        const dateEcheanceInput = document.querySelector('[data-date-echeance]');
 
-        document.addEventListener('click', (event) => {
-            if (!list.contains(event.target) && event.target !== input) {
-                list.classList.add('hidden');
+        function applyTypeRules() {
+            const selectedType = typeSelect ? typeSelect.value : '';
+            const hasType = selectedType !== '';
+            const isCheque = selectedType === 'Chèque';
+            const isChequeEcheance = isCheque && typeChequeSelect && typeChequeSelect.value === 'À échéance';
+
+            if (typeChequeSelect) {
+                typeChequeSelect.disabled = !isCheque;
+                if (!isCheque) typeChequeSelect.value = '';
             }
-        });
+
+            if (!hasType) {
+                dateGeneralWrap.classList.add('hidden');
+                dateReceptionWrap.classList.add('hidden');
+                dateSortieWrap.classList.add('hidden');
+                dateEcheanceWrap.classList.add('hidden');
+                dateGeneralInput.required = false;
+                dateReceptionInput.required = false;
+                dateSortieInput.required = false;
+                dateEcheanceInput.required = false;
+                return;
+            }
+
+            dateGeneralWrap.classList.toggle('hidden', isCheque);
+            dateGeneralInput.required = !isCheque;
+
+            dateReceptionWrap.classList.toggle('hidden', !isCheque);
+            dateReceptionInput.required = isCheque;
+
+            dateSortieWrap.classList.toggle('hidden', !isCheque);
+            dateSortieInput.required = isCheque;
+
+            dateEcheanceWrap.classList.toggle('hidden', !isChequeEcheance);
+            dateEcheanceInput.required = isChequeEcheance;
+            if (!isChequeEcheance) dateEcheanceInput.value = '';
+        }
+
+        if (typeSelect) {
+            typeSelect.addEventListener('change', applyTypeRules);
+        }
+        if (typeChequeSelect) {
+            typeChequeSelect.addEventListener('change', applyTypeRules);
+        }
+        applyTypeRules();
     })();
 </script>
 {% endblock %}

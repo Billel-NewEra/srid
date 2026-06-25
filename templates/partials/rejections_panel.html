@@ -1,0 +1,82 @@
+{% if rejections and rejections.total > 0 %}
+<div id="rejections-panel" class="mb-3 rounded-xl border border-red-500/30 bg-gradient-to-r from-red-500/15 to-rose-500/10 p-3 sm:p-4">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="flex items-start gap-3">
+            <div class="w-9 h-9 rounded-full bg-red-500/25 text-red-300 flex items-center justify-center shrink-0 mt-0.5">
+                <i class="fas fa-ban"></i>
+            </div>
+            <div>
+                <div class="font-semibold leading-tight">Chèques rejetés</div>
+                <div class="text-sm opacity-85">
+                    {{ rejections.total }} chèque{{ 's' if rejections.total > 1 else '' }} rejeté{{ 's' if rejections.total > 1 else '' }} par l'admin
+                </div>
+            </div>
+        </div>
+        <button type="button" 
+                class="btn btn-ghost btn-sm gap-1 whitespace-nowrap"
+                onclick="dismissRejectionsPanel()">
+            <i class="fas fa-times"></i>Fermer
+        </button>
+    </div>
+</div>
+
+{% if rejections.rejections %}
+<div class="card bg-base-200 border border-base-300 mb-3">
+    <div class="card-body p-3">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="font-semibold text-sm"><i class="fas fa-exclamation-circle mr-1 text-error"></i>Détails des rejets</h3>
+            <span class="badge badge-sm badge-error">{{ rejections.rejections|length }}</span>
+        </div>
+        <div class="space-y-2">
+            {% for item in rejections.rejections %}
+            <div class="flex items-start justify-between gap-2 bg-base-100 rounded px-2 py-1.5">
+                <div class="min-w-0 flex-1">
+                    <div class="text-sm font-medium truncate">{{ item.operation.client }}</div>
+                    <div class="text-xs opacity-80 space-y-0.5">
+                        <div>
+                            <span class="opacity-70">Montant:</span>
+                            <span class="text-slate-300 font-medium">{{ "%.2f"|format(item.operation.montant) }} DA</span>
+                        </div>
+                        {% if item.operation.numero_piece %}
+                        <div>
+                            <span class="opacity-70">Chèque #:</span>
+                            <span class="text-slate-300 font-medium">{{ item.operation.numero_piece }}</span>
+                        </div>
+                        {% endif %}
+                        <div>
+                            <span class="opacity-70">Rejeté par:</span>
+                            <span class="text-slate-300 font-medium">{{ item.rejected_by or 'Admin' }}</span>
+                            <span class="opacity-60">
+                                à {{ item.rejected_at.strftime('%H:%M') }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function dismissRejectionsPanel() {
+    const panel = document.getElementById('rejections-panel');
+    if (panel) {
+        panel.style.display = 'none';
+        // Stocker dans localStorage pour pas re-montrer dans la même session
+        localStorage.setItem('rejections_dismissed', 'true');
+    }
+}
+
+// Vérifier si c'était déjà fermé
+document.addEventListener('DOMContentLoaded', function() {
+    if (localStorage.getItem('rejections_dismissed') === 'true') {
+        const panel = document.getElementById('rejections-panel');
+        if (panel) {
+            panel.style.display = 'none';
+        }
+    }
+});
+</script>
+{% endif %}

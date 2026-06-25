@@ -54,23 +54,23 @@ def clean_str(val):
 def normalize_statut(val):
     """Normalise le statut."""
     if val is None or val == '' or val == '/':
-        return 'En attente'
+        return 'En cours'
     s = str(val).strip().lower()
     if s in ('ok', 'encaissé', 'encaisse'):
         return 'Encaissé'
     if 'attente' in s or 'à échéance' in s or 'echeance' in s:
-        return 'En attente'
+        return 'Échéance'
     if s in ('garantie',):
-        return 'En attente'  # type_detail sera Garantie
+        return 'En cours'
     if 'rejet' in s:
         return 'Rejeté'
     if 'annul' in s:
-        return 'Annulé'
+        return 'Rejeté'
     if 'transfert' in s:
         return 'Encaissé'
     if 'en cours' in s:
         return 'En cours'
-    return 'En attente'
+    return 'En cours'
 
 def normalize_societe(val):
     """Normalise le nom de société."""

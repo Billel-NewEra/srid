@@ -9,12 +9,18 @@
             <p class="text-xs opacity-60 uppercase">Type</p>
             <p class="font-semibold">{{ operation.type_operation }}</p>
         </div>
+        {% if operation.type_operation == 'Chèque' and operation.type_detail %}
+        <div class="bg-base-200 rounded-lg p-3">
+            <p class="text-xs opacity-60 uppercase">Type chèque</p>
+            <p class="font-semibold">{{ operation.type_detail }}</p>
+        </div>
+        {% endif %}
         <div class="bg-base-200 rounded-lg p-3">
             <p class="text-xs opacity-60 uppercase">Société</p>
             <p class="font-semibold">{{ operation.societe }}</p>
         </div>
         <div class="bg-base-200 rounded-lg p-3">
-            <p class="text-xs opacity-60 uppercase">Date opération</p>
+            <p class="text-xs opacity-60 uppercase">{{ 'Date dépôt/virement' if operation.type_operation == 'Chèque' else 'Date' }}</p>
             <p class="font-semibold">{{ operation.date_operation.strftime('%d/%m/%Y') if operation.date_operation else '-' }}</p>
         </div>
         <div class="bg-base-200 rounded-lg p-3">
@@ -41,10 +47,12 @@
             <p class="text-xs opacity-60 uppercase">Statut</p>
             <span class="badge font-semibold
                 {% if operation.statut == 'Encaissé' %}bg-emerald-600 text-white border-emerald-700
-                {% elif operation.statut == 'En attente' %}bg-amber-500 text-white border-amber-600
                 {% elif operation.statut == 'Rejeté' %}bg-red-600 text-white border-red-700
-                {% elif operation.statut == 'Annulé' %}bg-gray-500 text-white border-gray-600
-                {% else %}bg-sky-600 text-white border-sky-700{% endif %}">
+                {% elif operation.statut == 'Échéance' %}bg-amber-500 text-white border-amber-600
+                {% elif operation.statut == 'En cours' %}bg-sky-600 text-white border-sky-700
+                {% elif operation.statut == 'Arrive à échéance' %}bg-orange-500 text-white border-orange-600
+                {% elif operation.statut == 'Échu' %}bg-violet-600 text-white border-violet-700
+                {% else %}bg-gray-500 text-white border-gray-600{% endif %}">
                 {{ operation.statut }}
             </span>
         </div>
@@ -68,7 +76,7 @@
         {% endif %}
         {% if operation.date_encaissement %}
         <div class="bg-base-200 rounded-lg p-3">
-            <p class="text-xs opacity-60 uppercase">Report encaissement</p>
+            <p class="text-xs opacity-60 uppercase">Date échéance</p>
             <p class="font-semibold">{{ operation.date_encaissement.strftime('%d/%m/%Y') }}</p>
         </div>
         {% endif %}

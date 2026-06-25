@@ -99,5 +99,115 @@ def generate_data():
         print(f"  - Total en base : {Operation.query.count()}")
 
 
+def generate_echeance_test_cases():
+    """Génère des cas de test spécifiques pour valider le comportement des notifications d'échéance."""
+    today = date.today()
+
+    test_cases = [
+        # --- Cas 1 : Échu (date passée depuis 5 jours) — doit passer à Échu automatiquement
+        {
+            "label": "Échu - date passée il y a 5 jours",
+            "date_operation": today - timedelta(days=30),
+            "date_reception": today - timedelta(days=32),
+            "date_encaissement": today - timedelta(days=5),
+            "statut": "Échéance",
+            "client": "TEST - SARL Échu Cinq Jours",
+            "montant": 75000.00,
+        },
+        # --- Cas 2 : Échu (date passée hier) — cas limite
+        {
+            "label": "Échu - date passée hier",
+            "date_operation": today - timedelta(days=20),
+            "date_reception": today - timedelta(days=22),
+            "date_encaissement": today - timedelta(days=1),
+            "statut": "Échéance",
+            "client": "TEST - ETS Échu Hier",
+            "montant": 42000.00,
+        },
+        # --- Cas 3 : Arrive à échéance - dans 2 jours (alerte urgente)
+        {
+            "label": "Arrive à échéance - dans 2 jours",
+            "date_operation": today - timedelta(days=25),
+            "date_reception": today - timedelta(days=27),
+            "date_encaissement": today + timedelta(days=2),
+            "statut": "Échéance",
+            "client": "TEST - SARL Échéance Deux Jours",
+            "montant": 120000.00,
+        },
+        # --- Cas 4 : Arrive à échéance - dans 5 jours
+        {
+            "label": "Arrive à échéance - dans 5 jours",
+            "date_operation": today - timedelta(days=20),
+            "date_reception": today - timedelta(days=22),
+            "date_encaissement": today + timedelta(days=5),
+            "statut": "Échéance",
+            "client": "TEST - ETS Échéance Cinq Jours",
+            "montant": 88000.00,
+        },
+        # --- Cas 5 : Arrive à échéance - dans 7 jours (limite de la fenêtre d'alerte)
+        {
+            "label": "Arrive à échéance - dans 7 jours (limite)",
+            "date_operation": today - timedelta(days=15),
+            "date_reception": today - timedelta(days=17),
+            "date_encaissement": today + timedelta(days=7),
+            "statut": "Échéance",
+            "client": "TEST - SARL Échéance Sept Jours",
+            "montant": 55000.00,
+        },
+        # --- Cas 6 : Échéance future normale (dans 15 jours — pas d'alerte)
+        {
+            "label": "Échéance future - dans 15 jours (pas d'alerte)",
+            "date_operation": today - timedelta(days=10),
+            "date_reception": today - timedelta(days=12),
+            "date_encaissement": today + timedelta(days=15),
+            "statut": "Échéance",
+            "client": "TEST - SPA Échéance Future Quinze Jours",
+            "montant": 200000.00,
+        },
+        # --- Cas 7 : Statut déjà Échu manuellement (ne doit pas être retouché)
+        {
+            "label": "Échu manuellement (ne doit pas changer)",
+            "date_operation": today - timedelta(days=60),
+            "date_reception": today - timedelta(days=62),
+            "date_encaissement": today + timedelta(days=10),
+            "statut": "Échu",
+            "client": "TEST - EURL Échu Manuel",
+            "montant": 33000.00,
+        },
+    ]
+
+    with app.app_context():
+        created = 0
+        for tc in test_cases:
+            op = Operation(
+                type_operation="Chèque",
+                type_detail="À échéance",
+                societe="SRID",
+                date_operation=tc["date_operation"],
+                date_reception=tc["date_reception"],
+                date_encaissement=tc["date_encaissement"],
+                statut=tc["statut"],
+                client=tc["client"],
+                remettant="Agent Test",
+                montant=tc["montant"],
+                banque="BNA",
+                numero_piece=str(100000 + created),
+                cree_par="Script Test",
+                remarque=f"[TEST] {tc['label']}",
+            )
+            db.session.add(op)
+            created += 1
+            print(f"  + {tc['label']} → statut initial: {tc['statut']} | échéance: {tc['date_encaissement']}")
+
+        db.session.commit()
+        print(f"\n✓ {created} cas de test échéance créés.")
+        print("  → Ouvrez /consultation et filtrez par 'TEST' pour les voir.")
+        print("  → La route /api/operations appellera _auto_update_echeance_statuts() automatiquement.")
+
+
 if __name__ == "__main__":
-    generate_data()
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "--echeance":
+        generate_echeance_test_cases()
+    else:
+        generate_data()

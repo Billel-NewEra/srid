@@ -420,6 +420,15 @@
             </ul>
         </div>
         <div class="navbar-end gap-2">
+            <a href="{{ url_for('consultation') }}"
+               id="global-alert-badge"
+               class="btn btn-ghost btn-sm btn-circle relative"
+               hx-get="{{ url_for('api_notifications_badge') }}"
+               hx-trigger="load, every 60s, refreshGlobalAlert from:body"
+               hx-swap="innerHTML"
+               title="Alertes échéance">
+                <i class="fas fa-bell text-lg"></i>
+            </a>
             <!-- Toggle thème -->
             <label class="swap swap-rotate btn btn-ghost btn-sm btn-circle">
                 <input type="checkbox" id="theme-toggle" onchange="toggleTheme()">

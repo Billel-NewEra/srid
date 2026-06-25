@@ -1,0 +1,77 @@
+{% if notifications and notifications.total_alerts > 0 %}
+<div class="mb-3 rounded-xl border border-orange-500/30 bg-gradient-to-r from-orange-500/15 to-rose-500/10 p-3 sm:p-4">
+    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="flex items-start gap-3">
+            <div class="w-9 h-9 rounded-full bg-orange-500/25 text-orange-300 flex items-center justify-center shrink-0 mt-0.5">
+                <i class="fas fa-bell"></i>
+            </div>
+            <div>
+                <div class="font-semibold leading-tight">Alertes échéance</div>
+                <div class="text-sm opacity-85">Affichage des opérations impactées uniquement.</div>
+            </div>
+        </div>
+        <div class="text-sm sm:text-base font-medium opacity-90">
+            {% if notifications.overdue_count > 0 and notifications.upcoming_count > 0 %}
+                {{ notifications.overdue_count }} échue{{ 's' if notifications.overdue_count > 1 else '' }}
+                <span class="opacity-60">•</span>
+                {{ notifications.upcoming_count }} à venir (7j)
+            {% elif notifications.overdue_count > 0 %}
+                {{ notifications.overdue_count }} échue{{ 's' if notifications.overdue_count > 1 else '' }}
+            {% elif notifications.upcoming_count > 0 %}
+                {{ notifications.upcoming_count }} à venir (7j)
+            {% else %}
+                Aucune alerte active
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if notifications and notifications.critical_operations %}
+<div class="card bg-base-200 border border-base-300 mb-3">
+    <div class="card-body p-3">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="font-semibold text-sm"><i class="fas fa-triangle-exclamation mr-1 text-warning"></i>À traiter en priorité</h3>
+            <span class="badge badge-sm badge-warning">{{ notifications.critical_operations|length }}</span>
+        </div>
+        <div class="space-y-1">
+            {% for item in notifications.critical_operations %}
+            {% set delta = (item.date_encaissement - notifications.today).days %}
+            <div class="flex items-center justify-between gap-2 bg-base-100 rounded px-2 py-1">
+                <div class="min-w-0">
+                    <div class="text-sm font-medium truncate">{{ item.client }}</div>
+                    <div class="text-xs opacity-80">
+                        <span class="opacity-70">Échéance:</span>
+                        <span class="text-slate-300 font-medium">{{ item.date_encaissement.strftime('%d/%m/%Y') }}</span>
+                        {% if delta < 0 %}
+                            <span class="text-rose-400 font-bold">(retard {{ -delta }}j)</span>
+                        {% elif delta == 0 %}
+                            <span class="text-rose-300 font-bold">(aujourd'hui!)</span>
+                        {% else %}
+                            <span class="text-cyan-400 font-bold">(J-{{ delta }})</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="flex items-center gap-2 shrink-0">
+                    <span class="badge badge-sm font-semibold whitespace-nowrap {% if is_admin %}cursor-pointer hover:brightness-110{% endif %} {% if item.statut == 'Échu' %}bg-violet-600 text-white border-violet-700{% elif item.statut == 'Arrive à échéance' %}bg-orange-500 text-white border-orange-600{% elif item.statut == 'Encaissé' %}bg-emerald-600 text-white border-emerald-700{% elif item.statut == 'Rejeté' %}bg-red-600 text-white border-red-700{% elif item.statut == 'Échéance' %}bg-amber-500 text-white border-amber-600{% elif item.statut == 'En cours' %}bg-sky-600 text-white border-sky-700{% else %}bg-gray-500 text-white border-gray-600{% endif %}"
+                        {% if is_admin %}
+                        data-tip="Changer statut"
+                        data-status-edit
+                        data-op-id="{{ item.id }}"
+                        data-current-status="{{ item.statut }}"
+                        data-post-url="{{ url_for('api_update_operation_status', op_id=item.id) }}"
+                        {% endif %}>
+                        {{ item.statut }}
+                    </span>
+                    <button class="btn btn-ghost btn-xs" data-tip="Voir"
+                            hx-get="{{ url_for('api_operation_detail', op_id=item.id) }}"
+                            hx-target="#modal-content" hx-swap="innerHTML">
+                        <i class="fas fa-eye text-info"></i>
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}

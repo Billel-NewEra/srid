@@ -2,7 +2,7 @@ from flask import Flask, render_template, request, redirect, url_for, jsonify, s
 from config import Config
 from models import db, Operation, User, AuditLog
 from datetime import datetime, date, timedelta
-from sqlalchemy import or_, func, extract, desc
+from sqlalchemy import or_, func, extract, desc, case
 from functools import wraps
 import io
 import re
@@ -29,6 +29,9 @@ ROLE_LABELS = {
     'saisie': 'Saisie',
     'consultation': 'Consultation',
 }
+
+CHECK_TYPE_CHOICES = ['Garantie', 'À encaisser', 'À échéance']
+STATUS_CHOICES = ['Encaissé', 'Rejeté', 'Échéance', 'En cours', 'Arrive à échéance', 'Échu']
 
 
 # --- Décorateurs d'authentification ---
@@ -159,6 +162,149 @@ def _get_bank_suggestions():
     }
     values.update(defaults)
     return sorted(values)
+
+
+def _get_client_suggestions():
+    rows = db.session.query(Operation.client).filter(Operation.client.isnot(None), Operation.client != '').all()
+    values = {str(v).strip() for (v,) in rows if v}
+    return sorted(values)
+
+
+def _get_remettant_suggestions():
+    rows = db.session.query(Operation.remettant).filter(Operation.remettant.isnot(None), Operation.remettant != '').all()
+    values = {str(v).strip() for (v,) in rows if v}
+    return sorted(values)
+
+
+def _normalize_type_operation(raw_type):
+    s = (raw_type or '').strip().lower()
+    if s in {'chèque', 'cheque'}:
+        return 'Chèque'
+    if s == 'virement':
+        return 'Virement'
+    if s == 'versement':
+        return 'Versement'
+    if s == 'transfer':
+        return 'Transfer'
+    if s == 'autre':
+        return 'Autre'
+    return 'Autre'
+
+
+def _compute_statut(type_operation, type_cheque):
+    if type_operation != 'Chèque':
+        return 'Encaissé'
+    if type_cheque == 'À échéance':
+        return 'Échéance'
+    return 'En cours'
+
+
+def _normalize_legacy_statut(op):
+    raw = (op.statut or '').strip()
+    if raw in STATUS_CHOICES:
+        return raw
+
+    lowered = raw.lower()
+    if 'annul' in lowered:
+        return 'Rejeté'
+    if 'rejet' in lowered:
+        return 'Rejeté'
+    if 'ech' in lowered:
+        return 'Échéance'
+
+    type_cheque = op.type_detail if op.type_operation == 'Chèque' else None
+    return _compute_statut(op.type_operation, type_cheque)
+
+
+def _auto_update_echeance_statuts():
+    """Passe automatiquement les statuts des chèques à échéance en fonction de la date."""
+    today = date.today()
+    alert_date = today + timedelta(days=7)
+    # Échu : date passée uniquement pour les statuts de workflow échéance.
+    # Ne pas écraser un statut manuel (ex: Encaissé/Rejeté) choisi par l'admin.
+    db.session.query(Operation).filter(
+        Operation.type_operation == 'Chèque',
+        Operation.type_detail == 'À échéance',
+        Operation.date_encaissement < today,
+        Operation.statut.in_(['Échéance', 'Arrive à échéance']),
+    ).update({'statut': 'Échu'}, synchronize_session=False)
+    # Arrive à échéance : dans les 7 prochains jours, statut encore Échéance
+    db.session.query(Operation).filter(
+        Operation.type_operation == 'Chèque',
+        Operation.type_detail == 'À échéance',
+        Operation.date_encaissement >= today,
+        Operation.date_encaissement <= alert_date,
+        Operation.statut == 'Échéance',
+    ).update({'statut': 'Arrive à échéance'}, synchronize_session=False)
+    db.session.commit()
+
+
+def _get_echeance_notifications(limit=8):
+    """Retourne les alertes d'échéance globales pour affichage sans filtre."""
+    today = date.today()
+    alert_date = today + timedelta(days=7)
+    workflow_statuses = ['Échéance', 'Arrive à échéance', 'Échu']
+    base_query = Operation.query.filter(
+        Operation.type_operation == 'Chèque',
+        Operation.type_detail == 'À échéance',
+        Operation.date_encaissement.isnot(None),
+        Operation.statut.in_(workflow_statuses),
+    )
+
+    overdue_count = base_query.filter(Operation.date_encaissement < today).count()
+    upcoming_count = base_query.filter(
+        Operation.date_encaissement >= today,
+        Operation.date_encaissement <= alert_date,
+    ).count()
+
+    critical_operations = base_query.filter(
+        or_(
+            Operation.date_encaissement < today,
+            (
+                (Operation.date_encaissement >= today) &
+                (Operation.date_encaissement <= alert_date)
+            ),
+        )
+    ).order_by(Operation.date_encaissement.asc()).limit(limit).all()
+
+    return {
+        'today': today,
+        'overdue_count': overdue_count,
+        'upcoming_count': upcoming_count,
+        'total_alerts': overdue_count + upcoming_count,
+        'critical_operations': critical_operations,
+    }
+
+
+def _get_recent_rejections(limit=8):
+    """Retourne les rejets récents (dernières 24h) depuis l'audit log."""
+    now = datetime.utcnow()
+    yesterday = now - timedelta(hours=24)
+    
+    # Chercher les audits où les details contiennent "Rejeté" et la date_action est récente
+    rejections = AuditLog.query.filter(
+        AuditLog.date_action >= yesterday,
+        AuditLog.details.ilike('%Rejeté%'),
+    ).order_by(desc(AuditLog.date_action)).limit(limit).all()
+    
+    # Grouper par operation_id et récupérer les infos de l'opération
+    rejection_ops = []
+    seen_ops = set()
+    for audit in rejections:
+        if audit.operation_id not in seen_ops:
+            op = Operation.query.get(audit.operation_id)
+            if op and op.statut == 'Rejeté':
+                rejection_ops.append({
+                    'operation': op,
+                    'rejected_at': audit.date_action,
+                    'rejected_by': audit.utilisateur,
+                })
+                seen_ops.add(audit.operation_id)
+    
+    return {
+        'rejections': rejection_ops,
+        'total': len(rejection_ops),
+    }
 
 
 def _admin_users_count():
@@ -313,16 +459,13 @@ def dashboard():
     available_years = [int(y[0]) for y in years_raw if y[0]]
 
     # --- KPIs par société ---
-    total_ops = Operation.query.count()
     total_montant = db.session.query(func.sum(Operation.montant)).scalar() or 0
-    ops_srid = Operation.query.filter_by(societe='SRID').count()
-    ops_genetics = Operation.query.filter_by(societe='Genetics').count()
     montant_srid = db.session.query(func.sum(Operation.montant)).filter_by(societe='SRID').scalar() or 0
     montant_genetics = db.session.query(func.sum(Operation.montant)).filter_by(societe='Genetics').scalar() or 0
 
     # --- Statuts avec montants par société ---
     statuts_info = {}
-    for statut in ['Encaissé', 'En attente', 'Rejeté', 'Annulé', 'En cours']:
+    for statut in STATUS_CHOICES:
         count = Operation.query.filter_by(statut=statut).count()
         montant = db.session.query(func.sum(Operation.montant)).filter_by(statut=statut).scalar() or 0
         count_srid = Operation.query.filter_by(statut=statut, societe='SRID').count()
@@ -337,7 +480,7 @@ def dashboard():
 
     # --- Types avec montants par société ---
     types_info = {}
-    for type_op in ['Chèque', 'Virement', 'Versement']:
+    for type_op in ['Chèque', 'Virement', 'Versement', 'Transfer', 'Autre']:
         total_count = Operation.query.filter_by(type_operation=type_op).count()
         total_mt = db.session.query(func.sum(Operation.montant)).filter_by(type_operation=type_op).scalar() or 0
         srid_count = Operation.query.filter_by(type_operation=type_op, societe='SRID').count()
@@ -350,14 +493,10 @@ def dashboard():
             'Genetics': {'count': gen_count, 'montant': float(gen_mt)}
         }
 
-    # --- Taux d'encaissement ---
-    taux_encaissement = round((statuts_info['Encaissé']['count'] / total_ops * 100), 1) if total_ops > 0 else 0
-
     # --- Top 5 clients (année en cours, tous mois) ---
     top_clients = db.session.query(
         Operation.client,
-        func.sum(Operation.montant).label('total'),
-        func.count(Operation.id).label('nb_ops')
+        func.sum(Operation.montant).label('total')
     ).filter(
         extract('year', Operation.date_operation) == current_year,
         Operation.client.isnot(None),
@@ -406,7 +545,7 @@ def dashboard():
         monthly_genetics.append(float(t_genetics))
 
     # --- Statuts par mois (année courante) : total + SRID + Genetics ---
-    status_labels = ['Encaissé', 'En attente', 'Rejeté', 'En cours']
+    status_labels = STATUS_CHOICES
     monthly_statuts_views = {
         'total': {s: [] for s in status_labels},
         'srid': {s: [] for s in status_labels},
@@ -462,11 +601,9 @@ def dashboard():
         daily_genetics.append(float(mt_gen))
 
     return render_template('dashboard.html',
-                           total_ops=total_ops, total_montant=float(total_montant),
-                           ops_srid=ops_srid, ops_genetics=ops_genetics,
+                           total_montant=float(total_montant),
                            montant_srid=float(montant_srid), montant_genetics=float(montant_genetics),
                            statuts_info=statuts_info, types_info=types_info,
-                           taux_encaissement=taux_encaissement,
                            top_clients=top_clients, dernieres=dernieres,
                            monthly_data=monthly_data, monthly_data_prev=monthly_data_prev,
                            monthly_srid=monthly_srid, monthly_genetics=monthly_genetics,
@@ -528,7 +665,7 @@ def api_dashboard_societes():
 @login_required
 def api_dashboard_statuts_monthly():
     year = request.args.get('year', date.today().year, type=int)
-    status_labels = ['Encaissé', 'En attente', 'Rejeté', 'En cours']
+    status_labels = STATUS_CHOICES
     monthly_statuts_views = {
         'total': {s: [] for s in status_labels},
         'srid': {s: [] for s in status_labels},
@@ -575,12 +712,11 @@ def api_dashboard_top_clients():
         filters.append(extract('month', Operation.date_operation) == month)
     top_clients = db.session.query(
         Operation.client,
-        func.sum(Operation.montant).label('total'),
-        func.count(Operation.id).label('nb_ops')
+        func.sum(Operation.montant).label('total')
     ).filter(*filters).group_by(Operation.client).order_by(desc('total')).limit(5).all()
     max_total = float(top_clients[0][1]) if top_clients else 1
     html = ''
-    for i, (client_name, total, nb_ops) in enumerate(top_clients, 1):
+    for i, (client_name, total) in enumerate(top_clients, 1):
         pct = float(total) / max_total * 100
         html += f'''<div class="flex items-center gap-3">
             <div class="badge badge-sm badge-primary font-bold w-6 h-6">{i}</div>
@@ -591,7 +727,6 @@ def api_dashboard_top_clients():
                 </div>
                 <progress class="progress progress-primary w-full h-2" value="{pct}" max="100"></progress>
             </div>
-            <div class="badge badge-ghost badge-sm">{nb_ops} ops</div>
         </div>'''
     if not top_clients:
         html = '<p class="text-center opacity-50 py-4">Aucune donnée</p>'
@@ -603,7 +738,7 @@ def api_dashboard_top_clients():
 def api_dashboard_types():
     societe = request.args.get('societe', 'all')
     result = {}
-    for type_op in ['Chèque', 'Virement', 'Versement']:
+    for type_op in ['Chèque', 'Virement', 'Versement', 'Transfer', 'Autre']:
         q = db.session.query(func.sum(Operation.montant)).filter_by(type_operation=type_op)
         if societe != 'all':
             q = q.filter_by(societe=societe)
@@ -617,21 +752,41 @@ def api_dashboard_types():
 @role_required('admin', 'saisie')
 def saisie():
     if request.method == 'POST':
+        type_operation = _normalize_type_operation(request.form.get('type_operation'))
+        type_cheque = (request.form.get('type_cheque') or request.form.get('type_detail')) if type_operation == 'Chèque' else None
+        if type_cheque not in CHECK_TYPE_CHOICES:
+            type_cheque = None
+
+        date_operation = None
+        date_reception = None
+        date_sortie = None
+        date_echeance = None
+        if type_operation == 'Chèque':
+            date_reception = _parse_date(request.form.get('date_reception'))
+            date_sortie = _parse_date(request.form.get('date_sortie'))
+            if type_cheque == 'À échéance':
+                date_echeance = _parse_date(request.form.get('date_echeance') or request.form.get('date_encaissement'))
+            date_operation = date_sortie
+        else:
+            date_operation = _parse_date(request.form.get('date_operation'))
+
+        statut_auto = _compute_statut(type_operation, type_cheque)
+
         op = Operation(
-            type_operation=request.form.get('type_operation'),
+            type_operation=type_operation,
             societe=request.form.get('societe'),
-            famille=request.form.get('famille') or None,
-            date_operation=_parse_date(request.form.get('date_operation')),
-            date_reception=_parse_date(request.form.get('date_reception')),
-            date_encaissement=_parse_date(request.form.get('date_encaissement')),
-            date_sortie=_parse_date(request.form.get('date_sortie')),
+            famille=None,
+            date_operation=date_operation,
+            date_reception=date_reception,
+            date_encaissement=date_echeance,
+            date_sortie=date_sortie,
             client=request.form.get('client'),
-            remettant=request.form.get('remettant') or None,
+            remettant=request.form.get('remettant_commercial') or request.form.get('remettant') or None,
             montant=float(request.form.get('montant', 0)),
             banque=_normalize_bank_name(request.form.get('banque')),
             numero_piece=request.form.get('numero_piece') or None,
-            statut=request.form.get('statut', 'En attente'),
-            type_detail=request.form.get('type_detail') or None,
+            statut=statut_auto,
+            type_detail=type_cheque,
             entree=request.form.get('entree') or None,
             sortie=request.form.get('sortie') or None,
             remarque=request.form.get('remarque') or None,
@@ -646,7 +801,13 @@ def saisie():
         flash('Opération enregistrée !', 'success')
         return redirect(url_for('saisie'))
 
-    return render_template('saisie.html', bank_options=_get_bank_suggestions())
+    return render_template(
+        'saisie.html',
+        bank_options=_get_bank_suggestions(),
+        client_options=_get_client_suggestions(),
+        remettant_options=_get_remettant_suggestions(),
+        check_type_options=CHECK_TYPE_CHOICES,
+    )
 
 
 # --- Modification ---
@@ -656,20 +817,38 @@ def saisie():
 def edit_operation(op_id):
     op = Operation.query.get_or_404(op_id)
     if request.method == 'POST':
-        op.type_operation = request.form.get('type_operation')
+        type_operation = _normalize_type_operation(request.form.get('type_operation'))
+        type_cheque = (request.form.get('type_cheque') or request.form.get('type_detail')) if type_operation == 'Chèque' else None
+        if type_cheque not in CHECK_TYPE_CHOICES:
+            type_cheque = None
+
+        date_operation = None
+        date_reception = None
+        date_sortie = None
+        date_echeance = None
+        if type_operation == 'Chèque':
+            date_reception = _parse_date(request.form.get('date_reception'))
+            date_sortie = _parse_date(request.form.get('date_sortie'))
+            if type_cheque == 'À échéance':
+                date_echeance = _parse_date(request.form.get('date_echeance') or request.form.get('date_encaissement'))
+            date_operation = date_sortie
+        else:
+            date_operation = _parse_date(request.form.get('date_operation'))
+
+        op.type_operation = type_operation
         op.societe = request.form.get('societe')
-        op.famille = request.form.get('famille') or None
-        op.date_operation = _parse_date(request.form.get('date_operation'))
-        op.date_reception = _parse_date(request.form.get('date_reception'))
-        op.date_encaissement = _parse_date(request.form.get('date_encaissement'))
-        op.date_sortie = _parse_date(request.form.get('date_sortie'))
+        op.famille = None
+        op.date_operation = date_operation
+        op.date_reception = date_reception
+        op.date_encaissement = date_echeance
+        op.date_sortie = date_sortie
         op.client = request.form.get('client')
-        op.remettant = request.form.get('remettant') or None
+        op.remettant = request.form.get('remettant_commercial') or request.form.get('remettant') or None
         op.montant = float(request.form.get('montant', 0))
         op.banque = _normalize_bank_name(request.form.get('banque'))
         op.numero_piece = request.form.get('numero_piece') or None
-        op.statut = request.form.get('statut', 'En attente')
-        op.type_detail = request.form.get('type_detail') or None
+        op.statut = _compute_statut(type_operation, type_cheque)
+        op.type_detail = type_cheque
         op.entree = request.form.get('entree') or None
         op.sortie = request.form.get('sortie') or None
         op.remarque = request.form.get('remarque') or None
@@ -683,8 +862,22 @@ def edit_operation(op_id):
         return redirect(url_for('consultation'))
 
     if request.headers.get('HX-Request'):
-        return render_template('partials/edit_form.html', operation=op, bank_options=_get_bank_suggestions())
-    return render_template('edit.html', operation=op, bank_options=_get_bank_suggestions())
+        return render_template(
+            'partials/edit_form.html',
+            operation=op,
+            bank_options=_get_bank_suggestions(),
+            client_options=_get_client_suggestions(),
+            remettant_options=_get_remettant_suggestions(),
+            check_type_options=CHECK_TYPE_CHOICES,
+        )
+    return render_template(
+        'edit.html',
+        operation=op,
+        bank_options=_get_bank_suggestions(),
+        client_options=_get_client_suggestions(),
+        remettant_options=_get_remettant_suggestions(),
+        check_type_options=CHECK_TYPE_CHOICES,
+    )
 
 
 # --- Suppression ---
@@ -713,6 +906,7 @@ def consultation():
 @app.route('/api/operations')
 @login_required
 def api_operations():
+    _auto_update_echeance_statuts()
     query = Operation.query
 
     search = request.args.get('search', '').strip()
@@ -730,6 +924,10 @@ def api_operations():
     if type_op:
         query = query.filter(Operation.type_operation == type_op)
 
+    type_cheque = request.args.get('type_cheque', '').strip()
+    if type_cheque:
+        query = query.filter(Operation.type_operation == 'Chèque', Operation.type_detail == type_cheque)
+
     societe = request.args.get('societe', '').strip()
     if societe:
         query = query.filter(Operation.societe == societe)
@@ -738,22 +936,62 @@ def api_operations():
     if statut:
         query = query.filter(Operation.statut == statut)
 
+    date_filter = request.args.get('date_filter', 'date_operation').strip()
+    date_column = Operation.date_operation
+    if date_filter == 'date_reception':
+        query = query.filter(Operation.type_operation == 'Chèque')
+        date_column = Operation.date_reception
+    elif date_filter == 'date_echeance':
+        query = query.filter(
+            Operation.type_operation == 'Chèque',
+            Operation.type_detail == 'À échéance',
+        )
+        date_column = Operation.date_encaissement
+
     date_debut = request.args.get('date_debut', '').strip()
     if date_debut:
-        query = query.filter(Operation.date_operation >= date_debut)
+        query = query.filter(date_column >= date_debut)
 
     date_fin = request.args.get('date_fin', '').strip()
     if date_fin:
-        query = query.filter(Operation.date_operation <= date_fin)
+        query = query.filter(date_column <= date_fin)
 
     # Tri
-    sort = request.args.get('sort', 'date_operation')
+    sort = request.args.get('sort', '').strip()
     order = request.args.get('order', 'desc')
-    if hasattr(Operation, sort):
+    if sort and hasattr(Operation, sort):
         col = getattr(Operation, sort)
         query = query.order_by(col.desc() if order == 'desc' else col.asc())
     else:
-        query = query.order_by(Operation.date_operation.desc())
+        today = date.today()
+        alert_date = today + timedelta(days=7)
+        urgency_rank = case(
+            (
+                (
+                    (Operation.type_operation == 'Chèque') &
+                    (Operation.type_detail == 'À échéance') &
+                    (Operation.date_encaissement.isnot(None)) &
+                    (Operation.date_encaissement < today)
+                ),
+                0,
+            ),
+            (
+                (
+                    (Operation.type_operation == 'Chèque') &
+                    (Operation.type_detail == 'À échéance') &
+                    (Operation.date_encaissement.isnot(None)) &
+                    (Operation.date_encaissement >= today) &
+                    (Operation.date_encaissement <= alert_date)
+                ),
+                1,
+            ),
+            else_=2,
+        )
+        query = query.order_by(
+            urgency_rank.asc(),
+            Operation.date_encaissement.asc(),
+            Operation.date_operation.desc(),
+        )
 
     # Totaux
     total_montant_filtre = db.session.query(func.sum(Operation.montant)).filter(
@@ -773,10 +1011,49 @@ def api_operations():
                                operations=operations,
                                total_montant=total_montant_filtre,
                                total_count=total_count,
+                               is_admin=_current_role() == 'admin',
+                               status_choices=STATUS_CHOICES,
                                page=page,
                                total_pages=total_pages)
 
     return jsonify([op.to_dict() for op in operations])
+
+
+@app.route('/api/notifications')
+@login_required
+def api_notifications():
+    _auto_update_echeance_statuts()
+    notifications = _get_echeance_notifications()
+    return render_template(
+        'partials/notifications_panel.html',
+        notifications=notifications,
+        is_admin=_current_role() == 'admin',
+    )
+
+
+@app.route('/api/notifications/badge')
+@login_required
+def api_notifications_badge():
+    _auto_update_echeance_statuts()
+    notifications = _get_echeance_notifications()
+    return render_template(
+        'partials/global_notifications_badge.html',
+        notifications=notifications,
+    )
+
+
+@app.route('/api/rejections')
+@login_required
+def api_rejections():
+    """Retourne les rejets récents (sauf pour les admins)."""
+    if _current_role() == 'admin':
+        return ('', 204)  # Admins ne voient pas les rejets (ils les créent)
+    
+    rejections_data = _get_recent_rejections()
+    return render_template(
+        'partials/rejections_panel.html',
+        rejections=rejections_data,
+    )
 
 
 @app.route('/api/operations/<int:op_id>')
@@ -787,6 +1064,33 @@ def api_operation_detail(op_id):
     if request.headers.get('HX-Request'):
         return render_template('partials/operation_detail.html', operation=op, audits=audits)
     return jsonify(op.to_dict())
+
+
+@app.route('/api/operations/<int:op_id>/status', methods=['POST'])
+@role_required('admin')
+def api_update_operation_status(op_id):
+    op = Operation.query.get_or_404(op_id)
+    new_status = (request.form.get('statut') or '').strip()
+
+    if new_status not in STATUS_CHOICES:
+        return ('Statut invalide.', 400)
+
+    if op.statut == new_status:
+        return ('', 204)
+
+    old_status = op.statut
+    op.statut = new_status
+    op.date_modification = datetime.utcnow()
+    db.session.commit()
+
+    # Log audit avec message spécial si c'est un rejet
+    if new_status == 'Rejeté':
+        audit_message = f"Statut modifié: {old_status} -> Rejeté (Chèque #{op.numero_piece} de {op.client} rejeté)"
+    else:
+        audit_message = f'Statut modifié: {old_status} -> {new_status}'
+    
+    _log_audit(op.id, 'modification', audit_message)
+    return ('', 204)
 
 
 # --- Import Excel ---
@@ -854,6 +1158,10 @@ def export_excel():
     if type_op:
         query = query.filter(Operation.type_operation == type_op)
 
+    type_cheque = request.args.get('type_cheque', '').strip()
+    if type_cheque:
+        query = query.filter(Operation.type_operation == 'Chèque', Operation.type_detail == type_cheque)
+
     societe = request.args.get('societe', '').strip()
     if societe:
         query = query.filter(Operation.societe == societe)
@@ -869,6 +1177,14 @@ def export_excel():
     date_fin = request.args.get('date_fin', '').strip()
     if date_fin:
         query = query.filter(Operation.date_operation <= date_fin)
+
+    date_echeance = request.args.get('date_echeance', '').strip()
+    if date_echeance:
+        query = query.filter(
+            Operation.type_operation == 'Chèque',
+            Operation.type_detail == 'À échéance',
+            Operation.date_encaissement == date_echeance,
+        )
 
     operations = query.order_by(Operation.date_operation.desc()).all()
 
@@ -960,7 +1276,7 @@ def _parse_excel_row(row, sheet_name):
             type_operation=type_op, societe='ENT',
             date_operation=date_val, client=client_val,
             montant=montant_val, banque=_normalize_bank_name(banque_val),
-            statut='En attente', cree_par='Import Excel',
+            statut='Encaissé', cree_par='Import Excel',
         )
     except Exception:
         return None
@@ -997,6 +1313,12 @@ with app.app_context():
     else:
         sabrina = User.query.filter_by(username='sabrina').first()
         sabrina.role = 'saisie'
+
+    # Normalize legacy statuses to the approved status list.
+    for op in Operation.query.all():
+        normalized_statut = _normalize_legacy_statut(op)
+        if op.statut != normalized_statut:
+            op.statut = normalized_statut
 
     db.session.commit()
 

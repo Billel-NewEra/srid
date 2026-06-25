@@ -1,20 +1,126 @@
 <!-- Résumé -->
-<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-2">
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-2" data-current-page="{{ page }}">
     <div class="text-sm opacity-70">
         <span class="font-semibold">{{ total_count }}</span> résultat(s)
     </div>
+    {% if is_admin %}
     <div class="badge badge-lg bg-emerald-600 text-white border-emerald-700">
         <i class="fas fa-coins mr-1"></i> Total : {{ "{:,.2f}".format(total_montant) }}
     </div>
+    {% endif %}
 </div>
 
 <!-- Tableau -->
-<div class="overflow-x-auto -mx-2 sm:mx-0">
-<table class="table table-sm table-zebra">
+<div class="space-y-3 lg:hidden">
+    {% for op in operations %}
+    <div class="card bg-base-100 border border-base-300 shadow-sm {% if op.statut == 'Arrive à échéance' %}!bg-cyan-500/20{% elif op.statut == 'Échu' %}!bg-rose-500/20{% endif %}">
+        <div class="card-body p-3">
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                    <div class="font-semibold break-words {% if op.statut == 'Arrive à échéance' %}border-l-4 border-cyan-400 pl-2{% elif op.statut == 'Échu' %}border-l-4 border-rose-400 pl-2{% endif %}">{{ op.client }}</div>
+                    <div class="text-xs opacity-70 mt-1">{{ op.societe }}{% if op.banque %} • {{ op.banque }}{% endif %}</div>
+                </div>
+                <span class="badge badge-sm font-semibold whitespace-nowrap
+                    {% if op.type_operation == 'Chèque' %}bg-blue-600 text-white border-blue-700
+                    {% elif op.type_operation == 'Virement' %}bg-purple-600 text-white border-purple-700
+                    {% elif op.type_operation == 'Versement' %}bg-orange-500 text-white border-orange-600
+                    {% elif op.type_operation == 'Transfer' %}bg-teal-600 text-white border-teal-700
+                    {% else %}bg-slate-500 text-white border-slate-600{% endif %}">{{ op.type_operation }}</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-x-3 gap-y-2 text-xs sm:text-sm">
+                <div>
+                    <div class="opacity-60">Date dép/vir</div>
+                    <div>{{ op.date_operation.strftime('%d/%m/%Y') if op.date_operation else '-' }}</div>
+                </div>
+                <div>
+                    <div class="opacity-60">Date réc</div>
+                    <div>{{ op.date_reception.strftime('%d/%m/%Y') if op.type_operation == 'Chèque' and op.date_reception else '-' }}</div>
+                </div>
+                <div>
+                    <div class="opacity-60">Date échéance</div>
+                    <div>
+                        {% if op.type_operation == 'Chèque' and op.type_detail == 'À échéance' and op.date_encaissement %}
+                            {% if op.statut == 'Arrive à échéance' %}
+                                <span class="text-cyan-400 font-semibold">{{ op.date_encaissement.strftime('%d/%m/%Y') }}</span>
+                            {% elif op.statut == 'Échu' %}
+                                <span class="text-rose-400 font-semibold">{{ op.date_encaissement.strftime('%d/%m/%Y') }}</span>
+                            {% else %}
+                                {{ op.date_encaissement.strftime('%d/%m/%Y') }}
+                            {% endif %}
+                        {% else %}-{% endif %}
+                    </div>
+                </div>
+                <div>
+                    <div class="opacity-60">Type chèque</div>
+                    <div>{{ op.type_detail if op.type_operation == 'Chèque' and op.type_detail else '-' }}</div>
+                </div>
+                <div>
+                    <div class="opacity-60">Montant</div>
+                    <div class="font-mono font-semibold">{{ "{:,.2f}".format(op.montant) }}</div>
+                </div>
+                <div>
+                    <div class="opacity-60">N° Pièce</div>
+                    <div>{{ op.numero_piece or '-' }}</div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between gap-2 pt-2">
+                <span class="badge badge-sm font-semibold whitespace-nowrap {% if is_admin %}cursor-pointer hover:brightness-110{% endif %}
+                    {% if op.statut == 'Encaissé' %}bg-emerald-600 text-white border-emerald-700
+                    {% elif op.statut == 'Rejeté' %}bg-red-600 text-white border-red-700
+                    {% elif op.statut == 'Échéance' %}bg-amber-500 text-white border-amber-600
+                    {% elif op.statut == 'En cours' %}bg-sky-600 text-white border-sky-700
+                    {% elif op.statut == 'Arrive à échéance' %}bg-orange-500 text-white border-orange-600
+                    {% elif op.statut == 'Échu' %}bg-violet-600 text-white border-violet-700
+                    {% else %}bg-gray-500 text-white border-gray-600{% endif %}"
+                    {% if is_admin %}
+                    data-tip="Changer statut"
+                    data-status-edit
+                    data-op-id="{{ op.id }}"
+                    data-current-status="{{ op.statut }}"
+                    data-post-url="{{ url_for('api_update_operation_status', op_id=op.id) }}"
+                    {% endif %}>
+                    {{ op.statut }}
+                </span>
+                <div class="flex gap-1 justify-end">
+                    <button class="btn btn-ghost btn-xs tooltip" data-tip="Voir"
+                            hx-get="{{ url_for('api_operation_detail', op_id=op.id) }}"
+                            hx-target="#modal-content" hx-swap="innerHTML">
+                        <i class="fas fa-eye text-info"></i>
+                    </button>
+                    {% if can_write %}
+                    <a href="{{ url_for('edit_operation', op_id=op.id) }}" class="btn btn-ghost btn-xs tooltip" data-tip="Modifier">
+                        <i class="fas fa-edit text-warning"></i>
+                    </a>
+                    {% endif %}
+                    {% if can_delete %}
+                    <button class="btn btn-ghost btn-xs tooltip" data-tip="Supprimer"
+                            hx-delete="{{ url_for('delete_operation', op_id=op.id) }}"
+                            hx-target="closest .card" hx-swap="outerHTML"
+                            hx-confirm="Supprimer cette opération ?">
+                        <i class="fas fa-trash text-error"></i>
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-12 opacity-50">
+        <i class="fas fa-inbox text-4xl mb-2 block"></i>
+        Aucune opération trouvée
+    </div>
+    {% endfor %}
+</div>
+
+<div class="hidden lg:block overflow-x-hidden sm:mx-0">
+<table class="table table-sm table-zebra w-full" id="operations-table">
     <thead>
         <tr class="bg-base-200">
-            <th>Date Op.</th>
-            <th>Réception</th>
+            <th>Date dép/vir</th>
+            <th>Date réc</th>
+            <th>Date échéance</th>
             <th>Type</th>
             <th>Société</th>
             <th>Client</th>
@@ -28,30 +134,54 @@
     <tbody>
         {% for op in operations %}
         <tr class="hover">
-            <td class="whitespace-nowrap">{{ op.date_operation.strftime('%d/%m/%Y') if op.date_operation else '-' }}</td>
-            <td class="whitespace-nowrap text-xs opacity-70">{{ op.date_reception.strftime('%d/%m/%Y') if op.date_reception else '-' }}</td>
+            <td class="whitespace-nowrap {% if op.statut == 'Arrive à échéance' %}border-l-4 border-cyan-400 bg-cyan-500/10{% elif op.statut == 'Échu' %}border-l-4 border-rose-400 bg-rose-500/10{% endif %}">{{ op.date_operation.strftime('%d/%m/%Y') if op.date_operation else '-' }}</td>
+            <td class="whitespace-nowrap text-xs opacity-70">{{ op.date_reception.strftime('%d/%m/%Y') if op.type_operation == 'Chèque' and op.date_reception else '-' }}</td>
+            <td class="whitespace-nowrap text-xs opacity-70">
+                {% if op.type_operation == 'Chèque' and op.type_detail == 'À échéance' and op.date_encaissement %}
+                    {% if op.statut == 'Arrive à échéance' %}
+                        <span class="text-cyan-400 font-semibold"><i class="fas fa-clock mr-1"></i>{{ op.date_encaissement.strftime('%d/%m/%Y') }}</span>
+                    {% elif op.statut == 'Échu' %}
+                        <span class="text-rose-400 font-semibold"><i class="fas fa-exclamation-circle mr-1"></i>{{ op.date_encaissement.strftime('%d/%m/%Y') }}</span>
+                    {% else %}
+                        {{ op.date_encaissement.strftime('%d/%m/%Y') }}
+                    {% endif %}
+                {% else %}-{% endif %}
+            </td>
             <td>
                 <span class="badge badge-sm font-semibold whitespace-nowrap
                     {% if op.type_operation == 'Chèque' %}bg-blue-600 text-white border-blue-700
                     {% elif op.type_operation == 'Virement' %}bg-purple-600 text-white border-purple-700
-                    {% else %}bg-orange-500 text-white border-orange-600{% endif %}">
+                    {% elif op.type_operation == 'Versement' %}bg-orange-500 text-white border-orange-600
+                    {% elif op.type_operation == 'Transfer' %}bg-teal-600 text-white border-teal-700
+                    {% else %}bg-slate-500 text-white border-slate-600{% endif %}">
                     {{ op.type_operation }}
                 </span>
             </td>
             <td class="text-sm">{{ op.societe }}</td>
-            <td class="max-w-32 truncate">{{ op.client }}</td>
+            <td class="max-w-52 truncate">{{ op.client }}</td>
             <td class="text-right font-mono font-semibold">{{ "{:,.2f}".format(op.montant) }}</td>
             <td class="text-sm">{{ op.banque or '-' }}</td>
             <td class="text-sm">{{ op.numero_piece or '-' }}</td>
             <td>
-                <span class="badge badge-sm font-semibold whitespace-nowrap
+                <div class="flex items-center gap-1">
+                <span class="badge badge-sm font-semibold whitespace-nowrap {% if is_admin %}cursor-pointer hover:brightness-110{% endif %}
                     {% if op.statut == 'Encaissé' %}bg-emerald-600 text-white border-emerald-700
-                    {% elif op.statut == 'En attente' %}bg-amber-500 text-white border-amber-600
                     {% elif op.statut == 'Rejeté' %}bg-red-600 text-white border-red-700
-                    {% elif op.statut == 'Annulé' %}bg-gray-500 text-white border-gray-600
-                    {% else %}bg-sky-600 text-white border-sky-700{% endif %}">
+                    {% elif op.statut == 'Échéance' %}bg-amber-500 text-white border-amber-600
+                    {% elif op.statut == 'En cours' %}bg-sky-600 text-white border-sky-700
+                    {% elif op.statut == 'Arrive à échéance' %}bg-orange-500 text-white border-orange-600
+                    {% elif op.statut == 'Échu' %}bg-violet-600 text-white border-violet-700
+                    {% else %}bg-gray-500 text-white border-gray-600{% endif %}"
+                    {% if is_admin %}
+                    data-tip="Changer statut"
+                    data-status-edit
+                    data-op-id="{{ op.id }}"
+                    data-current-status="{{ op.statut }}"
+                    data-post-url="{{ url_for('api_update_operation_status', op_id=op.id) }}"
+                    {% endif %}>
                     {{ op.statut }}
                 </span>
+                </div>
             </td>
             <td class="text-center">
                 <div class="flex gap-1 justify-center">
@@ -78,7 +208,7 @@
         </tr>
         {% else %}
         <tr>
-            <td colspan="9" class="text-center py-12 opacity-50">
+            <td colspan="11" class="text-center py-12 opacity-50">
                 <i class="fas fa-inbox text-4xl mb-2 block"></i>
                 Aucune opération trouvée
             </td>
@@ -95,7 +225,7 @@
         {% if page > 1 %}
         <button class="join-item btn btn-sm"
                 hx-get="{{ url_for('api_operations') }}?page={{ page - 1 }}"
-                hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_debut'],[name='date_fin']">
+                hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']">
             <i class="fas fa-chevron-left"></i>
         </button>
         {% endif %}
@@ -106,7 +236,7 @@
             {% elif p <= 3 or p >= total_pages - 1 or (p >= page - 1 and p <= page + 1) %}
             <button class="join-item btn btn-sm"
                     hx-get="{{ url_for('api_operations') }}?page={{ p }}"
-                    hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_debut'],[name='date_fin']">
+                    hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']">
                 {{ p }}
             </button>
             {% elif p == 4 or p == total_pages - 2 %}
@@ -117,7 +247,7 @@
         {% if page < total_pages %}
         <button class="join-item btn btn-sm"
                 hx-get="{{ url_for('api_operations') }}?page={{ page + 1 }}"
-                hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_debut'],[name='date_fin']">
+                hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']">
             <i class="fas fa-chevron-right"></i>
         </button>
         {% endif %}

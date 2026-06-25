@@ -76,24 +76,20 @@
                     <thead>
                         <tr>
                             <th></th>
-                            <th class="text-right">Opérations</th>
                             <th class="text-right">Montant</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr class="font-bold border-b-2 border-primary/30">
                             <td><i class="fas fa-layer-group text-emerald-500 mr-2"></i>Total</td>
-                            <td class="text-right" data-count="{{ total_ops }}">0</td>
                             <td class="text-right text-emerald-400" data-count="{{ total_montant }}" data-decimal="true" data-suffix=" DA">0</td>
                         </tr>
                         <tr>
                             <td><i class="fas fa-building text-blue-400 mr-2"></i>SRID</td>
-                            <td class="text-right" data-count="{{ ops_srid }}">0</td>
                             <td class="text-right text-blue-400" data-count="{{ montant_srid }}" data-decimal="true" data-suffix=" DA">0</td>
                         </tr>
                         <tr>
                             <td><i class="fas fa-dna text-pink-400 mr-2"></i>SRID Genetics</td>
-                            <td class="text-right" data-count="{{ ops_genetics }}">0</td>
                             <td class="text-right text-pink-400" data-count="{{ montant_genetics }}" data-decimal="true" data-suffix=" DA">0</td>
                         </tr>
                     </tbody>
@@ -104,25 +100,30 @@
 
     <!-- Indicateurs statuts avec ventilation par société -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        {% set statut_colors = {'Encaissé': 'emerald', 'En attente': 'amber', 'Rejeté': 'red', 'En cours': 'sky'} %}
-        {% set statut_icons = {'Encaissé': 'fa-check-circle', 'En attente': 'fa-clock', 'Rejeté': 'fa-times-circle', 'En cours': 'fa-spinner'} %}
-        {% for statut, info in statuts_info.items() if statut != 'Annulé' %}
+        {% set statut_colors = {
+            'Encaissé': 'emerald',
+            'Rejeté': 'red',
+            'Échéance': 'amber',
+            'En cours': 'sky',
+            'Arrive à échéance': 'orange',
+            'Échu': 'violet'
+        } %}
+        {% for statut, info in statuts_info.items() %}
         <div class="card bg-base-100 shadow-sm border border-base-300">
             <div class="card-body p-4">
                 <div class="flex items-center gap-2 mb-2">
                     <div class="w-3 h-3 rounded-full bg-{{ statut_colors[statut] }}-500"></div>
                     <span class="font-bold text-sm">{{ statut }}s</span>
-                    <span class="ml-auto badge badge-sm badge-ghost">{{ info.count }}</span>
                 </div>
                 <p class="font-bold text-lg text-{{ statut_colors[statut] }}-400 mb-2">{{ "{:,.0f}".format(info.montant) }} DA</p>
                 <div class="space-y-1 text-xs border-t border-base-300 pt-2">
                     <div class="flex justify-between">
                         <span class="text-blue-400">SRID</span>
-                        <span>{{ info.srid_count }} ops · <span class="font-semibold text-blue-400">{{ "{:,.0f}".format(info.srid_montant) }} DA</span></span>
+                        <span><span class="font-semibold text-blue-400">{{ "{:,.0f}".format(info.srid_montant) }} DA</span></span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-pink-400">Genetics</span>
-                        <span>{{ info.genetics_count }} ops · <span class="font-semibold text-pink-400">{{ "{:,.0f}".format(info.genetics_montant) }} DA</span></span>
+                        <span><span class="font-semibold text-pink-400">{{ "{:,.0f}".format(info.genetics_montant) }} DA</span></span>
                     </div>
                 </div>
             </div>
@@ -131,17 +132,16 @@
     </div>
 
     <!-- Types avec montants par société -->
-    <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         {% for type_op, info in types_info.items() %}
         <div class="card bg-base-100 shadow-sm">
             <div class="card-body p-4">
                 <div class="flex items-center gap-3 mb-3">
-                    <div class="badge badge-lg {% if type_op == 'Chèque' %}bg-blue-600 text-white border-blue-700{% elif type_op == 'Virement' %}bg-purple-600 text-white border-purple-700{% else %}bg-orange-500 text-white border-orange-600{% endif %}">
-                        <i class="fas {% if type_op == 'Chèque' %}fa-money-check{% elif type_op == 'Virement' %}fa-exchange-alt{% else %}fa-piggy-bank{% endif %}"></i>
+                    <div class="badge badge-lg {% if type_op == 'Chèque' %}bg-blue-600 text-white border-blue-700{% elif type_op == 'Virement' %}bg-purple-600 text-white border-purple-700{% elif type_op == 'Versement' %}bg-orange-500 text-white border-orange-600{% elif type_op == 'Transfer' %}bg-teal-600 text-white border-teal-700{% else %}bg-slate-500 text-white border-slate-600{% endif %}">
+                        <i class="fas {% if type_op == 'Chèque' %}fa-money-check{% elif type_op == 'Virement' %}fa-exchange-alt{% elif type_op == 'Versement' %}fa-piggy-bank{% elif type_op == 'Transfer' %}fa-right-left{% else %}fa-shapes{% endif %}"></i>
                     </div>
                     <div>
                         <p class="font-bold">{{ type_op }}s</p>
-                        <p class="text-xs opacity-60">{{ info.total.count }} opérations</p>
                     </div>
                 </div>
                 <div class="space-y-1 text-sm">
@@ -243,7 +243,7 @@
                     </div>
                 </div>
                 <div id="topClientsContainer" class="space-y-3">
-                    {% for client_name, total, nb_ops in top_clients %}
+                    {% for client_name, total in top_clients %}
                     <div class="flex items-center gap-3">
                         <div class="badge badge-sm badge-primary font-bold w-6 h-6">{{ loop.index }}</div>
                         <div class="flex-1">
@@ -253,7 +253,6 @@
                             </div>
                             <progress class="progress progress-primary w-full h-2" value="{{ total }}" max="{{ top_clients[0][1] if top_clients else 1 }}"></progress>
                         </div>
-                        <div class="badge badge-ghost badge-sm">{{ nb_ops }} ops</div>
                     </div>
                     {% endfor %}
                 </div>
@@ -303,10 +302,12 @@
                             <td>
                                 <span class="badge badge-sm font-semibold whitespace-nowrap
                                     {% if op.statut == 'Encaissé' %}bg-emerald-600 text-white border-emerald-700
-                                    {% elif op.statut == 'En attente' %}bg-amber-500 text-white border-amber-600
                                     {% elif op.statut == 'Rejeté' %}bg-red-600 text-white border-red-700
-                                    {% elif op.statut == 'Annulé' %}bg-gray-500 text-white border-gray-600
-                                    {% else %}bg-sky-600 text-white border-sky-700{% endif %}">
+                                    {% elif op.statut == 'Échéance' %}bg-amber-500 text-white border-amber-600
+                                    {% elif op.statut == 'En cours' %}bg-sky-600 text-white border-sky-700
+                                    {% elif op.statut == 'Arrive à échéance' %}bg-orange-500 text-white border-orange-600
+                                    {% elif op.statut == 'Échu' %}bg-violet-600 text-white border-violet-700
+                                    {% else %}bg-gray-500 text-white border-gray-600{% endif %}">
                                     {{ op.statut }}
                                 </span>
                             </td>
@@ -380,16 +381,18 @@
 
 
     // === 2. Montants par statut par mois ===
-    const statusKeys = ['Encaissé', 'En attente', 'Rejeté', 'En cours'];
+    const statusKeys = ['Encaissé', 'Rejeté', 'Échéance', 'En cours', 'Arrive à échéance', 'Échu'];
     let monthlyStatutsViews = {{ monthly_statuts_views | tojson }};
 
     const statutMonthlyChart = new Chart(document.getElementById('statutMonthlyChart').getContext('2d'), {
         type: 'bar',
         data: { labels: months, datasets: [
             { label: 'Encaissé', data: {{ monthly_statuts['Encaissé'] | tojson }}, backgroundColor: chartColors.emerald, borderRadius: 3 },
-            { label: 'En attente', data: {{ monthly_statuts['En attente'] | tojson }}, backgroundColor: chartColors.amber, borderRadius: 3 },
             { label: 'Rejeté', data: {{ monthly_statuts['Rejeté'] | tojson }}, backgroundColor: chartColors.red, borderRadius: 3 },
             { label: 'En cours', data: {{ monthly_statuts['En cours'] | tojson }}, backgroundColor: chartColors.sky, borderRadius: 3 },
+            { label: 'Échéance', data: {{ monthly_statuts['Échéance'] | tojson }}, backgroundColor: chartColors.amber, borderRadius: 3 },
+            { label: 'Arrive à échéance', data: {{ monthly_statuts['Arrive à échéance'] | tojson }}, backgroundColor: 'rgb(249, 115, 22)', borderRadius: 3 },
+            { label: 'Échu', data: {{ monthly_statuts['Échu'] | tojson }}, backgroundColor: chartColors.violet, borderRadius: 3 },
         ] },
         options: { responsive: true, maintainAspectRatio: true,
             plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 10 } } },
