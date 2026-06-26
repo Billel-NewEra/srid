@@ -294,7 +294,7 @@ Pistes d'amelioration pour une phase 2 :
 
 ---
 
-## 13. Questions frequentes client
+## 13. Questions frequentes clients
 
 Q1. Qui peut supprimer une operation ?
 - Uniquement le role Admin.
