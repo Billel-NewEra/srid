@@ -134,7 +134,7 @@
         </div>
 
         <!-- Colonne droite : notifications -->
-        <div class="w-80 shrink-0 flex flex-col gap-4">
+        <div id="notifications-column" class="w-80 shrink-0 flex flex-col gap-4">
             <div id="notifications-panel"
                  hx-get="{{ url_for('api_notifications') }}"
                  hx-trigger="refreshGlobalAlert from:body"
@@ -383,11 +383,29 @@
     syncChequeFilters();
     updateExportLink();
 
+    // Masque la colonne droite si les deux panels sont vides ou fermés
+    window.syncNotificationsColumn = function() {
+        const col = document.getElementById('notifications-column');
+        if (!col) return;
+        const notifPanel = document.getElementById('notifications-panel');
+        const rejPanel   = document.getElementById('rejections-panel');
+        const notifHasContent = notifPanel && notifPanel.innerHTML.trim() !== '' && notifPanel.style.display !== 'none';
+        const rejHasContent   = rejPanel   && rejPanel.innerHTML.trim()   !== '' && rejPanel.style.display   !== 'none';
+        col.style.display = (notifHasContent || rejHasContent) ? '' : 'none';
+    };
+
     document.body.addEventListener('htmx:afterSwap', function(event) {
         if (event.detail.target.id === 'results-table') {
             refreshNotificationsPanel();
             htmx.trigger(document.body, 'refreshGlobalAlert');
         }
+        if (event.detail.target.id === 'notifications-panel' ||
+            event.detail.target.id === 'rejections-panel') {
+            window.syncNotificationsColumn();
+        }
     });
+
+    // Vérification initiale au chargement
+    window.syncNotificationsColumn();
 </script>
 {% endblock %}

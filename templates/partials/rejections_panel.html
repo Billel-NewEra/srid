@@ -51,8 +51,8 @@ function dismissRejectionsPanel() {
     const panel = document.getElementById('rejections-panel');
     if (panel) {
         panel.style.display = 'none';
-        // Stocker dans sessionStorage (nettoyé auto à la fin de la session)
         sessionStorage.setItem('rejections_dismissed', 'true');
+        window.syncNotificationsColumn && window.syncNotificationsColumn();
     }
 }
 
