@@ -352,10 +352,21 @@
         statusModal.showModal();
     };
 
-    document.body.addEventListener('click', async (event) => {
+    // Capture phase (avant HTMX) : détecte les clics sur badge statut
+    // Pose un flag pour annuler la requête HTMX via htmx:beforeRequest
+    document.addEventListener('click', function(event) {
         const trigger = event.target.closest('[data-status-edit]');
         if (!trigger) return;
+        window._statusEditPending = true;
         window.openStatusModal(trigger);
+    }, true);
+
+    // Annule la requête HTMX si le clic venait d'un badge statut
+    document.body.addEventListener('htmx:beforeRequest', function(evt) {
+        if (window._statusEditPending) {
+            window._statusEditPending = false;
+            evt.preventDefault();
+        }
     });
 
     statusCancel.addEventListener('click', () => {

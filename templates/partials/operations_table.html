@@ -82,7 +82,6 @@
                     data-op-id="{{ op.id }}"
                     data-current-status="{{ op.statut }}"
                     data-post-url="{{ url_for('api_update_operation_status', op_id=op.id) }}"
-                    onclick="event.stopPropagation()"
                     {% endif %}>
                     {{ op.statut }}
                 </span>
@@ -180,7 +179,6 @@
                     data-op-id="{{ op.id }}"
                     data-current-status="{{ op.statut }}"
                     data-post-url="{{ url_for('api_update_operation_status', op_id=op.id) }}"
-                    onclick="event.stopPropagation()"
                     {% endif %}>
                     {{ op.statut }}
                 </span>

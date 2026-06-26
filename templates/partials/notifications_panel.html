@@ -39,7 +39,6 @@
                 <div class="flex items-center gap-1.5 mt-0.5">
                     <span class="badge badge-xs font-medium shrink-0 {% if is_admin %}cursor-pointer hover:brightness-110{% endif %} {% if item.statut == 'Échu' %}bg-violet-600 text-white border-violet-700{% elif item.statut == 'Arrive à échéance' %}bg-orange-500 text-white border-orange-600{% elif item.statut == 'Encaissé' %}bg-emerald-600 text-white border-emerald-700{% elif item.statut == 'Rejeté' %}bg-red-600 text-white border-red-700{% elif item.statut == 'Échéance' %}bg-amber-500 text-white border-amber-600{% elif item.statut == 'En cours' %}bg-sky-600 text-white border-sky-700{% else %}bg-gray-500 text-white border-gray-600{% endif %}"
                         {% if is_admin %}
-                        onclick="event.stopPropagation(); window.openStatusModal && window.openStatusModal(this)"
                         data-tip="Changer statut"
                         data-status-edit
                         data-op-id="{{ item.id }}"
