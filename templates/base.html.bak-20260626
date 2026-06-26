@@ -314,7 +314,25 @@
             color: hsl(240 10% 10%);
         }
 
-        /* Modal - DaisyUI natif (overrides supprimés) */
+        /* Modal - visible dans les deux thèmes */
+        [data-theme="corporate"] .modal-box {
+            background: white;
+            border: 1px solid hsl(220 25% 88%);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+        [data-theme="corporate"] .modal-box .bg-base-200 {
+            background: hsl(220 25% 96%);
+            border: 1px solid hsl(220 20% 90%);
+        }
+        [data-theme="luxury"] .modal-box {
+            background: hsl(240 10% 12%);
+            border: 1px solid hsl(0 0% 35%);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.7);
+        }
+        [data-theme="luxury"] .modal-box .bg-base-200 {
+            background: hsl(240 10% 18%);
+            border: 1px solid hsl(240 10% 25%);
+        }
 
         .fade-in { animation: fadeIn 0.15s ease-in; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -478,7 +496,7 @@
             </header>
 
             <!-- Contenu de la page -->
-            <main class="flex-1 px-4 py-6 w-full">
+            <main class="flex-1 container mx-auto px-4 py-6 max-w-7xl">
                 {% block content %}{% endblock %}
             </main>
 

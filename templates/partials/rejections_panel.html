@@ -1,21 +1,19 @@
 {% if rejections and rejections.total > 0 %}
-<div id="rejections-panel" class="mb-3 rounded-xl border border-red-500/30 bg-gradient-to-r from-red-500/15 to-rose-500/10 p-3 sm:p-4">
-    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div class="flex items-start gap-3">
-            <div class="w-9 h-9 rounded-full bg-red-500/25 text-red-300 flex items-center justify-center shrink-0 mt-0.5">
-                <i class="fas fa-ban"></i>
-            </div>
-            <div>
-                <div class="font-semibold leading-tight">Chèques rejetés</div>
-                <div class="text-sm opacity-85">
-                    {{ rejections.total }} chèque{{ 's' if rejections.total > 1 else '' }} rejeté{{ 's' if rejections.total > 1 else '' }}
-                </div>
+<div id="rejections-panel" class="mb-3 rounded-xl border border-red-500/30 bg-gradient-to-r from-red-500/15 to-rose-500/10 p-3">
+    <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-red-500/25 text-red-300 flex items-center justify-center shrink-0">
+            <i class="fas fa-ban text-sm"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+            <div class="text-sm font-semibold leading-tight">Chèques rejetés</div>
+            <div class="text-xs opacity-75 text-red-400">
+                {{ rejections.total }} chèque{{ 's' if rejections.total > 1 else '' }} rejeté{{ 's' if rejections.total > 1 else '' }}
             </div>
         </div>
-        <button type="button" 
-                class="btn btn-ghost btn-sm gap-1 whitespace-nowrap"
+        <button type="button"
+                class="btn btn-ghost btn-xs"
                 onclick="dismissRejectionsPanel()">
-            <i class="fas fa-times"></i>Fermer
+            <i class="fas fa-times"></i>
         </button>
     </div>
 </div>
@@ -27,17 +25,15 @@
             <h3 class="font-semibold text-sm"><i class="fas fa-exclamation-circle mr-1 text-error"></i>Détails des rejets</h3>
             <span class="badge badge-sm badge-error">{{ rejections.rejections|length }}</span>
         </div>
-        <div class="space-y-2">
+        <div class="space-y-1">
             {% for item in rejections.rejections %}
-            <div class="flex items-center justify-between gap-2 bg-base-100 rounded px-2 py-1.5 cursor-pointer hover:bg-base-300 transition-colors"
+            <div class="bg-base-100 rounded px-2 py-1.5 cursor-pointer hover:bg-base-300 transition-colors"
                  hx-get="{{ url_for('api_operation_detail', op_id=item.operation.id) }}"
                  hx-target="#modal-content" hx-swap="innerHTML">
-                <div class="min-w-0">
-                    <div class="text-sm font-medium truncate">{{ item.operation.client }}</div>
-                    {% if item.operation.numero_piece %}
-                    <div class="text-xs opacity-60">N° {{ item.operation.numero_piece }}</div>
-                    {% endif %}
-                </div>
+                <div class="text-xs font-semibold truncate">{{ item.operation.client }}</div>
+                {% if item.operation.numero_piece %}
+                <div class="text-xs opacity-50 mt-0.5">N° {{ item.operation.numero_piece }}</div>
+                {% endif %}
             </div>
             {% endfor %}
         </div>

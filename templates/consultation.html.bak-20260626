@@ -10,145 +10,137 @@
         </a>
     </div>
 
-    <!-- Layout deux colonnes : tableau + notifications à droite -->
-    <div class="flex gap-4 items-start">
+    <!-- Notifications échéances (rendu serveur, refresh sur événement seulement) -->
+    <div id="notifications-panel"
+         hx-get="{{ url_for('api_notifications') }}"
+         hx-trigger="refreshGlobalAlert from:body"
+         hx-swap="innerHTML"
+         class="mb-4">
+        {% include 'partials/notifications_panel.html' %}
+    </div>
 
-        <!-- Colonne principale : filtres + tableau -->
-        <div class="flex-1 min-w-0 flex flex-col gap-4">
+    <!-- Notifications rejets (rendu serveur, refresh sur événement seulement) -->
+    <div id="rejections-panel"
+         hx-get="{{ url_for('api_rejections') }}"
+         hx-trigger="refreshGlobalAlert from:body"
+         hx-swap="innerHTML"
+         class="mb-4">
+        {% include 'partials/rejections_panel.html' %}
+    </div>
 
-            <!-- Barre de recherche -->
-            <div class="card bg-base-100 shadow">
-                <div class="card-body p-4">
-                    <div class="flex flex-col gap-4">
-                        <!-- Recherche texte -->
-                        <div class="form-control">
-                            <div class="input-group flex">
-                                <span class="bg-primary text-primary-content px-3 flex items-center rounded-l-lg"><i class="fas fa-search"></i></span>
-                                <input type="text" id="search-input" name="search"
-                                       placeholder="Rechercher un client, banque, n° pièce..."
-                                       class="input input-bordered flex-1"
-                                       hx-get="{{ url_for('api_operations') }}"
-                                       hx-trigger="keyup changed delay:300ms"
-                                       hx-target="#results-table"
-                                       hx-include="[name='type_operation'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='type_cheque']">
-                            </div>
+    <!-- Barre de recherche -->
+    <div class="card bg-base-100 shadow mb-6">
+        <div class="card-body p-4">
+            <div class="flex flex-col gap-4">
+                <!-- Recherche texte -->
+                <div class="form-control">
+                    <div class="input-group flex">
+                        <span class="bg-primary text-primary-content px-3 flex items-center rounded-l-lg"><i class="fas fa-search"></i></span>
+                        <input type="text" id="search-input" name="search"
+                               placeholder="Rechercher un client, banque, n° pièce..."
+                               class="input input-bordered flex-1"
+                               hx-get="{{ url_for('api_operations') }}"
+                               hx-trigger="keyup changed delay:300ms"
+                               hx-target="#results-table"
+                               hx-include="[name='type_operation'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='type_cheque']">
+                    </div>
+                </div>
+
+                <!-- Filtres -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+                    <select name="type_operation" class="select select-bordered select-sm w-full"
+                            hx-get="{{ url_for('api_operations') }}"
+                            hx-trigger="change"
+                            hx-target="#results-table"
+                            hx-include="[name='search'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='type_cheque']"
+                            data-type-operation-filter>
+                        <option value="">Tous les types</option>
+                        <option value="Chèque">Chèque</option>
+                        <option value="Virement">Virement</option>
+                        <option value="Versement">Versement</option>
+                        <option value="Transfer">Transfer</option>
+                        <option value="Autre">Autre</option>
+                    </select>
+                    <select name="societe" class="select select-bordered select-sm w-full"
+                            hx-get="{{ url_for('api_operations') }}"
+                            hx-trigger="change"
+                            hx-target="#results-table"
+                            hx-include="[name='search'],[name='type_operation'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='type_cheque']">
+                        <option value="">Toutes les sociétés</option>
+                        <option value="SRID">SRID</option>
+                        <option value="Genetics">Genetics</option>
+                    </select>
+                    <select name="statut" class="select select-bordered select-sm w-full"
+                            hx-get="{{ url_for('api_operations') }}"
+                            hx-trigger="change"
+                            hx-target="#results-table"
+                            hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='type_cheque']">
+                        <option value="">Tous les statuts</option>
+                        <option value="Encaissé">Encaissé</option>
+                        <option value="Rejeté">Rejeté</option>
+                        <option value="Échéance">Échéance</option>
+                        <option value="En cours">En cours</option>
+                        <option value="Arrive à échéance">Arrive à échéance</option>
+                        <option value="Échu">Échu</option>
+                    </select>
+                    <div class="form-control">
+                        <label class="label label-text text-xs py-0">Filtrer dates par</label>
+                        <select name="date_filter" class="select select-bordered select-sm w-full"
+                                hx-get="{{ url_for('api_operations') }}"
+                                hx-trigger="change"
+                                hx-target="#results-table"
+                                hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_debut'],[name='date_fin'],[name='type_cheque']"
+                                data-date-filter>
+                            <option value="date_operation">Date dép/vir</option>
+                            <option value="date_reception">Date réc</option>
+                            <option value="date_echeance">Date échéance</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label class="label label-text text-xs py-0">Du</label>
+                        <input type="date" name="date_debut" class="input input-bordered input-sm w-full"
+                               hx-get="{{ url_for('api_operations') }}"
+                               hx-trigger="change"
+                               hx-target="#results-table"
+                               hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_fin'],[name='type_cheque']">
+                    </div>
+                    <div class="form-control">
+                        <label class="label label-text text-xs py-0">Au</label>
+                        <input type="date" name="date_fin" class="input input-bordered input-sm w-full"
+                               hx-get="{{ url_for('api_operations') }}"
+                               hx-trigger="change"
+                               hx-target="#results-table"
+                               hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='type_cheque']">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" data-cheque-filters-wrap>
+                    <div class="form-control">
+                        <label class="label label-text text-xs py-0">Type chèque</label>
+                        <input type="hidden" name="type_cheque" value="" data-type-cheque-filter>
+                        <div class="flex flex-wrap gap-2 mt-1" data-type-cheque-pills>
+                            <button type="button" class="badge badge-outline badge-sm px-3 py-3" data-type-cheque-option="">Tous</button>
+                            <button type="button" class="badge badge-outline badge-sm px-3 py-3" data-type-cheque-option="Garantie">Garantie</button>
+                            <button type="button" class="badge badge-outline badge-sm px-3 py-3" data-type-cheque-option="À encaisser">À encaisser</button>
+                            <button type="button" class="badge badge-outline badge-sm px-3 py-3" data-type-cheque-option="À échéance">À échéance</button>
                         </div>
-
-                        <!-- Filtres -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
-                            <select name="type_operation" class="select select-bordered select-sm w-full"
-                                    hx-get="{{ url_for('api_operations') }}"
-                                    hx-trigger="change"
-                                    hx-target="#results-table"
-                                    hx-include="[name='search'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='type_cheque']"
-                                    data-type-operation-filter>
-                                <option value="">Tous les types</option>
-                                <option value="Chèque">Chèque</option>
-                                <option value="Virement">Virement</option>
-                                <option value="Versement">Versement</option>
-                                <option value="Transfer">Transfer</option>
-                                <option value="Autre">Autre</option>
-                            </select>
-                            <select name="societe" class="select select-bordered select-sm w-full"
-                                    hx-get="{{ url_for('api_operations') }}"
-                                    hx-trigger="change"
-                                    hx-target="#results-table"
-                                    hx-include="[name='search'],[name='type_operation'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='type_cheque']">
-                                <option value="">Toutes les sociétés</option>
-                                <option value="SRID">SRID</option>
-                                <option value="Genetics">Genetics</option>
-                            </select>
-                            <select name="statut" class="select select-bordered select-sm w-full"
-                                    hx-get="{{ url_for('api_operations') }}"
-                                    hx-trigger="change"
-                                    hx-target="#results-table"
-                                    hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='type_cheque']">
-                                <option value="">Tous les statuts</option>
-                                <option value="Encaissé">Encaissé</option>
-                                <option value="Rejeté">Rejeté</option>
-                                <option value="Échéance">Échéance</option>
-                                <option value="En cours">En cours</option>
-                                <option value="Arrive à échéance">Arrive à échéance</option>
-                                <option value="Échu">Échu</option>
-                            </select>
-                            <div class="form-control">
-                                <label class="label label-text text-xs py-0">Filtrer dates par</label>
-                                <select name="date_filter" class="select select-bordered select-sm w-full"
-                                        hx-get="{{ url_for('api_operations') }}"
-                                        hx-trigger="change"
-                                        hx-target="#results-table"
-                                        hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_debut'],[name='date_fin'],[name='type_cheque']"
-                                        data-date-filter>
-                                    <option value="date_operation">Date dép/vir</option>
-                                    <option value="date_reception">Date réc</option>
-                                    <option value="date_echeance">Date échéance</option>
-                                </select>
-                            </div>
-                            <div class="form-control">
-                                <label class="label label-text text-xs py-0">Du</label>
-                                <input type="date" name="date_debut" class="input input-bordered input-sm w-full"
-                                       hx-get="{{ url_for('api_operations') }}"
-                                       hx-trigger="change"
-                                       hx-target="#results-table"
-                                       hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_fin'],[name='type_cheque']">
-                            </div>
-                            <div class="form-control">
-                                <label class="label label-text text-xs py-0">Au</label>
-                                <input type="date" name="date_fin" class="input input-bordered input-sm w-full"
-                                       hx-get="{{ url_for('api_operations') }}"
-                                       hx-trigger="change"
-                                       hx-target="#results-table"
-                                       hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='type_cheque']">
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" data-cheque-filters-wrap>
-                            <div class="form-control">
-                                <label class="label label-text text-xs py-0">Type chèque</label>
-                                <input type="hidden" name="type_cheque" value="" data-type-cheque-filter>
-                                <div class="flex flex-wrap gap-2 mt-1" data-type-cheque-pills>
-                                    <button type="button" class="badge badge-outline badge-sm px-3 py-3" data-type-cheque-option="">Tous</button>
-                                    <button type="button" class="badge badge-outline badge-sm px-3 py-3" data-type-cheque-option="Garantie">Garantie</button>
-                                    <button type="button" class="badge badge-outline badge-sm px-3 py-3" data-type-cheque-option="À encaisser">À encaisser</button>
-                                    <button type="button" class="badge badge-outline badge-sm px-3 py-3" data-type-cheque-option="À échéance">À échéance</button>
-                                </div>
-                                <label class="label"><span class="label-text-alt opacity-70">Disponible quand Type opération = Chèque</span></label>
-                            </div>
-                        </div>
+                        <label class="label"><span class="label-text-alt opacity-70">Disponible quand Type opération = Chèque</span></label>
                     </div>
                 </div>
             </div>
-
-            <!-- Tableau des résultats -->
-            <div class="card bg-base-100 shadow">
-                <div class="card-body p-4">
-                    <div class="overflow-x-auto" id="results-table"
-                         hx-get="{{ url_for('api_operations') }}"
-                         hx-trigger="refreshResultsTable from:body"
-                         hx-swap="innerHTML">
-                        {% include 'partials/operations_table.html' %}
-                    </div>
-                </div>
-            </div>
-
         </div>
+    </div>
 
-        <!-- Colonne droite : notifications -->
-        <div class="w-80 shrink-0 flex flex-col gap-4">
-            <div id="notifications-panel"
-                 hx-get="{{ url_for('api_notifications') }}"
-                 hx-trigger="refreshGlobalAlert from:body"
+    <!-- Tableau des résultats -->
+    <div class="card bg-base-100 shadow">
+        <div class="card-body p-4">
+            <div class="overflow-x-auto" id="results-table"
+                 hx-get="{{ url_for('api_operations') }}"
+                 hx-trigger="refreshResultsTable from:body"
                  hx-swap="innerHTML">
-                {% include 'partials/notifications_panel.html' %}
-            </div>
-            <div id="rejections-panel"
-                 hx-get="{{ url_for('api_rejections') }}"
-                 hx-trigger="refreshGlobalAlert from:body"
-                 hx-swap="innerHTML">
-                {% include 'partials/rejections_panel.html' %}
+                {% include 'partials/operations_table.html' %}
             </div>
         </div>
-
     </div>
 
     <!-- Modal détail -->
@@ -342,20 +334,17 @@
         });
     });
 
-    // Fonction globale pour ouvrir le modal de changement de statut depuis n'importe où
-    window.openStatusModal = function(trigger) {
-        selectedPostUrl = trigger.getAttribute('data-post-url') || '';
-        const currentStatus = trigger.getAttribute('data-current-status') || '';
-        selectedStatus = currentStatus;
-        renderStatusOptions(currentStatus);
-        statusConfirm.disabled = true;
-        statusModal.showModal();
-    };
-
     document.body.addEventListener('click', async (event) => {
         const trigger = event.target.closest('[data-status-edit]');
         if (!trigger) return;
-        window.openStatusModal(trigger);
+
+        selectedPostUrl = trigger.getAttribute('data-post-url') || '';
+        const currentStatus = trigger.getAttribute('data-current-status') || '';
+        selectedStatus = currentStatus;
+
+        renderStatusOptions(currentStatus);
+        statusConfirm.disabled = true;
+        statusModal.showModal();
     });
 
     statusCancel.addEventListener('click', () => {

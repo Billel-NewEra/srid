@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SRID COM — Aperçus de thèmes</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,300;0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;1,14..32,400&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: #060608;
+      color: #e2e8f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 3rem 1.5rem;
+      gap: 3rem;
+    }
+    header { text-align: center; }
+    header .eyebrow {
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #6366f1;
+      margin-bottom: 0.75rem;
+    }
+    header h1 {
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      background: linear-gradient(135deg, #e2e8f0 0%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    header p {
+      margin-top: 1rem;
+      color: #64748b;
+      font-size: 1rem;
+      max-width: 44ch;
+      line-height: 1.6;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 1.5rem;
+      width: 100%;
+      max-width: 1000px;
+    }
+    .card {
+      border-radius: 16px;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.06);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+      text-decoration: none;
+      display: block;
+      position: relative;
+    }
+    .card:hover {
+      transform: translateY(-4px);
+    }
+    .card-preview {
+      height: 180px;
+      position: relative;
+      overflow: hidden;
+    }
+    /* Carbon Blue preview */
+    .card-carbon .card-preview {
+      background: #0a0a0f;
+      box-shadow: 0 20px 60px rgba(59,130,246,0.15);
+    }
+    .card-carbon:hover { box-shadow: 0 20px 60px rgba(59,130,246,0.3); }
+    /* Copper preview */
+    .card-copper .card-preview {
+      background: #0c0b09;
+      box-shadow: 0 20px 60px rgba(217,119,6,0.15);
+    }
+    .card-copper:hover { box-shadow: 0 20px 60px rgba(217,119,6,0.3); }
+    /* Aurora preview */
+    .card-aurora .card-preview {
+      background: #0d0d1a;
+      box-shadow: 0 20px 60px rgba(139,92,246,0.15);
+    }
+    .card-aurora:hover { box-shadow: 0 20px 60px rgba(139,92,246,0.3); }
+
+    /* Mini UI mockup inside preview */
+    .mockup {
+      position: absolute;
+      inset: 12px;
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+    }
+    .mockup-sidebar {
+      width: 56px;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 8px 0;
+      gap: 6px;
+    }
+    .mockup-dot { width: 20px; height: 20px; border-radius: 6px; }
+    .mockup-main { flex: 1; padding: 8px; display: flex; flex-direction: column; gap: 6px; }
+    .mockup-bar { border-radius: 4px; }
+    .mockup-row { display: flex; gap: 4px; }
+    .mockup-cell { border-radius: 3px; flex: 1; height: 8px; }
+
+    /* Carbon Blue mockup colors */
+    .card-carbon .mockup { background: #111827; }
+    .card-carbon .mockup-sidebar { background: #0a0a0f; }
+    .card-carbon .mockup-dot { background: #1f2937; }
+    .card-carbon .mockup-dot.active { background: #3b82f6; box-shadow: 0 0 8px #3b82f6; }
+    .card-carbon .mockup-bar { background: #1f2937; }
+    .card-carbon .mockup-cell { background: #1f2937; }
+    .card-carbon .mockup-cell.accent { background: #3b82f6; }
+
+    /* Copper mockup colors */
+    .card-copper .mockup { background: #1a1714; }
+    .card-copper .mockup-sidebar { background: #0c0b09; }
+    .card-copper .mockup-dot { background: #252119; }
+    .card-copper .mockup-dot.active { background: #d97706; box-shadow: 0 0 8px #d97706; }
+    .card-copper .mockup-bar { background: #252119; }
+    .card-copper .mockup-cell { background: #252119; }
+    .card-copper .mockup-cell.accent { background: #d97706; }
+
+    /* Aurora mockup colors */
+    .card-aurora .mockup { background: #13131f; }
+    .card-aurora .mockup-sidebar { background: #0d0d1a; }
+    .card-aurora .mockup-dot { background: #1a1a2e; }
+    .card-aurora .mockup-dot.active { background: #8b5cf6; box-shadow: 0 0 8px #8b5cf6; }
+    .card-aurora .mockup-bar { background: #1a1a2e; }
+    .card-aurora .mockup-cell { background: #1a1a2e; }
+    .card-aurora .mockup-cell.accent { background: #8b5cf6; }
+
+    .card-body {
+      background: #0f0f14;
+      padding: 1.25rem 1.5rem;
+      border-top: 1px solid rgba(255,255,255,0.05);
+    }
+    .card-title {
+      font-size: 1rem;
+      font-weight: 600;
+      letter-spacing: -0.01em;
+      margin-bottom: 0.35rem;
+    }
+    .card-carbon .card-title { color: #93c5fd; }
+    .card-copper .card-title { color: #fcd34d; }
+    .card-aurora .card-title { color: #c4b5fd; }
+    .card-desc {
+      font-size: 0.8rem;
+      color: #64748b;
+      line-height: 1.5;
+    }
+    .badge {
+      display: inline-block;
+      font-size: 0.65rem;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 0.2rem 0.55rem;
+      border-radius: 99px;
+      margin-top: 0.75rem;
+    }
+    .card-carbon .badge { background: rgba(59,130,246,0.15); color: #60a5fa; }
+    .card-copper .badge { background: rgba(217,119,6,0.15); color: #fbbf24; }
+    .card-aurora .badge { background: rgba(139,92,246,0.15); color: #a78bfa; }
+
+    footer {
+      font-size: 0.75rem;
+      color: #334155;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="eyebrow">SRID COM · Design System</div>
+    <h1>Aperçus de thèmes</h1>
+    <p>Cliquez sur un thème pour voir la démo complète avec sidebar, tableau, badges et notifications.</p>
+  </header>
+
+  <div class="grid">
+    <!-- Carbon Blue -->
+    <a href="carbon-blue.html" class="card card-carbon">
+      <div class="card-preview">
+        <div class="mockup">
+          <div class="mockup-sidebar">
+            <div class="mockup-dot active"></div>
+            <div class="mockup-dot"></div>
+            <div class="mockup-dot"></div>
+            <div class="mockup-dot"></div>
+          </div>
+          <div class="mockup-main">
+            <div class="mockup-bar" style="height:10px; width:60%;"></div>
+            <div style="display:flex; gap:4px; margin-top:4px;">
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+            </div>
+            <div class="mockup-bar" style="height:6px; width:100%; margin-top:4px;"></div>
+            <div class="mockup-row"><div class="mockup-cell"></div><div class="mockup-cell accent"></div><div class="mockup-cell"></div></div>
+            <div class="mockup-row"><div class="mockup-cell accent"></div><div class="mockup-cell"></div><div class="mockup-cell"></div></div>
+            <div class="mockup-row"><div class="mockup-cell"></div><div class="mockup-cell"></div><div class="mockup-cell accent"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-title">Carbon Blue</div>
+        <div class="card-desc">Ultra sombre, accents électriques. Inspiré de Linear, Vercel, GitHub. Idéal pour usage intensif.</div>
+        <div class="badge">Pro · Épuré</div>
+      </div>
+    </a>
+
+    <!-- Copper Dark -->
+    <a href="copper-dark.html" class="card card-copper">
+      <div class="card-preview">
+        <div class="mockup">
+          <div class="mockup-sidebar">
+            <div class="mockup-dot active"></div>
+            <div class="mockup-dot"></div>
+            <div class="mockup-dot"></div>
+            <div class="mockup-dot"></div>
+          </div>
+          <div class="mockup-main">
+            <div class="mockup-bar" style="height:10px; width:60%;"></div>
+            <div style="display:flex; gap:4px; margin-top:4px;">
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+            </div>
+            <div class="mockup-bar" style="height:6px; width:100%; margin-top:4px;"></div>
+            <div class="mockup-row"><div class="mockup-cell"></div><div class="mockup-cell accent"></div><div class="mockup-cell"></div></div>
+            <div class="mockup-row"><div class="mockup-cell accent"></div><div class="mockup-cell"></div><div class="mockup-cell"></div></div>
+            <div class="mockup-row"><div class="mockup-cell"></div><div class="mockup-cell"></div><div class="mockup-cell accent"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-title">Copper Dark</div>
+        <div class="card-desc">Charbon chaud aux reflets dorés. Atmosphère premium et financière. Élégant et chaleureux.</div>
+        <div class="badge">Premium · Finance</div>
+      </div>
+    </a>
+
+    <!-- Aurora -->
+    <a href="aurora-violet.html" class="card card-aurora">
+      <div class="card-preview">
+        <div class="mockup">
+          <div class="mockup-sidebar">
+            <div class="mockup-dot active"></div>
+            <div class="mockup-dot"></div>
+            <div class="mockup-dot"></div>
+            <div class="mockup-dot"></div>
+          </div>
+          <div class="mockup-main">
+            <div class="mockup-bar" style="height:10px; width:60%;"></div>
+            <div style="display:flex; gap:4px; margin-top:4px;">
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+            </div>
+            <div class="mockup-bar" style="height:6px; width:100%; margin-top:4px;"></div>
+            <div class="mockup-row"><div class="mockup-cell"></div><div class="mockup-cell accent"></div><div class="mockup-cell"></div></div>
+            <div class="mockup-row"><div class="mockup-cell accent"></div><div class="mockup-cell"></div><div class="mockup-cell"></div></div>
+            <div class="mockup-row"><div class="mockup-cell"></div><div class="mockup-cell"></div><div class="mockup-cell accent"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-title">Aurora Violet</div>
+        <div class="card-desc">Profondeur nocturne avec accents violet-cyan en dégradé. Moderne, vivant, mémorable.</div>
+        <div class="badge">Vibrant · Moderne</div>
+      </div>
+    </a>
+  </div>
+
+  <footer>Ces fichiers sont des aperçus standalone — aucune dépendance externe.</footer>
+</body>
+</html>

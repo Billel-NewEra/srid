@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aurora Violet — SRID COM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:         #08070f;
+      --surface:    #0e0d1c;
+      --surface2:   #141228;
+      --surface3:   #1c1a36;
+      --border:     rgba(139,92,246,0.1);
+      --border-mid: rgba(139,92,246,0.2);
+      --primary:    #8b5cf6;
+      --primary-lt: #a78bfa;
+      --primary-dim: rgba(139,92,246,0.12);
+      --primary-glow: rgba(139,92,246,0.4);
+      --accent:     #06b6d4;
+      --accent-dim: rgba(6,182,212,0.1);
+      --success:    #34d399;
+      --success-dim: rgba(52,211,153,0.1);
+      --warning:    #fbbf24;
+      --warning-dim: rgba(251,191,36,0.1);
+      --danger:     #f87171;
+      --danger-dim: rgba(248,113,113,0.1);
+      --text:       #e9e4ff;
+      --text-2:     #a89ec4;
+      --text-3:     #5f5880;
+      --grad-1: linear-gradient(135deg, #8b5cf6, #06b6d4);
+      --grad-2: linear-gradient(135deg, #6d28d9, #0891b2);
+      --sidebar-w: 244px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 14px; }
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      min-height: 100vh;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex; flex-direction: column;
+      position: fixed; top: 0; left: 0; bottom: 0;
+    }
+    .sidebar-logo {
+      padding: 1.2rem 1.25rem 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 0.65rem;
+    }
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: var(--grad-1);
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.82rem; font-weight: 800; color: white;
+      box-shadow: 0 2px 20px var(--primary-glow);
+      flex-shrink: 0;
+    }
+    .logo-text { font-size: 0.95rem; font-weight: 700; letter-spacing: -0.02em; }
+    .logo-sub  { font-size: 0.67rem; color: var(--text-3); }
+    /* Gradient text on logo */
+    .logo-text span {
+      background: var(--grad-1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .sidebar-nav { flex: 1; padding: 0.6rem 0; overflow-y: auto; }
+    .nav-section { margin-bottom: 0.15rem; }
+    .nav-label {
+      font-size: 0.59rem; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--text-3);
+      padding: 0.85rem 1.3rem 0.3rem;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.48rem 0.75rem;
+      margin: 0 0.6rem;
+      border-radius: 9px;
+      font-size: 0.82rem; font-weight: 500;
+      color: var(--text-2);
+      cursor: pointer; transition: all 0.15s;
+      text-decoration: none; position: relative;
+    }
+    .nav-item:hover { background: var(--surface2); color: var(--text); }
+    .nav-item.active {
+      color: var(--primary-lt);
+      font-weight: 600;
+      background: var(--primary-dim);
+    }
+    /* Gradient left indicator */
+    .nav-item.active::after {
+      content: '';
+      position: absolute;
+      left: -8px; top: 20%; bottom: 20%;
+      width: 3px; border-radius: 0 2px 2px 0;
+      background: var(--grad-1);
+      box-shadow: 0 0 8px var(--primary-glow);
+    }
+    .nav-icon { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.65; }
+    .nav-item.active .nav-icon { opacity: 1; }
+    .nav-badge {
+      margin-left: auto;
+      font-size: 0.62rem; font-weight: 700;
+      padding: 0.1rem 0.42rem; border-radius: 99px;
+      background: rgba(248,113,113,0.15); color: #f87171;
+    }
+    .nav-badge.soon {
+      background: var(--surface3); color: var(--text-3); font-weight: 500;
+    }
+    .sidebar-footer {
+      padding: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+    .user-row {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.5rem 0.65rem; border-radius: 9px;
+      cursor: pointer; transition: background 0.15s;
+    }
+    .user-row:hover { background: var(--surface2); }
+    .avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--grad-1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.68rem; font-weight: 700; color: white;
+      flex-shrink: 0;
+      box-shadow: 0 0 10px var(--primary-glow);
+    }
+    .user-name { font-size: 0.8rem; font-weight: 600; }
+    .user-role { font-size: 0.67rem; color: var(--text-3); }
+    .chevron { margin-left: auto; color: var(--text-3); }
+
+    /* ── MAIN ── */
+    .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 30;
+      background: rgba(8,7,15,0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 1.75rem;
+      height: 54px;
+      display: flex; align-items: center; gap: 1rem;
+    }
+    .breadcrumb { display: flex; align-items: center; gap: 0.4rem; font-size: 0.79rem; }
+    .breadcrumb-item { color: var(--text-3); }
+    .breadcrumb-sep { color: var(--text-3); font-size: 0.7rem; }
+    .breadcrumb-current { color: var(--text); font-weight: 600; }
+    .spacer { flex: 1; }
+    .icon-btn {
+      width: 32px; height: 32px; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--surface2);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.15s;
+      position: relative; font-size: 0.85rem; color: var(--text-2);
+    }
+    .icon-btn:hover { background: var(--surface3); border-color: var(--border-mid); color: var(--text); }
+    .notif-count {
+      position: absolute; top: -4px; right: -4px;
+      min-width: 15px; height: 15px; padding: 0 2px;
+      border-radius: 99px; background: var(--danger); color: white;
+      font-size: 0.58rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      border: 1.5px solid var(--bg);
+    }
+    .topbar-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: var(--grad-1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.68rem; font-weight: 700; color: white; cursor: pointer;
+      box-shadow: 0 0 10px var(--primary-glow);
+    }
+
+    /* ── CONTENT ── */
+    .content { padding: 1.75rem; display: flex; flex-direction: column; gap: 1.5rem; }
+
+    .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+    .page-title {
+      font-size: 1.35rem; font-weight: 700; letter-spacing: -0.025em;
+    }
+    .page-title-accent {
+      background: var(--grad-1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .page-subtitle { font-size: 0.78rem; color: var(--text-3); margin-top: 0.25rem; }
+
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      padding: 0.48rem 1rem; border-radius: 9px;
+      font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; border: none; transition: all 0.15s;
+      text-decoration: none; font-family: inherit;
+    }
+    .btn-primary {
+      background: var(--grad-1);
+      color: white;
+      box-shadow: 0 2px 20px var(--primary-glow);
+    }
+    .btn-primary:hover { filter: brightness(1.1); box-shadow: 0 4px 28px var(--primary-glow); }
+    .btn-ghost {
+      background: var(--surface2); color: var(--text-2);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: var(--surface3); color: var(--text); border-color: var(--border-mid); }
+
+    /* Alert */
+    .alert {
+      border-radius: 10px; padding: 0.8rem 1.1rem;
+      display: flex; align-items: center; gap: 0.75rem;
+      font-size: 0.82rem; border: 1px solid;
+    }
+    .alert-warn { background: var(--warning-dim); border-color: rgba(251,191,36,0.2); color: #fde68a; }
+    .alert-close { margin-left: auto; cursor: pointer; opacity: 0.5; }
+    .alert-close:hover { opacity: 1; }
+
+    /* KPI grid */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 1rem; }
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.1rem 1.2rem;
+      transition: all 0.2s;
+      position: relative; overflow: hidden;
+    }
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+    .kpi-card:hover { border-color: var(--border-mid); transform: translateY(-2px); }
+    .kpi-card:hover::before { opacity: 1; }
+
+    /* Glowing top border per card */
+    .kpi-card .kpi-glow {
+      position: absolute; top: 0; left: 10%; right: 10%; height: 1px;
+      border-radius: 99px;
+    }
+    .kpi-card.violet .kpi-glow { background: var(--grad-1); box-shadow: 0 1px 12px var(--primary-glow); }
+    .kpi-card.teal   .kpi-glow { background: linear-gradient(90deg, var(--accent), #34d399); box-shadow: 0 1px 12px rgba(6,182,212,0.5); }
+    .kpi-card.green  .kpi-glow { background: var(--success); box-shadow: 0 1px 12px rgba(52,211,153,0.5); }
+    .kpi-card.amber  .kpi-glow { background: var(--warning); box-shadow: 0 1px 12px rgba(251,191,36,0.5); }
+    .kpi-card.red    .kpi-glow { background: var(--danger);  box-shadow: 0 1px 12px rgba(248,113,113,0.5); }
+
+    .kpi-label { font-size: 0.68rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); margin-bottom: 0.6rem; }
+    .kpi-value { font-size: 1.65rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+    .kpi-card.violet .kpi-value { background: var(--grad-1); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+    .kpi-card.teal .kpi-value   { color: #67e8f9; }
+    .kpi-card.green .kpi-value  { color: #6ee7b7; }
+    .kpi-card.amber .kpi-value  { color: #fde68a; }
+    .kpi-card.red .kpi-value    { color: #fca5a5; }
+    .kpi-sub { font-size: 0.72rem; color: var(--text-3); margin-top: 0.35rem; }
+
+    /* Section card */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px; overflow: hidden;
+    }
+    .section-header {
+      padding: 0.9rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 0.7rem;
+    }
+    .section-title { font-size: 0.88rem; font-weight: 600; }
+    .section-count {
+      font-size: 0.68rem; font-weight: 600;
+      padding: 0.12rem 0.5rem; border-radius: 99px;
+      background: var(--surface3); color: var(--text-3);
+    }
+    .spacer { flex: 1; }
+
+    /* Filters */
+    .filters {
+      padding: 0.7rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; gap: 0.5rem; flex-wrap: wrap;
+    }
+    .input-field {
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 8px; padding: 0.38rem 0.75rem;
+      font-size: 0.77rem; color: var(--text);
+      outline: none; font-family: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .input-field::placeholder { color: var(--text-3); }
+    .input-field:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-dim); }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    thead th {
+      padding: 0.62rem 1.1rem;
+      font-size: 0.67rem; font-weight: 600;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      color: var(--text-3);
+      border-bottom: 1px solid var(--border);
+      text-align: left; white-space: nowrap;
+    }
+    tbody tr { border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+    tbody td { padding: 0.68rem 1.1rem; color: var(--text-2); vertical-align: middle; }
+    td.td-primary { color: var(--text); font-weight: 500; }
+    td.td-mono    { font-family: 'Courier New', monospace; font-size: 0.72rem; color: var(--text-3); }
+    td.td-amount  { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; }
+
+    /* Badges - pill with gradient borders */
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.28rem;
+      padding: 0.2rem 0.6rem; border-radius: 99px;
+      font-size: 0.69rem; font-weight: 600;
+      white-space: nowrap;
+    }
+    .badge-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+    .badge-encaisse { background: var(--success-dim); color: #6ee7b7; outline: 1px solid rgba(52,211,153,0.2); }
+    .badge-encaisse .badge-dot { background: var(--success); box-shadow: 0 0 5px var(--success); }
+    .badge-cours    { background: var(--accent-dim);   color: #67e8f9; outline: 1px solid rgba(6,182,212,0.2); }
+    .badge-cours .badge-dot { background: var(--accent); }
+    .badge-echeance { background: var(--warning-dim); color: #fde68a; outline: 1px solid rgba(251,191,36,0.2); }
+    .badge-echeance .badge-dot { background: var(--warning); box-shadow: 0 0 5px var(--warning); }
+    .badge-rejete   { background: var(--danger-dim);  color: #fca5a5; outline: 1px solid rgba(248,113,113,0.2); }
+    .badge-rejete .badge-dot { background: var(--danger); box-shadow: 0 0 5px var(--danger); }
+    .badge-echu     { background: rgba(80,60,120,0.15); color: #9980c8; outline: 1px solid rgba(80,60,120,0.25); }
+    .badge-echu .badge-dot { background: #7c5dbd; }
+
+    /* Pagination */
+    .pagination {
+      padding: 0.7rem 1.25rem; border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: 0.3rem; justify-content: flex-end;
+    }
+    .page-info { font-size: 0.71rem; color: var(--text-3); margin-right: auto; }
+    .page-btn {
+      width: 27px; height: 27px; border-radius: 7px;
+      border: 1px solid var(--border); background: var(--surface2);
+      color: var(--text-3); font-size: 0.73rem;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .page-btn:hover { background: var(--surface3); color: var(--text); }
+    .page-btn.active {
+      background: var(--grad-1); color: white; border: none;
+      box-shadow: 0 2px 12px var(--primary-glow);
+    }
+
+    /* Notif panel */
+    .notif-panel {
+      background: var(--surface);
+      border: 1px solid rgba(139,92,246,0.2);
+      border-radius: 12px; overflow: hidden;
+    }
+    .notif-header {
+      padding: 0.85rem 1.15rem;
+      background: linear-gradient(135deg, rgba(139,92,246,0.1), rgba(6,182,212,0.05));
+      border-bottom: 1px solid rgba(139,92,246,0.15);
+      display: flex; align-items: center; gap: 0.6rem;
+    }
+    .notif-title {
+      font-size: 0.84rem; font-weight: 700; flex: 1;
+      background: var(--grad-1);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    .notif-sub { font-size: 0.7rem; color: var(--text-3); }
+    .notif-list { padding: 0.3rem; display: flex; flex-direction: column; gap: 0.2rem; }
+    .notif-item {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.55rem 0.75rem; border-radius: 8px;
+      cursor: pointer; transition: background 0.12s;
+    }
+    .notif-item:hover { background: var(--surface2); }
+    .notif-item-indicator {
+      width: 3px; height: 28px; border-radius: 99px; flex-shrink: 0;
+    }
+    .notif-item-indicator.danger  { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+    .notif-item-indicator.warning { background: var(--warning); box-shadow: 0 0 6px var(--warning); }
+    .notif-name  { font-size: 0.79rem; font-weight: 500; color: var(--text); }
+    .notif-meta  { font-size: 0.68rem; color: var(--text-3); margin-top: 0.08rem; }
+    .notif-amount { margin-left: auto; font-size: 0.79rem; font-weight: 600; color: var(--text-2); font-variant-numeric: tabular-nums; }
+
+    .back { position: fixed; bottom: 1.25rem; right: 1.25rem; }
+    .back a {
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.45rem 0.9rem; border-radius: 8px;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text-2); font-size: 0.75rem; font-weight: 500;
+      text-decoration: none; transition: all 0.15s;
+    }
+    .back a:hover { background: var(--surface3); color: var(--text); }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">SR</div>
+    <div>
+      <div class="logo-text"><span>SRID</span> COM</div>
+      <div class="logo-sub">Finance · Logistique</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">
+      <div class="nav-label">Général</div>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Finance</div>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+        Saisie
+      </a>
+      <a class="nav-item active" href="#">
+        <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        Consultation
+        <span class="nav-badge">3</span>
+      </a>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        Import
+      </a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Logistique</div>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+        Commandes
+        <span class="nav-badge soon">Bientôt</span>
+      </a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Administration</div>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        Utilisateurs
+      </a>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+        Historique
+      </a>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-row">
+      <div class="avatar">AD</div>
+      <div>
+        <div class="user-name">Admin</div>
+        <div class="user-role">Administrateur</div>
+      </div>
+      <div class="chevron">⋯</div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div class="breadcrumb">
+      <span class="breadcrumb-item">Finance</span>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current">Consultation</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="icon-btn">🔔<div class="notif-count">3</div></div>
+    <div class="icon-btn">⚙️</div>
+    <div class="topbar-avatar">AD</div>
+  </header>
+
+  <div class="content">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Opérations <span class="page-title-accent">financières</span></div>
+        <div class="page-subtitle">47 opérations · Mis à jour il y a 2 min</div>
+      </div>
+      <div style="display:flex; gap:0.5rem;">
+        <button class="btn btn-ghost">⬇ Exporter</button>
+        <button class="btn btn-primary">＋ Nouvelle opération</button>
+      </div>
+    </div>
+
+    <div class="alert alert-warn">
+      <span>⚠️</span>
+      <div><strong>3 chèques arrivent à échéance</strong> — dont 1 déjà échu. <a href="#" style="color:#fde68a; margin-left:0.5rem;">Voir →</a></div>
+      <span class="alert-close">✕</span>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card violet"><div class="kpi-glow"></div>
+        <div class="kpi-label">Total encaissé</div>
+        <div class="kpi-value">2,4 M</div>
+        <div class="kpi-sub">DA · toutes sociétés</div>
+      </div>
+      <div class="kpi-card green"><div class="kpi-glow"></div>
+        <div class="kpi-label">Encaissés</div>
+        <div class="kpi-value">31</div>
+        <div class="kpi-sub">opérations</div>
+      </div>
+      <div class="kpi-card teal"><div class="kpi-glow"></div>
+        <div class="kpi-label">En cours</div>
+        <div class="kpi-value">8</div>
+        <div class="kpi-sub">opérations</div>
+      </div>
+      <div class="kpi-card amber"><div class="kpi-glow"></div>
+        <div class="kpi-label">À échéance</div>
+        <div class="kpi-value">5</div>
+        <div class="kpi-sub">dans 7 jours</div>
+      </div>
+      <div class="kpi-card red"><div class="kpi-glow"></div>
+        <div class="kpi-label">Rejetés</div>
+        <div class="kpi-value">2</div>
+        <div class="kpi-sub">dernières 24h</div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 295px; gap: 1.25rem; align-items: start;">
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">Opérations</div>
+          <div class="section-count">47</div>
+          <div class="spacer"></div>
+        </div>
+        <div class="filters">
+          <input class="input-field" placeholder="🔍 Rechercher…" style="flex:1; min-width:180px;">
+          <select class="input-field">
+            <option>Tous les statuts</option>
+            <option>Encaissé</option><option>En cours</option><option>Rejeté</option>
+          </select>
+          <select class="input-field">
+            <option>Toutes sociétés</option>
+            <option>SRID</option><option>Genetics</option>
+          </select>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Client</th><th>Type</th><th>N° Pièce</th><th>Montant</th><th>Date</th><th>Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="td-primary">Acme Corporation</td><td>Chèque</td><td class="td-mono">#001482</td><td class="td-amount">125 000 DA</td><td>12/06/2026</td><td><span class="badge badge-encaisse"><span class="badge-dot"></span>Encaissé</span></td></tr>
+            <tr><td class="td-primary">Hydro Solutions</td><td>Virement</td><td class="td-mono">#001483</td><td class="td-amount">78 500 DA</td><td>14/06/2026</td><td><span class="badge badge-cours"><span class="badge-dot"></span>En cours</span></td></tr>
+            <tr><td class="td-primary">TechPro SARL</td><td>Chèque</td><td class="td-mono">#001484</td><td class="td-amount">342 000 DA</td><td>15/06/2026</td><td><span class="badge badge-echeance"><span class="badge-dot"></span>Arrive à échéance</span></td></tr>
+            <tr><td class="td-primary">Global Trade Inc.</td><td>Virement</td><td class="td-mono">#001485</td><td class="td-amount">56 200 DA</td><td>10/06/2026</td><td><span class="badge badge-rejete"><span class="badge-dot"></span>Rejeté</span></td></tr>
+            <tr><td class="td-primary">Sigma Ingénierie</td><td>Chèque</td><td class="td-mono">#001486</td><td class="td-amount">215 800 DA</td><td>02/06/2026</td><td><span class="badge badge-echu"><span class="badge-dot"></span>Échu</span></td></tr>
+            <tr><td class="td-primary">Delta Logistics</td><td>Versement</td><td class="td-mono">#001487</td><td class="td-amount">91 400 DA</td><td>18/06/2026</td><td><span class="badge badge-cours"><span class="badge-dot"></span>En cours</span></td></tr>
+          </tbody>
+        </table>
+        <div class="pagination">
+          <span class="page-info">Affichage 1–6 de 47</span>
+          <button class="page-btn">‹</button>
+          <button class="page-btn active">1</button>
+          <button class="page-btn">2</button>
+          <button class="page-btn">3</button>
+          <button class="page-btn">›</button>
+        </div>
+      </div>
+
+      <div class="notif-panel">
+        <div class="notif-header">
+          <span>⚡</span>
+          <div class="notif-title">À traiter en priorité</div>
+          <span class="notif-sub">3 alertes</span>
+        </div>
+        <div class="notif-list">
+          <div class="notif-item">
+            <div class="notif-item-indicator danger"></div>
+            <div style="flex:1;">
+              <div class="notif-name">Sigma Ingénierie</div>
+              <div class="notif-meta">Échu · #001486</div>
+            </div>
+            <div class="notif-amount">215 800</div>
+          </div>
+          <div class="notif-item">
+            <div class="notif-item-indicator warning"></div>
+            <div style="flex:1;">
+              <div class="notif-name">TechPro SARL</div>
+              <div class="notif-meta">Échéance dans 2 jours</div>
+            </div>
+            <div class="notif-amount">342 000</div>
+          </div>
+          <div class="notif-item">
+            <div class="notif-item-indicator warning"></div>
+            <div style="flex:1;">
+              <div class="notif-name">Acme Corporation</div>
+              <div class="notif-meta">Échéance dans 6 jours</div>
+            </div>
+            <div class="notif-amount">125 000</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="back"><a href="index.html">← Retour aux thèmes</a></div>
+</body>
+</html>

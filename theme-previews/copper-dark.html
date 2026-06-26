@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Copper Dark — SRID COM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:         #080705;
+      --surface:    #111009;
+      --surface2:   #1c1a12;
+      --surface3:   #26231a;
+      --border:     rgba(255,220,100,0.07);
+      --border-mid: rgba(255,220,100,0.14);
+      --primary:    #d97706;
+      --primary-lt: #f59e0b;
+      --primary-dim: rgba(217,119,6,0.12);
+      --primary-glow: rgba(217,119,6,0.4);
+      --success:    #22c55e;
+      --success-dim: rgba(34,197,94,0.12);
+      --warning:    #eab308;
+      --warning-dim: rgba(234,179,8,0.12);
+      --danger:     #f43f5e;
+      --danger-dim: rgba(244,63,94,0.12);
+      --info:       #38bdf8;
+      --info-dim:   rgba(56,189,248,0.1);
+      --text:       #faf3e0;
+      --text-2:     #c8b896;
+      --text-3:     #7a6a50;
+      --sidebar-w:  240px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 14px; }
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      min-height: 100vh;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+    }
+    .sidebar-logo {
+      padding: 1.25rem 1.25rem 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+    }
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--primary), #b45309);
+      border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.85rem; font-weight: 800; color: white;
+      box-shadow: 0 2px 16px var(--primary-glow);
+      flex-shrink: 0;
+      letter-spacing: -0.05em;
+    }
+    .logo-text { font-size: 0.95rem; font-weight: 700; letter-spacing: -0.01em; color: var(--text); }
+    .logo-sub  { font-size: 0.68rem; color: var(--text-3); }
+
+    .sidebar-nav { flex: 1; padding: 0.5rem 0; overflow-y: auto; }
+    .nav-section { margin-bottom: 0.1rem; }
+    .nav-label {
+      font-size: 0.6rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      padding: 0.9rem 1.35rem 0.3rem;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.5rem 0.75rem;
+      margin: 0 0.6rem;
+      border-radius: 9px;
+      font-size: 0.83rem; font-weight: 500;
+      color: var(--text-2);
+      cursor: pointer;
+      transition: all 0.15s;
+      text-decoration: none;
+      position: relative;
+    }
+    .nav-item:hover { background: var(--surface2); color: var(--text); }
+    .nav-item.active {
+      background: var(--primary-dim);
+      color: var(--primary-lt);
+      font-weight: 600;
+      border: 1px solid rgba(217,119,6,0.2);
+    }
+    .nav-icon { width: 15px; height: 15px; flex-shrink: 0; opacity: 0.7; }
+    .nav-item.active .nav-icon { opacity: 1; }
+    .nav-badge {
+      margin-left: auto;
+      font-size: 0.63rem; font-weight: 700;
+      padding: 0.12rem 0.4rem;
+      border-radius: 99px;
+      background: var(--danger-dim);
+      color: #fb7185;
+    }
+    .nav-badge.soon { background: var(--surface3); color: var(--text-3); font-weight: 500; }
+
+    .sidebar-divider { height: 1px; background: var(--border); margin: 0.5rem 1rem; }
+
+    .sidebar-footer {
+      padding: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+    .user-row {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.5rem 0.65rem;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .user-row:hover { background: var(--surface2); }
+    .avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), #92400e);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.68rem; font-weight: 700; color: white;
+      flex-shrink: 0;
+      border: 1.5px solid rgba(217,119,6,0.3);
+    }
+    .user-name { font-size: 0.8rem; font-weight: 600; color: var(--text); }
+    .user-role { font-size: 0.67rem; color: var(--text-3); }
+    .chevron { margin-left: auto; color: var(--text-3); }
+
+    /* ── MAIN ── */
+    .main { margin-left: var(--sidebar-w); flex: 1; display: flex; flex-direction: column; min-height: 100vh; }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 30;
+      background: rgba(8,7,5,0.88);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 1.75rem;
+      height: 54px;
+      display: flex; align-items: center; gap: 0.85rem;
+    }
+    .breadcrumb { display: flex; align-items: center; gap: 0.4rem; font-size: 0.8rem; }
+    .breadcrumb-item { color: var(--text-3); }
+    .breadcrumb-sep  { color: var(--text-3); }
+    .breadcrumb-current { color: var(--text); font-weight: 600; }
+    .spacer { flex: 1; }
+    .icon-btn {
+      width: 32px; height: 32px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface2);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s;
+      position: relative;
+      font-size: 0.85rem;
+      color: var(--text-2);
+    }
+    .icon-btn:hover { background: var(--surface3); border-color: var(--border-mid); color: var(--text); }
+    .notif-count {
+      position: absolute; top: -4px; right: -4px;
+      min-width: 15px; height: 15px; padding: 0 2px;
+      border-radius: 99px;
+      background: var(--danger);
+      color: white;
+      font-size: 0.58rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+      border: 1.5px solid var(--bg);
+    }
+    .topbar-avatar {
+      width: 28px; height: 28px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), #92400e);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.68rem; font-weight: 700; color: white; cursor: pointer;
+      border: 1.5px solid rgba(217,119,6,0.3);
+    }
+
+    /* ── CONTENT ── */
+    .content { padding: 1.75rem; display: flex; flex-direction: column; gap: 1.5rem; }
+
+    .page-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
+    .page-title  { font-size: 1.35rem; font-weight: 700; letter-spacing: -0.025em; color: var(--text); }
+    .page-subtitle { font-size: 0.78rem; color: var(--text-3); margin-top: 0.25rem; }
+    .btn {
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      padding: 0.48rem 1rem;
+      border-radius: 9px;
+      font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; border: none; transition: all 0.15s;
+      text-decoration: none; font-family: inherit;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary), #b45309);
+      color: white;
+      box-shadow: 0 2px 16px var(--primary-glow), inset 0 1px 0 rgba(255,255,255,0.1);
+    }
+    .btn-primary:hover { filter: brightness(1.1); box-shadow: 0 4px 24px var(--primary-glow); }
+    .btn-ghost {
+      background: var(--surface2); color: var(--text-2);
+      border: 1px solid var(--border);
+    }
+    .btn-ghost:hover { background: var(--surface3); color: var(--text); }
+
+    /* Alert */
+    .alert {
+      border-radius: 10px; padding: 0.85rem 1.15rem;
+      display: flex; align-items: center; gap: 0.75rem;
+      font-size: 0.82rem; border: 1px solid;
+    }
+    .alert-warn { background: var(--warning-dim); border-color: rgba(234,179,8,0.25); color: #fde68a; }
+    .alert-close { margin-left: auto; cursor: pointer; opacity: 0.5; }
+    .alert-close:hover { opacity: 1; }
+
+    /* KPIs */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 1rem; }
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.2rem 1.1rem;
+      transition: all 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card:hover { border-color: var(--border-mid); transform: translateY(-1px); box-shadow: 0 8px 30px rgba(0,0,0,0.4); }
+    /* Glow strip on left */
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 16px; bottom: 16px; left: 0;
+      width: 3px; border-radius: 0 2px 2px 0;
+    }
+    .kpi-card.gold::before   { background: var(--primary); box-shadow: 2px 0 12px var(--primary-glow); }
+    .kpi-card.green::before  { background: var(--success); box-shadow: 2px 0 12px rgba(34,197,94,0.5); }
+    .kpi-card.sky::before    { background: var(--info);    box-shadow: 2px 0 12px rgba(56,189,248,0.4); }
+    .kpi-card.yellow::before { background: var(--warning); box-shadow: 2px 0 12px rgba(234,179,8,0.4); }
+    .kpi-card.rose::before   { background: var(--danger);  box-shadow: 2px 0 12px rgba(244,63,94,0.4); }
+
+    .kpi-label { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); margin-bottom: 0.55rem; }
+    .kpi-value { font-size: 1.65rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1; }
+    .kpi-card.gold .kpi-value   { color: #fcd34d; }
+    .kpi-card.green .kpi-value  { color: #86efac; }
+    .kpi-card.sky .kpi-value    { color: #7dd3fc; }
+    .kpi-card.yellow .kpi-value { color: #fef08a; }
+    .kpi-card.rose .kpi-value   { color: #fda4af; }
+    .kpi-sub { font-size: 0.72rem; color: var(--text-3); margin-top: 0.3rem; }
+
+    /* Section */
+    .section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .section-header {
+      padding: 0.9rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 0.7rem;
+      background: rgba(255,200,50,0.02);
+    }
+    .section-title { font-size: 0.88rem; font-weight: 600; color: var(--text); }
+    .section-count {
+      font-size: 0.68rem; font-weight: 600;
+      padding: 0.12rem 0.5rem;
+      border-radius: 99px;
+      background: var(--surface3); color: var(--text-3);
+    }
+    .spacer { flex: 1; }
+
+    /* Filters */
+    .filters {
+      padding: 0.7rem 1.25rem;
+      border-bottom: 1px solid var(--border);
+      display: flex; gap: 0.5rem; flex-wrap: wrap;
+    }
+    .input-field {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 0.38rem 0.75rem;
+      font-size: 0.77rem;
+      color: var(--text);
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.15s, box-shadow 0.15s;
+    }
+    .input-field::placeholder { color: var(--text-3); }
+    .input-field:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-dim); }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; }
+    thead th {
+      padding: 0.6rem 1.1rem;
+      font-size: 0.67rem; font-weight: 700;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      color: var(--text-3);
+      border-bottom: 1px solid var(--border);
+      text-align: left;
+      white-space: nowrap;
+    }
+    tbody tr {
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--surface2); }
+    tbody td { padding: 0.68rem 1.1rem; color: var(--text-2); vertical-align: middle; }
+    td.td-primary { color: var(--text); font-weight: 500; }
+    td.td-mono    { font-family: 'Courier New', monospace; font-size: 0.72rem; color: var(--text-3); }
+    td.td-amount  { color: var(--text); font-weight: 600; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+
+    /* Badges */
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.28rem;
+      padding: 0.18rem 0.58rem;
+      border-radius: 99px;
+      font-size: 0.69rem; font-weight: 600;
+      white-space: nowrap; border: 1px solid transparent;
+    }
+    .badge-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+    .badge-encaisse { background: var(--success-dim); color: #86efac; border-color: rgba(34,197,94,0.2); }
+    .badge-encaisse .badge-dot { background: var(--success); box-shadow: 0 0 4px var(--success); }
+    .badge-cours    { background: var(--info-dim);    color: #7dd3fc; border-color: rgba(56,189,248,0.2); }
+    .badge-cours .badge-dot { background: var(--info); }
+    .badge-echeance { background: var(--warning-dim); color: #fef08a; border-color: rgba(234,179,8,0.25); }
+    .badge-echeance .badge-dot { background: var(--warning); box-shadow: 0 0 4px var(--warning); }
+    .badge-rejete   { background: var(--danger-dim);  color: #fda4af; border-color: rgba(244,63,94,0.2); }
+    .badge-rejete .badge-dot { background: var(--danger); box-shadow: 0 0 4px var(--danger); }
+    .badge-echu     { background: rgba(100,80,40,0.2); color: #a8926a; border-color: rgba(100,80,40,0.3); }
+    .badge-echu .badge-dot { background: #7a6a50; }
+
+    /* Pagination */
+    .pagination {
+      padding: 0.7rem 1.25rem;
+      border-top: 1px solid var(--border);
+      display: flex; align-items: center; gap: 0.3rem; justify-content: flex-end;
+    }
+    .page-info { font-size: 0.71rem; color: var(--text-3); margin-right: auto; }
+    .page-btn {
+      width: 27px; height: 27px; border-radius: 7px;
+      border: 1px solid var(--border); background: var(--surface2);
+      color: var(--text-3); font-size: 0.73rem;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s;
+    }
+    .page-btn:hover { background: var(--surface3); color: var(--text); }
+    .page-btn.active {
+      background: linear-gradient(135deg, var(--primary), #b45309);
+      color: white; border-color: var(--primary);
+      box-shadow: 0 2px 10px var(--primary-glow);
+    }
+
+    /* Notif panel */
+    .notif-panel {
+      background: var(--surface);
+      border: 1px solid rgba(217,119,6,0.2);
+      border-radius: 12px; overflow: hidden;
+    }
+    .notif-header {
+      background: linear-gradient(135deg, rgba(217,119,6,0.1), rgba(180,83,9,0.06));
+      padding: 0.8rem 1.1rem;
+      border-bottom: 1px solid rgba(217,119,6,0.15);
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .notif-title { font-size: 0.84rem; font-weight: 700; color: #fcd34d; flex: 1; }
+    .notif-sub   { font-size: 0.7rem; color: var(--text-3); }
+    .notif-list  { padding: 0.3rem; display: flex; flex-direction: column; gap: 0.2rem; }
+    .notif-item  {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.55rem 0.7rem; border-radius: 8px;
+      cursor: pointer; transition: background 0.12s;
+    }
+    .notif-item:hover { background: var(--surface2); }
+    .notif-pip {
+      width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+    }
+    .notif-pip.red    { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+    .notif-pip.amber  { background: var(--primary); box-shadow: 0 0 6px var(--primary); }
+    .notif-name { font-size: 0.79rem; font-weight: 500; color: var(--text); flex: 1; }
+    .notif-meta { font-size: 0.68rem; color: var(--text-3); }
+    .notif-amount { font-size: 0.79rem; font-weight: 600; color: var(--text-2); font-variant-numeric: tabular-nums; }
+
+    .back { position: fixed; bottom: 1.25rem; right: 1.25rem; }
+    .back a {
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.45rem 0.9rem; border-radius: 8px;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text-2); font-size: 0.75rem; font-weight: 500;
+      text-decoration: none; transition: all 0.15s;
+    }
+    .back a:hover { background: var(--surface3); color: var(--text); }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <div class="logo-icon">SR</div>
+    <div>
+      <div class="logo-text">SRID COM</div>
+      <div class="logo-sub">Finance · Logistique</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">
+      <div class="nav-label">Général</div>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        Dashboard
+      </a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Finance</div>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/></svg>
+        Saisie
+      </a>
+      <a class="nav-item active" href="#">
+        <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+        Consultation
+        <span class="nav-badge">3</span>
+      </a>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+        Import
+      </a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Logistique</div>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+        Commandes
+        <span class="nav-badge soon">Bientôt</span>
+      </a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-label">Administration</div>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        Utilisateurs
+      </a>
+      <a class="nav-item" href="#">
+        <svg class="nav-icon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+        Historique
+      </a>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-row">
+      <div class="avatar">AD</div>
+      <div>
+        <div class="user-name">Admin</div>
+        <div class="user-role">Administrateur</div>
+      </div>
+      <div class="chevron">⋯</div>
+    </div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="topbar">
+    <div class="breadcrumb">
+      <span class="breadcrumb-item">Finance</span>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current">Consultation</span>
+    </div>
+    <div class="spacer"></div>
+    <div class="icon-btn">🔔<div class="notif-count">3</div></div>
+    <div class="icon-btn">⚙️</div>
+    <div class="topbar-avatar">AD</div>
+  </header>
+
+  <div class="content">
+    <div class="page-header">
+      <div>
+        <div class="page-title">Opérations financières</div>
+        <div class="page-subtitle">47 opérations · Mis à jour il y a 2 min</div>
+      </div>
+      <div style="display:flex; gap:0.5rem;">
+        <button class="btn btn-ghost">⬇ Exporter</button>
+        <button class="btn btn-primary">＋ Nouvelle opération</button>
+      </div>
+    </div>
+
+    <div class="alert alert-warn">
+      <span>⚠️</span>
+      <div><strong>3 chèques arrivent à échéance</strong> — dont 1 déjà échu. <a href="#" style="color:#fcd34d; margin-left:0.5rem;">Voir →</a></div>
+      <span class="alert-close">✕</span>
+    </div>
+
+    <div class="kpi-grid">
+      <div class="kpi-card gold">
+        <div class="kpi-label">Total encaissé</div>
+        <div class="kpi-value">2,4 M</div>
+        <div class="kpi-sub">DA · toutes sociétés</div>
+      </div>
+      <div class="kpi-card green">
+        <div class="kpi-label">Encaissés</div>
+        <div class="kpi-value">31</div>
+        <div class="kpi-sub">opérations</div>
+      </div>
+      <div class="kpi-card sky">
+        <div class="kpi-label">En cours</div>
+        <div class="kpi-value">8</div>
+        <div class="kpi-sub">opérations</div>
+      </div>
+      <div class="kpi-card yellow">
+        <div class="kpi-label">À échéance</div>
+        <div class="kpi-value">5</div>
+        <div class="kpi-sub">dans 7 jours</div>
+      </div>
+      <div class="kpi-card rose">
+        <div class="kpi-label">Rejetés</div>
+        <div class="kpi-value">2</div>
+        <div class="kpi-sub">dernières 24h</div>
+      </div>
+    </div>
+
+    <div style="display: grid; grid-template-columns: 1fr 295px; gap: 1.25rem; align-items: start;">
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">Opérations</div>
+          <div class="section-count">47</div>
+          <div class="spacer"></div>
+        </div>
+        <div class="filters">
+          <input class="input-field" placeholder="🔍 Rechercher…" style="flex:1; min-width:180px;">
+          <select class="input-field">
+            <option>Tous les statuts</option>
+            <option>Encaissé</option><option>En cours</option><option>Rejeté</option>
+          </select>
+          <select class="input-field">
+            <option>Toutes sociétés</option>
+            <option>SRID</option><option>Genetics</option>
+          </select>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th>Client</th><th>Type</th><th>N° Pièce</th><th>Montant</th><th>Date</th><th>Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="td-primary">Acme Corporation</td><td>Chèque</td><td class="td-mono">#001482</td><td class="td-amount">125 000 DA</td><td>12/06/2026</td><td><span class="badge badge-encaisse"><span class="badge-dot"></span>Encaissé</span></td></tr>
+            <tr><td class="td-primary">Hydro Solutions</td><td>Virement</td><td class="td-mono">#001483</td><td class="td-amount">78 500 DA</td><td>14/06/2026</td><td><span class="badge badge-cours"><span class="badge-dot"></span>En cours</span></td></tr>
+            <tr><td class="td-primary">TechPro SARL</td><td>Chèque</td><td class="td-mono">#001484</td><td class="td-amount">342 000 DA</td><td>15/06/2026</td><td><span class="badge badge-echeance"><span class="badge-dot"></span>Arrive à échéance</span></td></tr>
+            <tr><td class="td-primary">Global Trade Inc.</td><td>Virement</td><td class="td-mono">#001485</td><td class="td-amount">56 200 DA</td><td>10/06/2026</td><td><span class="badge badge-rejete"><span class="badge-dot"></span>Rejeté</span></td></tr>
+            <tr><td class="td-primary">Sigma Ingénierie</td><td>Chèque</td><td class="td-mono">#001486</td><td class="td-amount">215 800 DA</td><td>02/06/2026</td><td><span class="badge badge-echu"><span class="badge-dot"></span>Échu</span></td></tr>
+            <tr><td class="td-primary">Delta Logistics</td><td>Versement</td><td class="td-mono">#001487</td><td class="td-amount">91 400 DA</td><td>18/06/2026</td><td><span class="badge badge-cours"><span class="badge-dot"></span>En cours</span></td></tr>
+          </tbody>
+        </table>
+        <div class="pagination">
+          <span class="page-info">Affichage 1–6 de 47</span>
+          <button class="page-btn">‹</button>
+          <button class="page-btn active">1</button>
+          <button class="page-btn">2</button>
+          <button class="page-btn">3</button>
+          <button class="page-btn">›</button>
+        </div>
+      </div>
+
+      <div class="notif-panel">
+        <div class="notif-header">
+          <span>⚠️</span>
+          <div class="notif-title">À traiter en priorité</div>
+          <span class="notif-sub">3 alertes</span>
+        </div>
+        <div class="notif-list">
+          <div class="notif-item">
+            <div class="notif-pip red"></div>
+            <div style="flex:1;">
+              <div class="notif-name">Sigma Ingénierie</div>
+              <div class="notif-meta">Échu · #001486</div>
+            </div>
+            <div class="notif-amount">215 800</div>
+          </div>
+          <div class="notif-item">
+            <div class="notif-pip amber"></div>
+            <div style="flex:1;">
+              <div class="notif-name">TechPro SARL</div>
+              <div class="notif-meta">Échéance dans 2 jours</div>
+            </div>
+            <div class="notif-amount">342 000</div>
+          </div>
+          <div class="notif-item">
+            <div class="notif-pip amber"></div>
+            <div style="flex:1;">
+              <div class="notif-name">Acme Corporation</div>
+              <div class="notif-meta">Échéance dans 6 jours</div>
+            </div>
+            <div class="notif-amount">125 000</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="back"><a href="index.html">← Retour aux thèmes</a></div>
+</body>
+</html>

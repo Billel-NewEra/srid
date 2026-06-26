@@ -451,49 +451,66 @@ def delete_user(user_id):
 @login_required
 def dashboard():
     current_year = date.today().year
+    previous_year = current_year - 1
+    today = date.today()
+    status_labels = STATUS_CHOICES
 
-    # Années disponibles (toutes les années présentes en base)
+    # Années disponibles
     years_raw = db.session.query(
         extract('year', Operation.date_operation)
     ).distinct().order_by(extract('year', Operation.date_operation).desc()).all()
     available_years = [int(y[0]) for y in years_raw if y[0]]
 
-    # --- KPIs par société ---
-    total_montant = db.session.query(func.sum(Operation.montant)).scalar() or 0
-    montant_srid = db.session.query(func.sum(Operation.montant)).filter_by(societe='SRID').scalar() or 0
-    montant_genetics = db.session.query(func.sum(Operation.montant)).filter_by(societe='Genetics').scalar() or 0
+    # --- KPIs globaux (1 query) ---
+    kpi_raw = db.session.query(
+        Operation.societe,
+        func.coalesce(func.sum(Operation.montant), 0)
+    ).group_by(Operation.societe).all()
+    kpi_lookup = {s: float(m) for s, m in kpi_raw}
+    total_montant = sum(kpi_lookup.values())
+    montant_srid = kpi_lookup.get('SRID', 0.0)
+    montant_genetics = kpi_lookup.get('Genetics', 0.0)
 
-    # --- Statuts avec montants par société ---
-    statuts_info = {}
-    for statut in STATUS_CHOICES:
-        count = Operation.query.filter_by(statut=statut).count()
-        montant = db.session.query(func.sum(Operation.montant)).filter_by(statut=statut).scalar() or 0
-        count_srid = Operation.query.filter_by(statut=statut, societe='SRID').count()
-        montant_srid_s = db.session.query(func.sum(Operation.montant)).filter_by(statut=statut, societe='SRID').scalar() or 0
-        count_gen = Operation.query.filter_by(statut=statut, societe='Genetics').count()
-        montant_gen_s = db.session.query(func.sum(Operation.montant)).filter_by(statut=statut, societe='Genetics').scalar() or 0
-        statuts_info[statut] = {
-            'count': count, 'montant': float(montant),
-            'srid_count': count_srid, 'srid_montant': float(montant_srid_s),
-            'genetics_count': count_gen, 'genetics_montant': float(montant_gen_s)
-        }
+    # --- Statuts avec montants par société (1 query) ---
+    statuts_raw = db.session.query(
+        Operation.statut,
+        Operation.societe,
+        func.count(Operation.id),
+        func.coalesce(func.sum(Operation.montant), 0)
+    ).group_by(Operation.statut, Operation.societe).all()
+    statuts_info = {s: {'count': 0, 'montant': 0.0, 'srid_count': 0, 'srid_montant': 0.0,
+                        'genetics_count': 0, 'genetics_montant': 0.0} for s in status_labels}
+    for statut, societe, count, montant in statuts_raw:
+        if statut in statuts_info:
+            statuts_info[statut]['count'] += count
+            statuts_info[statut]['montant'] += float(montant)
+            if societe == 'SRID':
+                statuts_info[statut]['srid_count'] += count
+                statuts_info[statut]['srid_montant'] += float(montant)
+            elif societe == 'Genetics':
+                statuts_info[statut]['genetics_count'] += count
+                statuts_info[statut]['genetics_montant'] += float(montant)
 
-    # --- Types avec montants par société ---
-    types_info = {}
-    for type_op in ['Chèque', 'Virement', 'Versement', 'Transfer', 'Autre']:
-        total_count = Operation.query.filter_by(type_operation=type_op).count()
-        total_mt = db.session.query(func.sum(Operation.montant)).filter_by(type_operation=type_op).scalar() or 0
-        srid_count = Operation.query.filter_by(type_operation=type_op, societe='SRID').count()
-        srid_mt = db.session.query(func.sum(Operation.montant)).filter_by(type_operation=type_op, societe='SRID').scalar() or 0
-        gen_count = Operation.query.filter_by(type_operation=type_op, societe='Genetics').count()
-        gen_mt = db.session.query(func.sum(Operation.montant)).filter_by(type_operation=type_op, societe='Genetics').scalar() or 0
-        types_info[type_op] = {
-            'total': {'count': total_count, 'montant': float(total_mt)},
-            'SRID': {'count': srid_count, 'montant': float(srid_mt)},
-            'Genetics': {'count': gen_count, 'montant': float(gen_mt)}
-        }
+    # --- Types avec montants par société (1 query) ---
+    types_raw = db.session.query(
+        Operation.type_operation,
+        Operation.societe,
+        func.count(Operation.id),
+        func.coalesce(func.sum(Operation.montant), 0)
+    ).group_by(Operation.type_operation, Operation.societe).all()
+    type_list = ['Chèque', 'Virement', 'Versement', 'Transfer', 'Autre']
+    types_info = {t: {'total': {'count': 0, 'montant': 0.0},
+                      'SRID': {'count': 0, 'montant': 0.0},
+                      'Genetics': {'count': 0, 'montant': 0.0}} for t in type_list}
+    for type_op, societe, count, montant in types_raw:
+        if type_op in types_info:
+            types_info[type_op]['total']['count'] += count
+            types_info[type_op]['total']['montant'] += float(montant)
+            if societe in ('SRID', 'Genetics'):
+                types_info[type_op][societe]['count'] += count
+                types_info[type_op][societe]['montant'] += float(montant)
 
-    # --- Top 5 clients (année en cours, tous mois) ---
+    # --- Top 5 clients (année en cours) ---
     top_clients = db.session.query(
         Operation.client,
         func.sum(Operation.montant).label('total')
@@ -505,100 +522,89 @@ def dashboard():
         ~func.lower(Operation.client).like('%genetics%')
     ).group_by(Operation.client).order_by(desc('total')).limit(5).all()
 
-    # --- Dernières opérations (par date échéance desc) ---
+    # --- Dernières opérations ---
     dernieres = Operation.query.order_by(Operation.date_operation.desc()).limit(10).all()
 
-    # --- Données mensuelles année courante ---
-    monthly_data = []
-    for month in range(1, 13):
-        total = db.session.query(func.sum(Operation.montant)).filter(
-            extract('year', Operation.date_operation) == current_year,
-            extract('month', Operation.date_operation) == month
-        ).scalar() or 0
-        monthly_data.append(float(total))
+    # --- Données mensuelles année courante + par société (1 query) ---
+    monthly_curr_raw = db.session.query(
+        extract('month', Operation.date_operation).label('month'),
+        Operation.societe,
+        func.coalesce(func.sum(Operation.montant), 0)
+    ).filter(
+        extract('year', Operation.date_operation) == current_year
+    ).group_by('month', Operation.societe).all()
+    monthly_curr_lookup = {}
+    for month, societe, montant in monthly_curr_raw:
+        m = int(month)
+        if m not in monthly_curr_lookup:
+            monthly_curr_lookup[m] = {'total': 0.0, 'SRID': 0.0, 'Genetics': 0.0}
+        monthly_curr_lookup[m]['total'] += float(montant)
+        if societe in ('SRID', 'Genetics'):
+            monthly_curr_lookup[m][societe] += float(montant)
+    monthly_data = [monthly_curr_lookup.get(m, {}).get('total', 0.0) for m in range(1, 13)]
+    monthly_srid = [monthly_curr_lookup.get(m, {}).get('SRID', 0.0) for m in range(1, 13)]
+    monthly_genetics = [monthly_curr_lookup.get(m, {}).get('Genetics', 0.0) for m in range(1, 13)]
 
-    # --- Données mensuelles année précédente ---
-    previous_year = current_year - 1
-    monthly_data_prev = []
-    for month in range(1, 13):
-        total = db.session.query(func.sum(Operation.montant)).filter(
-            extract('year', Operation.date_operation) == previous_year,
-            extract('month', Operation.date_operation) == month
-        ).scalar() or 0
-        monthly_data_prev.append(float(total))
+    # --- Données mensuelles année précédente (1 query) ---
+    monthly_prev_raw = db.session.query(
+        extract('month', Operation.date_operation).label('month'),
+        func.coalesce(func.sum(Operation.montant), 0)
+    ).filter(
+        extract('year', Operation.date_operation) == previous_year
+    ).group_by('month').all()
+    monthly_prev_lookup = {int(m): float(mt) for m, mt in monthly_prev_raw}
+    monthly_data_prev = [monthly_prev_lookup.get(m, 0.0) for m in range(1, 13)]
 
-    # --- Données mensuelles par société ---
-    monthly_srid = []
-    monthly_genetics = []
-    for month in range(1, 13):
-        t_srid = db.session.query(func.sum(Operation.montant)).filter(
-            extract('year', Operation.date_operation) == current_year,
-            extract('month', Operation.date_operation) == month,
-            Operation.societe == 'SRID'
-        ).scalar() or 0
-        t_genetics = db.session.query(func.sum(Operation.montant)).filter(
-            extract('year', Operation.date_operation) == current_year,
-            extract('month', Operation.date_operation) == month,
-            Operation.societe == 'Genetics'
-        ).scalar() or 0
-        monthly_srid.append(float(t_srid))
-        monthly_genetics.append(float(t_genetics))
-
-    # --- Statuts par mois (année courante) : total + SRID + Genetics ---
-    status_labels = STATUS_CHOICES
+    # --- Statuts par mois année courante (1 query) ---
+    monthly_statuts_raw = db.session.query(
+        extract('month', Operation.date_operation).label('month'),
+        Operation.statut,
+        Operation.societe,
+        func.coalesce(func.sum(Operation.montant), 0)
+    ).filter(
+        extract('year', Operation.date_operation) == current_year
+    ).group_by('month', Operation.statut, Operation.societe).all()
     monthly_statuts_views = {
-        'total': {s: [] for s in status_labels},
-        'srid': {s: [] for s in status_labels},
-        'genetics': {s: [] for s in status_labels},
+        'total': {s: [0.0] * 12 for s in status_labels},
+        'srid':  {s: [0.0] * 12 for s in status_labels},
+        'genetics': {s: [0.0] * 12 for s in status_labels},
     }
-    for month in range(1, 13):
-        for statut in status_labels:
-            total_mt = db.session.query(func.sum(Operation.montant)).filter(
-                extract('year', Operation.date_operation) == current_year,
-                extract('month', Operation.date_operation) == month,
-                Operation.statut == statut
-            ).scalar() or 0
-            srid_mt = db.session.query(func.sum(Operation.montant)).filter(
-                extract('year', Operation.date_operation) == current_year,
-                extract('month', Operation.date_operation) == month,
-                Operation.statut == statut,
-                Operation.societe == 'SRID'
-            ).scalar() or 0
-            genetics_mt = db.session.query(func.sum(Operation.montant)).filter(
-                extract('year', Operation.date_operation) == current_year,
-                extract('month', Operation.date_operation) == month,
-                Operation.statut == statut,
-                Operation.societe == 'Genetics'
-            ).scalar() or 0
-            monthly_statuts_views['total'][statut].append(float(total_mt))
-            monthly_statuts_views['srid'][statut].append(float(srid_mt))
-            monthly_statuts_views['genetics'][statut].append(float(genetics_mt))
-
+    for month, statut, societe, montant in monthly_statuts_raw:
+        m = int(month) - 1
+        if statut in status_labels:
+            monthly_statuts_views['total'][statut][m] += float(montant)
+            if societe == 'SRID':
+                monthly_statuts_views['srid'][statut][m] += float(montant)
+            elif societe == 'Genetics':
+                monthly_statuts_views['genetics'][statut][m] += float(montant)
     monthly_statuts = monthly_statuts_views['total']
 
-    # --- Activité 30 jours par montant et société ---
-    today = date.today()
-    daily_labels = []
-    daily_total = []
-    daily_srid = []
-    daily_genetics = []
+    # --- Activité 30 jours (1 query) ---
+    thirty_days_ago = today - timedelta(days=29)
+    daily_raw = db.session.query(
+        func.date(Operation.date_operation).label('day'),
+        Operation.societe,
+        func.coalesce(func.sum(Operation.montant), 0)
+    ).filter(
+        func.date(Operation.date_operation) >= thirty_days_ago,
+        func.date(Operation.date_operation) <= today
+    ).group_by('day', Operation.societe).all()
+    daily_lookup = {}
+    for day, societe, montant in daily_raw:
+        d_str = str(day)
+        if d_str not in daily_lookup:
+            daily_lookup[d_str] = {'total': 0.0, 'SRID': 0.0, 'Genetics': 0.0}
+        daily_lookup[d_str]['total'] += float(montant)
+        if societe in ('SRID', 'Genetics'):
+            daily_lookup[d_str][societe] += float(montant)
+    daily_labels, daily_total, daily_srid, daily_genetics = [], [], [], []
     for i in range(29, -1, -1):
         d = today - timedelta(days=i)
-        mt_total = db.session.query(func.sum(Operation.montant)).filter(
-            func.date(Operation.date_operation) == d
-        ).scalar() or 0
-        mt_srid = db.session.query(func.sum(Operation.montant)).filter(
-            func.date(Operation.date_operation) == d,
-            Operation.societe == 'SRID'
-        ).scalar() or 0
-        mt_gen = db.session.query(func.sum(Operation.montant)).filter(
-            func.date(Operation.date_operation) == d,
-            Operation.societe == 'Genetics'
-        ).scalar() or 0
+        entry = daily_lookup.get(d.isoformat(), {'total': 0.0, 'SRID': 0.0, 'Genetics': 0.0})
         daily_labels.append(d.strftime('%d/%m'))
-        daily_total.append(float(mt_total))
-        daily_srid.append(float(mt_srid))
-        daily_genetics.append(float(mt_gen))
+        daily_total.append(entry['total'])
+        daily_srid.append(entry['SRID'])
+        daily_genetics.append(entry['Genetics'])
 
     return render_template('dashboard.html',
                            total_montant=float(total_montant),
@@ -897,19 +903,11 @@ def delete_operation(op_id):
 
 # --- Consultation ---
 
-@app.route('/consultation')
-@login_required
-def consultation():
-    return render_template('consultation.html')
-
-
-@app.route('/api/operations')
-@login_required
-def api_operations():
-    _auto_update_echeance_statuts()
+def _build_operations_query(args):
+    """Construit et retourne la query + pagination à partir d'un dict de params."""
     query = Operation.query
 
-    search = request.args.get('search', '').strip()
+    search = args.get('search', '').strip()
     if search:
         query = query.filter(or_(
             Operation.client.ilike(f'%{search}%'),
@@ -920,23 +918,23 @@ def api_operations():
             Operation.societe.ilike(f'%{search}%'),
         ))
 
-    type_op = request.args.get('type_operation', '').strip()
+    type_op = args.get('type_operation', '').strip()
     if type_op:
         query = query.filter(Operation.type_operation == type_op)
 
-    type_cheque = request.args.get('type_cheque', '').strip()
+    type_cheque = args.get('type_cheque', '').strip()
     if type_cheque:
         query = query.filter(Operation.type_operation == 'Chèque', Operation.type_detail == type_cheque)
 
-    societe = request.args.get('societe', '').strip()
+    societe = args.get('societe', '').strip()
     if societe:
         query = query.filter(Operation.societe == societe)
 
-    statut = request.args.get('statut', '').strip()
+    statut = args.get('statut', '').strip()
     if statut:
         query = query.filter(Operation.statut == statut)
 
-    date_filter = request.args.get('date_filter', 'date_operation').strip()
+    date_filter = args.get('date_filter', 'date_operation').strip()
     date_column = Operation.date_operation
     if date_filter == 'date_reception':
         query = query.filter(Operation.type_operation == 'Chèque')
@@ -948,17 +946,17 @@ def api_operations():
         )
         date_column = Operation.date_encaissement
 
-    date_debut = request.args.get('date_debut', '').strip()
+    date_debut = args.get('date_debut', '').strip()
     if date_debut:
         query = query.filter(date_column >= date_debut)
 
-    date_fin = request.args.get('date_fin', '').strip()
+    date_fin = args.get('date_fin', '').strip()
     if date_fin:
         query = query.filter(date_column <= date_fin)
 
     # Tri
-    sort = request.args.get('sort', '').strip()
-    order = request.args.get('order', 'desc')
+    sort = args.get('sort', '').strip()
+    order = args.get('order', 'desc')
     if sort and hasattr(Operation, sort):
         col = getattr(Operation, sort)
         query = query.order_by(col.desc() if order == 'desc' else col.asc())
@@ -993,36 +991,58 @@ def api_operations():
             Operation.date_operation.desc(),
         )
 
-    # Totaux
-    total_montant_filtre = db.session.query(func.sum(Operation.montant)).filter(
+    total_montant = db.session.query(func.sum(Operation.montant)).filter(
         Operation.id.in_(query.with_entities(Operation.id))
     ).scalar() or 0
     total_count = query.count()
 
-    # Pagination
-    page = request.args.get('page', 1, type=int)
+    page = int(args.get('page', 1) or 1)
     per_page = 25
     offset = (page - 1) * per_page
     operations = query.limit(per_page).offset(offset).all()
     total_pages = (total_count + per_page - 1) // per_page
 
-    if request.headers.get('HX-Request'):
-        return render_template('partials/operations_table.html',
-                               operations=operations,
-                               total_montant=total_montant_filtre,
-                               total_count=total_count,
-                               is_admin=_current_role() == 'admin',
-                               status_choices=STATUS_CHOICES,
-                               page=page,
-                               total_pages=total_pages)
+    return {
+        'operations': operations,
+        'total_montant': total_montant,
+        'total_count': total_count,
+        'page': page,
+        'total_pages': total_pages,
+    }
 
-    return jsonify([op.to_dict() for op in operations])
+
+@app.route('/consultation')
+@login_required
+def consultation():
+    _auto_update_echeance_statuts()
+    notifications = _get_echeance_notifications()
+    role = _current_role()
+    rejections = _get_recent_rejections() if role != 'admin' else {'rejections': [], 'total': 0}
+    ops_data = _build_operations_query(request.args)
+    return render_template(
+        'consultation.html',
+        notifications=notifications,
+        rejections=rejections,
+        is_admin=(role == 'admin'),
+        **ops_data,
+    )
+
+
+@app.route('/api/operations')
+@login_required
+def api_operations():
+    data = _build_operations_query(request.args)
+    return render_template(
+        'partials/operations_table.html',
+        is_admin=_current_role() == 'admin',
+        status_choices=STATUS_CHOICES,
+        **data,
+    )
 
 
 @app.route('/api/notifications')
 @login_required
 def api_notifications():
-    _auto_update_echeance_statuts()
     notifications = _get_echeance_notifications()
     return render_template(
         'partials/notifications_panel.html',
@@ -1034,7 +1054,6 @@ def api_notifications():
 @app.route('/api/notifications/badge')
 @login_required
 def api_notifications_badge():
-    _auto_update_echeance_statuts()
     notifications = _get_echeance_notifications()
     # Pour les non-admins, ajouter le compte des rejets récents
     rejections_count = 0 if _current_role() == 'admin' else _get_recent_rejections()['total']
