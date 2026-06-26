@@ -1036,9 +1036,12 @@ def api_notifications():
 def api_notifications_badge():
     _auto_update_echeance_statuts()
     notifications = _get_echeance_notifications()
+    # Pour les non-admins, ajouter le compte des rejets récents
+    rejections_count = 0 if _current_role() == 'admin' else _get_recent_rejections()['total']
     return render_template(
         'partials/global_notifications_badge.html',
         notifications=notifications,
+        rejections_count=rejections_count,
     )
 
 
@@ -1047,14 +1050,15 @@ def api_notifications_badge():
 def api_rejections():
     """Retourne les rejets récents (sauf pour les admins)."""
     if _current_role() == 'admin':
-        return ('', 204)  # Admins ne voient pas les rejets (ils les créent)
+
+        rejections_data = {'rejections': [], 'total': 0}  # Admins ne voient pas les rejets
+    else:
+        rejections_data = _get_recent_rejections()
     
-    rejections_data = _get_recent_rejections()
     return render_template(
         'partials/rejections_panel.html',
         rejections=rejections_data,
     )
-
 
 @app.route('/api/operations/<int:op_id>')
 @login_required

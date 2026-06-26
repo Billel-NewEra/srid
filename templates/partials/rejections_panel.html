@@ -8,7 +8,7 @@
             <div>
                 <div class="font-semibold leading-tight">Chèques rejetés</div>
                 <div class="text-sm opacity-85">
-                    {{ rejections.total }} chèque{{ 's' if rejections.total > 1 else '' }} rejeté{{ 's' if rejections.total > 1 else '' }} par l'admin
+                    {{ rejections.total }} chèque{{ 's' if rejections.total > 1 else '' }} rejeté{{ 's' if rejections.total > 1 else '' }}
                 </div>
             </div>
         </div>
@@ -29,28 +29,14 @@
         </div>
         <div class="space-y-2">
             {% for item in rejections.rejections %}
-            <div class="flex items-start justify-between gap-2 bg-base-100 rounded px-2 py-1.5">
-                <div class="min-w-0 flex-1">
+            <div class="flex items-center justify-between gap-2 bg-base-100 rounded px-2 py-1.5 cursor-pointer hover:bg-base-300 transition-colors"
+                 hx-get="{{ url_for('api_operation_detail', op_id=item.operation.id) }}"
+                 hx-target="#modal-content" hx-swap="innerHTML">
+                <div class="min-w-0">
                     <div class="text-sm font-medium truncate">{{ item.operation.client }}</div>
-                    <div class="text-xs opacity-80 space-y-0.5">
-                        <div>
-                            <span class="opacity-70">Montant:</span>
-                            <span class="text-slate-300 font-medium">{{ "%.2f"|format(item.operation.montant) }} DA</span>
-                        </div>
-                        {% if item.operation.numero_piece %}
-                        <div>
-                            <span class="opacity-70">Chèque #:</span>
-                            <span class="text-slate-300 font-medium">{{ item.operation.numero_piece }}</span>
-                        </div>
-                        {% endif %}
-                        <div>
-                            <span class="opacity-70">Rejeté par:</span>
-                            <span class="text-slate-300 font-medium">{{ item.rejected_by or 'Admin' }}</span>
-                            <span class="opacity-60">
-                                à {{ item.rejected_at.strftime('%H:%M') }}
-                            </span>
-                        </div>
-                    </div>
+                    {% if item.operation.numero_piece %}
+                    <div class="text-xs opacity-60">N° {{ item.operation.numero_piece }}</div>
+                    {% endif %}
                 </div>
             </div>
             {% endfor %}
@@ -60,18 +46,29 @@
 {% endif %}
 
 <script>
+// Check if panel has content (actual rejections)
+function shouldShowRejections() {
+    return {{ rejections.total > 0 }};
+}
+
 function dismissRejectionsPanel() {
     const panel = document.getElementById('rejections-panel');
     if (panel) {
         panel.style.display = 'none';
-        // Stocker dans localStorage pour pas re-montrer dans la même session
-        localStorage.setItem('rejections_dismissed', 'true');
+        // Stocker dans sessionStorage (nettoyé auto à la fin de la session)
+        sessionStorage.setItem('rejections_dismissed', 'true');
     }
 }
 
 // Vérifier si c'était déjà fermé
 document.addEventListener('DOMContentLoaded', function() {
-    if (localStorage.getItem('rejections_dismissed') === 'true') {
+    // Si panel a du contenu et flag n'est pas set, réinitialiser le flag
+    if (shouldShowRejections() && sessionStorage.getItem('rejections_dismissed') === 'true') {
+        sessionStorage.removeItem('rejections_dismissed');
+    }
+    
+    // Cacher le panel si flag est set et panel est vide
+    if (sessionStorage.getItem('rejections_dismissed') === 'true' && !shouldShowRejections()) {
         const panel = document.getElementById('rejections-panel');
         if (panel) {
             panel.style.display = 'none';
