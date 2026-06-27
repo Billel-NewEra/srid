@@ -1,0 +1,321 @@
+{% extends "base.html" %}
+{% block title %}Bons de commande - SRID COM{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+
+    <!-- En-tête -->
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+        <div>
+            <h1 class="text-2xl font-bold">
+                <i class="fas fa-file-invoice text-teal-400 mr-2"></i>Bons de commande
+            </h1>
+            <p class="text-sm opacity-60 mt-1">{{ total }} bon{{ 's' if total != 1 else '' }} de commande</p>
+        </div>
+        {% if can_write %}
+        <button class="btn btn-primary btn-sm" onclick="document.getElementById('modal-add-bon').showModal()">
+            <i class="fas fa-plus mr-1"></i>Nouveau bon
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- Filtres -->
+    <form method="GET" action="{{ url_for('logistique_bons') }}"
+          class="card bg-base-100 shadow mb-4">
+        <div class="card-body p-4">
+            <div class="flex flex-wrap gap-2 items-end">
+                <input type="text" name="search" value="{{ search }}"
+                       placeholder="N° bon / Fournisseur..."
+                       class="input input-bordered input-sm flex-1 min-w-[160px]">
+                <select name="societe" class="select select-bordered select-sm">
+                    <option value="">Toutes sociétés</option>
+                    <option value="SRID" {% if societe == 'SRID' %}selected{% endif %}>SRID</option>
+                    <option value="SRID GENETICS" {% if societe == 'SRID GENETICS' %}selected{% endif %}>SRID GENETICS</option>
+                </select>
+                <select name="statut" class="select select-bordered select-sm">
+                    <option value="">Tous statuts</option>
+                    {% for s in bon_statuts %}
+                    <option value="{{ s }}" {% if statut_f == s %}selected{% endif %}>{{ s }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="fas fa-search mr-1"></i>Filtrer
+                </button>
+                {% if search or societe or statut_f %}
+                <a href="{{ url_for('logistique_bons') }}" class="btn btn-ghost btn-sm">
+                    <i class="fas fa-times mr-1"></i>Effacer
+                </a>
+                {% endif %}
+            </div>
+        </div>
+    </form>
+
+    <!-- Table -->
+    <div class="card bg-base-100 shadow">
+        <div class="overflow-x-auto">
+            <table class="table table-sm w-full">
+                <thead>
+                    <tr class="bg-base-200 text-xs uppercase tracking-wide">
+                        <th>N° Bon</th>
+                        <th>Société</th>
+                        <th>Fournisseur</th>
+                        <th>Date</th>
+                        <th>Livraison prévue</th>
+                        <th>Statut</th>
+                        <th class="text-right">Total €</th>
+                        <th>Notes</th>
+                        {% if can_write %}<th class="text-center">Actions</th>{% endif %}
+                    </tr>
+                </thead>
+                <tbody>
+                {% for bon in bons %}
+                {% if bon.statut == 'Approuvé' %}{% set bon_badge = 'badge-success' %}
+                {% elif bon.statut == 'Envoyé' %}{% set bon_badge = 'badge-info' %}
+                {% elif bon.statut == 'Reçu' %}{% set bon_badge = 'badge-primary' %}
+                {% elif bon.statut == 'En attente' %}{% set bon_badge = 'badge-warning' %}
+                {% else %}{% set bon_badge = 'badge-ghost' %}{% endif %}
+                <tr class="hover border-b border-base-300">
+                    <td class="font-mono font-semibold text-sm">{{ bon.numero }}</td>
+                    <td><span class="badge badge-ghost badge-xs">{{ bon.societe }}</span></td>
+                    <td class="font-medium">{{ bon.fournisseur or '—' }}</td>
+                    <td class="text-sm">{{ bon.date_commande.strftime('%d/%m/%Y') if bon.date_commande else '—' }}</td>
+                    <td class="text-sm opacity-70">{{ bon.date_livraison_prevue.strftime('%d/%m/%Y') if bon.date_livraison_prevue else '—' }}</td>
+                    <td>
+                        <details class="dropdown">
+                            <summary class="badge {{ bon_badge }} cursor-pointer list-none">{{ bon.statut }}</summary>
+                            <ul class="dropdown-content menu bg-base-100 rounded-box shadow z-50 w-40 p-1">
+                                {% for s in bon_statuts %}
+                                <li>
+                                    <form method="POST" action="{{ url_for('api_bon_statut', bon_id=bon.id) }}">
+                                        <input type="hidden" name="statut" value="{{ s }}">
+                                        <button type="submit" class="text-sm w-full text-left">{{ s }}</button>
+                                    </form>
+                                </li>
+                                {% endfor %}
+                            </ul>
+                        </details>
+                    </td>
+                    <td class="text-right font-mono font-semibold">
+                        {{ bon.total_eur | currency(2) if bon.total_eur else '—' }}
+                    </td>
+                    <td class="max-w-[180px] truncate text-xs opacity-60" title="{{ bon.notes }}">{{ bon.notes or '' }}</td>
+                    {% if can_write %}
+                    <td class="text-center whitespace-nowrap">
+                        <button class="btn btn-ghost btn-xs tooltip" data-tip="Voir détail"
+                                onclick="openBonDetail({{ bon.to_dict() | tojson }})">
+                            <i class="fas fa-eye text-primary"></i>
+                        </button>
+                        {% if is_admin %}
+                        <form method="POST" action="{{ url_for('api_bon_delete', bon_id=bon.id) }}"
+                              style="display:inline"
+                              onsubmit="return confirm('Supprimer le bon {{ bon.numero }} ?')">
+                            <button type="submit" class="btn btn-ghost btn-xs tooltip" data-tip="Supprimer">
+                                <i class="fas fa-trash text-error"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                    {% endif %}
+                </tr>
+                {% else %}
+                <tr><td colspan="9" class="text-center py-12 opacity-50">
+                    <i class="fas fa-inbox text-4xl block mb-3"></i>
+                    Aucun bon de commande{% if search or societe or statut_f %} pour ces filtres{% endif %}
+                </td></tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if total_pages > 1 %}
+        <div class="flex justify-between items-center px-4 py-3 border-t border-base-300">
+            <span class="text-xs opacity-60">
+                {{ ((page-1)*25)+1 }}–{{ [page*25, total]|min }} sur {{ total }}
+            </span>
+            <div class="flex items-center gap-1">
+                {% set base_url = url_for('logistique_bons', search=search, societe=societe, statut=statut_f) %}
+                {% if page > 1 %}
+                <a href="{{ base_url }}&page={{ page - 1 }}" class="btn btn-ghost btn-xs">
+                    <i class="fas fa-chevron-left"></i>
+                </a>
+                {% else %}
+                <button class="btn btn-ghost btn-xs" disabled><i class="fas fa-chevron-left"></i></button>
+                {% endif %}
+                <span class="text-sm px-2">{{ page }} / {{ total_pages }}</span>
+                {% if page < total_pages %}
+                <a href="{{ base_url }}&page={{ page + 1 }}" class="btn btn-ghost btn-xs">
+                    <i class="fas fa-chevron-right"></i>
+                </a>
+                {% else %}
+                <button class="btn btn-ghost btn-xs" disabled><i class="fas fa-chevron-right"></i></button>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+</div>
+
+<!-- ═══════ MODAL AJOUT BON ═══════ -->
+{% if can_write %}
+<dialog id="modal-add-bon" class="modal">
+    <div class="modal-box max-w-3xl">
+        <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button></form>
+        <h3 class="font-bold text-lg mb-4">
+            <i class="fas fa-file-invoice text-primary mr-2"></i>Nouveau bon de commande
+        </h3>
+        <form method="POST" action="{{ url_for('api_bon_add') }}">
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Société *</span></label>
+                    <select name="societe" class="select select-bordered select-sm" required>
+                        <option value="">—</option>
+                        <option value="SRID">SRID</option>
+                        <option value="SRID GENETICS">SRID GENETICS</option>
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Fournisseur</span></label>
+                    <input type="text" name="fournisseur" class="input input-bordered input-sm"
+                           placeholder="NOM FOURNISSEUR" list="list-fournisseurs-bon">
+                    <datalist id="list-fournisseurs-bon">
+                        {% for f in fournisseurs %}<option value="{{ f }}">{% endfor %}
+                    </datalist>
+                </div>
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Statut</span></label>
+                    <select name="statut" class="select select-bordered select-sm">
+                        {% for s in bon_statuts %}
+                        <option value="{{ s }}" {% if s == 'Brouillon' %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Date commande</span></label>
+                    <input type="date" name="date_commande" class="input input-bordered input-sm"
+                           value="{{ now().strftime('%Y-%m-%d') }}">
+                </div>
+                <div class="form-control sm:col-span-2">
+                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Livraison prévue</span></label>
+                    <input type="date" name="date_livraison_prevue" class="input input-bordered input-sm w-48">
+                </div>
+            </div>
+
+            <!-- Lignes de commande -->
+            <div class="mb-3">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-sm font-semibold">Lignes de commande</span>
+                    <button type="button" class="btn btn-ghost btn-xs" onclick="addBonLine()">
+                        <i class="fas fa-plus mr-1"></i>Ajouter une ligne
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="table table-xs w-full">
+                        <thead>
+                            <tr class="bg-base-200 text-xs">
+                                <th>Référence</th>
+                                <th>Désignation *</th>
+                                <th class="text-right w-20">Qté</th>
+                                <th class="w-20">Unité</th>
+                                <th class="text-right w-28">Prix unit. €</th>
+                                <th class="w-8"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="bon-lines">
+                            <tr class="bon-line">
+                                <td><input type="text" name="reference[]" class="input input-bordered input-xs w-full" placeholder="REF"></td>
+                                <td><input type="text" name="designation[]" class="input input-bordered input-xs w-full" placeholder="Désignation du produit"></td>
+                                <td><input type="number" name="quantite[]" step="any" min="0" class="input input-bordered input-xs w-full text-right" value="1"></td>
+                                <td><input type="text" name="unite[]" class="input input-bordered input-xs w-full" placeholder="KG"></td>
+                                <td><input type="number" name="prix_unitaire[]" step="any" min="0" class="input input-bordered input-xs w-full text-right" placeholder="0.00"></td>
+                                <td></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Notes -->
+            <div class="form-control mb-4">
+                <label class="label pb-1"><span class="label-text text-xs font-semibold">Notes</span></label>
+                <textarea name="notes" rows="2" class="textarea textarea-bordered text-sm"
+                          placeholder="Instructions spéciales, conditions..."></textarea>
+            </div>
+
+            <div class="modal-action">
+                <form method="dialog"><button class="btn btn-ghost btn-sm">Annuler</button></form>
+                <button type="submit" class="btn btn-primary btn-sm">
+                    <i class="fas fa-save mr-1"></i>Créer le bon
+                </button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
+<!-- ═══════ MODAL DÉTAIL BON ═══════ -->
+<dialog id="modal-detail-bon" class="modal">
+    <div class="modal-box max-w-2xl">
+        <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button></form>
+        <h3 class="font-bold text-lg mb-1" id="detail-bon-numero">—</h3>
+        <p class="text-xs opacity-60 mb-4" id="detail-bon-meta"></p>
+        <div id="detail-bon-lignes" class="overflow-x-auto">
+            <p class="opacity-50 text-sm">Aucune ligne</p>
+        </div>
+        <div class="modal-action">
+            <form method="dialog"><button class="btn btn-ghost btn-sm">Fermer</button></form>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+{% endif %}
+
+<script>
+function addBonLine() {
+    const row = document.createElement('tr');
+    row.className = 'bon-line';
+    row.innerHTML = `
+        <td><input type="text" name="reference[]" class="input input-bordered input-xs w-full" placeholder="REF"></td>
+        <td><input type="text" name="designation[]" class="input input-bordered input-xs w-full" placeholder="Désignation du produit"></td>
+        <td><input type="number" name="quantite[]" step="any" min="0" class="input input-bordered input-xs w-full text-right" value="1"></td>
+        <td><input type="text" name="unite[]" class="input input-bordered input-xs w-full" placeholder="KG"></td>
+        <td><input type="number" name="prix_unitaire[]" step="any" min="0" class="input input-bordered input-xs w-full text-right" placeholder="0.00"></td>
+        <td><button type="button" class="btn btn-ghost btn-xs text-error" onclick="this.closest('tr').remove()"><i class="fas fa-times"></i></button></td>
+    `;
+    document.getElementById('bon-lines').appendChild(row);
+}
+
+function openBonDetail(bon) {
+    document.getElementById('detail-bon-numero').textContent = bon.numero || '—';
+    const fournisseur = bon.fournisseur || '—';
+    const societe     = bon.societe || '—';
+    const statut      = bon.statut || '—';
+    document.getElementById('detail-bon-meta').textContent =
+        `${societe} · ${fournisseur} · ${statut}`;
+
+    const lignes = bon.lignes || [];
+    const container = document.getElementById('detail-bon-lignes');
+    if (!lignes.length) {
+        container.innerHTML = '<p class="opacity-50 text-sm">Aucune ligne</p>';
+    } else {
+        let html = '<table class="table table-xs w-full"><thead><tr class="bg-base-200"><th>Réf.</th><th>Désignation</th><th class="text-right">Qté</th><th>Unité</th><th class="text-right">Prix u. €</th><th class="text-right">Total €</th></tr></thead><tbody>';
+        lignes.forEach(l => {
+            const total = (l.quantite && l.prix_unitaire) ? (l.quantite * l.prix_unitaire).toFixed(2) : '—';
+            html += `<tr>
+                <td class="font-mono text-xs">${l.reference || ''}</td>
+                <td>${l.designation || '—'}</td>
+                <td class="text-right">${l.quantite || '—'}</td>
+                <td class="text-xs opacity-70">${l.unite || ''}</td>
+                <td class="text-right font-mono">${l.prix_unitaire ? parseFloat(l.prix_unitaire).toFixed(2) : '—'}</td>
+                <td class="text-right font-mono font-semibold">${total}</td>
+            </tr>`;
+        });
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+    document.getElementById('modal-detail-bon').showModal();
+}
+</script>
+{% endblock %}

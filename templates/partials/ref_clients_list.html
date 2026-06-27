@@ -1,0 +1,52 @@
+<div class="flex items-center justify-between mb-2 text-xs opacity-50">
+    <span>{{ total }} entrée{{ 's' if total != 1 else '' }}</span>
+    {% if total_pages > 1 %}<span>Page {{ page }}/{{ total_pages }}</span>{% endif %}
+</div>
+
+{% if clients %}
+<ul class="space-y-1">
+    {% for item in clients %}
+    <li class="flex items-center justify-between gap-2 px-3 py-2 rounded-lg bg-base-100 border border-base-300">
+        <span class="text-sm font-medium truncate flex-1">{{ item.nom }}</span>
+        {% if is_admin %}
+        <button class="btn btn-ghost btn-xs tooltip" data-tip="Supprimer"
+                hx-post="{{ url_for('api_ref_client_delete', item_id=item.id) }}"
+                hx-target="#clients-list" hx-swap="innerHTML"
+                hx-confirm="Supprimer « {{ item.nom }} » ?">
+            <i class="fas fa-trash text-error"></i>
+        </button>
+        {% endif %}
+    </li>
+    {% endfor %}
+</ul>
+
+{% if total_pages > 1 %}
+<div class="flex justify-center items-center gap-1 mt-3">
+    {% if page > 1 %}
+    <button class="btn btn-ghost btn-xs"
+            hx-get="{{ url_for('api_ref_clients_list') }}?page={{ page - 1 }}&search={{ search | urlencode }}"
+            hx-target="#clients-list" hx-swap="innerHTML">
+        <i class="fas fa-chevron-left"></i>
+    </button>
+    {% else %}
+    <button class="btn btn-ghost btn-xs" disabled><i class="fas fa-chevron-left"></i></button>
+    {% endif %}
+    <span class="text-xs opacity-60 px-2">{{ page }} / {{ total_pages }}</span>
+    {% if page < total_pages %}
+    <button class="btn btn-ghost btn-xs"
+            hx-get="{{ url_for('api_ref_clients_list') }}?page={{ page + 1 }}&search={{ search | urlencode }}"
+            hx-target="#clients-list" hx-swap="innerHTML">
+        <i class="fas fa-chevron-right"></i>
+    </button>
+    {% else %}
+    <button class="btn btn-ghost btn-xs" disabled><i class="fas fa-chevron-right"></i></button>
+    {% endif %}
+</div>
+{% endif %}
+
+{% else %}
+<p class="text-sm opacity-50 text-center py-6">
+    <i class="fas fa-inbox block text-2xl mb-2"></i>
+    {% if search %}Aucun résultat pour « {{ search }} »{% else %}Aucun client enregistré{% endif %}
+</p>
+{% endif %}

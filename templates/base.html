@@ -541,6 +541,13 @@
                         <span>Import Excel</span>
                     </a>
                     {% endif %}
+                    {% if can_write %}
+                    <a href="{{ url_for('referentiels') }}"
+                       class="nav-link nav-link-finance {% if request.endpoint == 'referentiels' %}active{% endif %}">
+                        <i class="nav-icon fas fa-list"></i>
+                        <span>Référentiels</span>
+                    </a>
+                    {% endif %}
 
                     <!-- ── LOGISTIQUE ── -->
                     <div class="pt-5 pb-1.5">
@@ -549,21 +556,16 @@
                             Logistique
                         </div>
                     </div>
-                    <span class="nav-link nav-link-logistique disabled">
+                    <a href="{{ url_for('logistique_bons') }}"
+                       class="nav-link nav-link-logistique {% if request.endpoint == 'logistique_bons' %}active{% endif %}">
                         <i class="nav-icon fas fa-file-invoice"></i>
-                        <span class="flex-1">Commandes</span>
-                        <span class="text-[10px] px-1.5 py-0.5 rounded shrink-0" style="background:hsl(222 40% 18%); color:hsl(215 20% 42%)">Bientôt</span>
-                    </span>
-                    <span class="nav-link nav-link-logistique disabled">
+                        <span>Bons de commande</span>
+                    </a>
+                    <a href="{{ url_for('logistique_gestion') }}"
+                       class="nav-link nav-link-logistique {% if request.endpoint == 'logistique_gestion' %}active{% endif %}">
                         <i class="nav-icon fas fa-truck"></i>
-                        <span class="flex-1">Statut Commandes</span>
-                        <span class="text-[10px] px-1.5 py-0.5 rounded shrink-0" style="background:hsl(222 40% 18%); color:hsl(215 20% 42%)">Bientôt</span>
-                    </span>
-                    <span class="nav-link nav-link-logistique disabled">
-                        <i class="nav-icon fas fa-search"></i>
-                        <span class="flex-1">Consultation</span>
-                        <span class="text-[10px] px-1.5 py-0.5 rounded shrink-0" style="background:hsl(222 40% 18%); color:hsl(215 20% 42%)">Bientôt</span>
-                    </span>
+                        <span>Gestion des commandes</span>
+                    </a>
 
                     <!-- ── ADMINISTRATION ── -->
                     <div class="pt-5 pb-1.5">

@@ -1,12 +1,19 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, send_file, send_from_directory, make_response
 from config import Config
-from models import db, Operation, User, AuditLog
+from models import db, Operation, User, AuditLog, ClientLabel, RemettantLabel, CommandeLogistique, BonCommande, LigneCommande, Fournisseur
 from datetime import datetime, date, timedelta
 from sqlalchemy import or_, func, extract, desc, case
 from functools import wraps
 import io
 import re
+import json
+import os
 from openpyxl import Workbook, load_workbook
+
+REF_PER_PAGE = 25
+LOG_PER_PAGE = 25
+BON_PER_PAGE = 25
+BON_STATUTS  = ['Brouillon', 'En attente', 'Approuvé', 'Envoyé', 'Reçu']
 
 
 app = Flask(__name__)
@@ -176,14 +183,22 @@ def _get_bank_suggestions():
 
 
 def _get_client_suggestions():
+    # Depuis les opérations existantes
     rows = db.session.query(Operation.client).filter(Operation.client.isnot(None), Operation.client != '').all()
     values = {str(v).strip() for (v,) in rows if v}
+    # Depuis le référentiel dédié
+    labels = ClientLabel.query.filter_by(actif=True).all()
+    values.update(l.nom.strip() for l in labels)
     return sorted(values)
 
 
 def _get_remettant_suggestions():
+    # Depuis les opérations existantes
     rows = db.session.query(Operation.remettant).filter(Operation.remettant.isnot(None), Operation.remettant != '').all()
     values = {str(v).strip() for (v,) in rows if v}
+    # Depuis le référentiel dédié
+    labels = RemettantLabel.query.filter_by(actif=True).all()
+    values.update(l.nom.strip() for l in labels)
     return sorted(values)
 
 
@@ -897,6 +912,363 @@ def edit_operation(op_id):
     )
 
 
+# ─── RÉFÉRENTIELS ────────────────────────────────────────────────────────────
+
+def _ref_clients_ctx(is_admin, page=1, search=''):
+    q = ClientLabel.query.order_by(ClientLabel.nom)
+    if search:
+        q = q.filter(ClientLabel.nom.ilike(f'%{search}%'))
+    total = q.count()
+    clients = q.offset((page - 1) * REF_PER_PAGE).limit(REF_PER_PAGE).all()
+    return dict(clients=clients, is_admin=is_admin, page=page, search=search,
+                total=total, total_pages=max(1, (total + REF_PER_PAGE - 1) // REF_PER_PAGE))
+
+
+def _ref_remettants_ctx(is_admin, page=1, search=''):
+    q = RemettantLabel.query.order_by(RemettantLabel.nom)
+    if search:
+        q = q.filter(RemettantLabel.nom.ilike(f'%{search}%'))
+    total = q.count()
+    remettants = q.offset((page - 1) * REF_PER_PAGE).limit(REF_PER_PAGE).all()
+    return dict(remettants=remettants, is_admin=is_admin, page=page, search=search,
+                total=total, total_pages=max(1, (total + REF_PER_PAGE - 1) // REF_PER_PAGE))
+
+
+@app.route('/referentiels')
+@role_required('admin', 'saisie')
+def referentiels():
+    return render_template('referentiels.html', is_admin=_current_role() == 'admin')
+
+
+@app.route('/api/referentiels/clients/list')
+@role_required('admin', 'saisie')
+def api_ref_clients_list():
+    page   = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '').strip()
+    return render_template('partials/ref_clients_list.html',
+                           **_ref_clients_ctx(_current_role() == 'admin', page, search))
+
+
+@app.route('/api/referentiels/remettants/list')
+@role_required('admin', 'saisie')
+def api_ref_remettants_list():
+    page   = request.args.get('page', 1, type=int)
+    search = request.args.get('search', '').strip()
+    return render_template('partials/ref_remettants_list.html',
+                           **_ref_remettants_ctx(_current_role() == 'admin', page, search))
+
+
+@app.route('/api/referentiels/clients/add', methods=['POST'])
+@role_required('admin', 'saisie')
+def api_ref_client_add():
+    nom = (request.form.get('nom') or '').strip()
+    if not nom:
+        return '<p class="text-error text-sm">Nom requis.</p>', 400
+    if ClientLabel.query.filter(db.func.lower(ClientLabel.nom) == nom.lower()).first():
+        return '<p class="text-error text-sm">Ce client existe déjà.</p>', 400
+    db.session.add(ClientLabel(nom=nom))
+    db.session.commit()
+    return render_template('partials/ref_clients_list.html',
+                           **_ref_clients_ctx(_current_role() == 'admin'))
+
+
+@app.route('/api/referentiels/clients/<int:item_id>/toggle', methods=['POST'])
+@role_required('admin', 'saisie')
+def api_ref_client_toggle(item_id):
+    item = ClientLabel.query.get_or_404(item_id)
+    item.actif = not item.actif
+    db.session.commit()
+    return render_template('partials/ref_clients_list.html',
+                           **_ref_clients_ctx(_current_role() == 'admin'))
+
+
+@app.route('/api/referentiels/clients/<int:item_id>/delete', methods=['DELETE', 'POST'])
+@role_required('admin')
+def api_ref_client_delete(item_id):
+    item = ClientLabel.query.get_or_404(item_id)
+    db.session.delete(item)
+    db.session.commit()
+    return render_template('partials/ref_clients_list.html',
+                           **_ref_clients_ctx(_current_role() == 'admin'))
+
+
+@app.route('/api/referentiels/remettants/add', methods=['POST'])
+@role_required('admin', 'saisie')
+def api_ref_remettant_add():
+    nom = (request.form.get('nom') or '').strip()
+    if not nom:
+        return '<p class="text-error text-sm">Nom requis.</p>', 400
+    if RemettantLabel.query.filter(db.func.lower(RemettantLabel.nom) == nom.lower()).first():
+        return '<p class="text-error text-sm">Ce remettant existe déjà.</p>', 400
+    db.session.add(RemettantLabel(nom=nom))
+    db.session.commit()
+    return render_template('partials/ref_remettants_list.html',
+                           **_ref_remettants_ctx(_current_role() == 'admin'))
+
+
+@app.route('/api/referentiels/remettants/<int:item_id>/toggle', methods=['POST'])
+@role_required('admin', 'saisie')
+def api_ref_remettant_toggle(item_id):
+    item = RemettantLabel.query.get_or_404(item_id)
+    item.actif = not item.actif
+    db.session.commit()
+    return render_template('partials/ref_remettants_list.html',
+                           **_ref_remettants_ctx(_current_role() == 'admin'))
+
+
+@app.route('/api/referentiels/remettants/<int:item_id>/delete', methods=['DELETE', 'POST'])
+@role_required('admin')
+def api_ref_remettant_delete(item_id):
+    item = RemettantLabel.query.get_or_404(item_id)
+    db.session.delete(item)
+    db.session.commit()
+    return render_template('partials/ref_remettants_list.html',
+                           **_ref_remettants_ctx(_current_role() == 'admin'))
+
+
+# ─── LOGISTIQUE ──────────────────────────────────────────────────────────────
+
+def _log_kpis():
+    """Calcule les KPIs logistique (nombre d'entrées par statut)."""
+    kpis = {'ARRIVÉ': 0, 'EN COURS DE PAIEMENT': 0, 'À ÉCHÉANCE': 0, 'ÉCHU': 0, 'PAYÉ': 0, '': 0}
+    for c in CommandeLogistique.query.all():
+        s = c.statut
+        if s in kpis:
+            kpis[s] += 1
+    return kpis
+
+
+@app.route('/logistique/gestion')
+@login_required
+def logistique_gestion():
+    page     = request.args.get('page', 1, type=int)
+    search   = request.args.get('search', '').strip()
+    societe  = request.args.get('societe', '').strip()
+    annee    = request.args.get('annee', '').strip()
+    statut_f = request.args.get('statut', '').strip()
+
+    q = CommandeLogistique.query
+    if search:
+        q = q.filter(or_(
+            CommandeLogistique.produit.ilike(f'%{search}%'),
+            CommandeLogistique.fournisseur.ilike(f'%{search}%')
+        ))
+    if societe:
+        q = q.filter(CommandeLogistique.societe == societe)
+    if annee:
+        q = q.filter(CommandeLogistique.annee == annee)
+
+    q = q.order_by(CommandeLogistique.date_arrivee.desc().nullslast(),
+                   CommandeLogistique.id.desc())
+
+    if statut_f:
+        all_items        = q.all()
+        items_filtered   = [c for c in all_items if c.statut == statut_f]
+        total            = len(items_filtered)
+        items            = items_filtered[(page - 1) * LOG_PER_PAGE: page * LOG_PER_PAGE]
+    else:
+        total = q.count()
+        items = q.offset((page - 1) * LOG_PER_PAGE).limit(LOG_PER_PAGE).all()
+
+    total_pages  = max(1, (total + LOG_PER_PAGE - 1) // LOG_PER_PAGE)
+
+    years = [r[0] for r in db.session.query(CommandeLogistique.annee)
+             .filter(CommandeLogistique.annee.isnot(None), CommandeLogistique.annee != '')
+             .distinct().order_by(CommandeLogistique.annee.desc()).all()]
+
+    fournisseurs = [r[0] for r in db.session.query(CommandeLogistique.fournisseur)
+                    .filter(CommandeLogistique.fournisseur.isnot(None), CommandeLogistique.fournisseur != '')
+                    .distinct().order_by(CommandeLogistique.fournisseur).all()]
+
+    return render_template('logistique_gestion.html',
+                           items=items, page=page, total_pages=total_pages, total=total,
+                           search=search, societe=societe, annee=annee, statut_f=statut_f,
+                           years=years, kpis=_log_kpis(), fournisseurs=fournisseurs,
+                           today=date.today(),
+                           can_write=_current_role() in ('admin', 'saisie'),
+                           is_admin=_current_role() == 'admin')
+
+
+def _log_form_fields(c):
+    """Lit les champs du formulaire logistique depuis request.form et les applique à l'objet c."""
+    def fd(k):
+        v = request.form.get(k, '').strip()
+        try:
+            return datetime.strptime(v, '%Y-%m-%d').date() if v else None
+        except ValueError:
+            return None
+    def ff(k):
+        try:
+            v = request.form.get(k, '').strip()
+            return float(v) if v else None
+        except ValueError:
+            return None
+    def fi(k):
+        try:
+            v = request.form.get(k, '').strip()
+            return int(float(v)) if v else None
+        except ValueError:
+            return None
+
+    c.societe       = request.form.get('societe', '').strip()
+    c.annee         = request.form.get('annee', '').strip() or None
+    c.date_d10      = fd('date_d10')
+    c.date_arrivee  = fd('date_arrivee')
+    c.fournisseur   = request.form.get('fournisseur', '').strip().upper() or None
+    c.produit       = request.form.get('produit', '').strip() or None
+    c.emballage     = request.form.get('emballage', '').strip() or None
+    c.quantite      = ff('quantite')
+    c.tva           = ff('tva')
+    c.montant_eur   = ff('montant_eur')
+    c.cours         = ff('cours')
+    c.date_facture  = fd('date_facture')
+    c.code_paiement = request.form.get('code_paiement', '').strip() or None
+    c.nb_jours      = fi('nb_jours')
+    c.date_echeance = fd('date_echeance')
+    c.date_paiement = fd('date_paiement')
+    c.date_valeur   = fd('date_valeur')
+    c.remarque      = request.form.get('remarque', '').strip() or None
+
+
+@app.route('/api/logistique/add', methods=['POST'])
+@role_required('admin', 'saisie')
+def api_logistique_add():
+    c = CommandeLogistique(cree_par=session.get('username', ''))
+    _log_form_fields(c)
+    db.session.add(c)
+    db.session.commit()
+    return redirect(url_for('logistique_gestion'))
+
+
+@app.route('/api/logistique/<int:item_id>/edit', methods=['POST'])
+@role_required('admin', 'saisie')
+def api_logistique_edit(item_id):
+    c = CommandeLogistique.query.get_or_404(item_id)
+    _log_form_fields(c)
+    db.session.commit()
+    return redirect(url_for('logistique_gestion'))
+
+
+@app.route('/api/logistique/<int:item_id>/delete', methods=['POST', 'DELETE'])
+@role_required('admin')
+def api_logistique_delete(item_id):
+    c = CommandeLogistique.query.get_or_404(item_id)
+    db.session.delete(c)
+    db.session.commit()
+    return redirect(url_for('logistique_gestion'))
+
+
+# ── Bons de commande ──────────────────────────────────────────────────────────
+
+@app.route('/logistique/bons')
+@login_required
+def logistique_bons():
+    page     = request.args.get('page', 1, type=int)
+    search   = request.args.get('search', '').strip()
+    societe  = request.args.get('societe', '').strip()
+    statut_f = request.args.get('statut', '').strip()
+
+    q = BonCommande.query
+    if search:
+        q = q.filter(or_(
+            BonCommande.fournisseur.ilike(f'%{search}%'),
+            BonCommande.numero.ilike(f'%{search}%'),
+            BonCommande.notes.ilike(f'%{search}%')
+        ))
+    if societe:
+        q = q.filter(BonCommande.societe == societe)
+    if statut_f:
+        q = q.filter(BonCommande.statut == statut_f)
+
+    q = q.order_by(BonCommande.date_commande.desc(), BonCommande.id.desc())
+    total       = q.count()
+    bons        = q.offset((page - 1) * BON_PER_PAGE).limit(BON_PER_PAGE).all()
+    total_pages = max(1, (total + BON_PER_PAGE - 1) // BON_PER_PAGE)
+
+    fournisseurs = [r[0] for r in db.session.query(CommandeLogistique.fournisseur)
+                    .filter(CommandeLogistique.fournisseur.isnot(None), CommandeLogistique.fournisseur != '')
+                    .distinct().order_by(CommandeLogistique.fournisseur).all()]
+
+    return render_template('logistique_bons.html',
+                           bons=bons, page=page, total_pages=total_pages, total=total,
+                           search=search, societe=societe, statut_f=statut_f,
+                           bon_statuts=BON_STATUTS, fournisseurs=fournisseurs,
+                           can_write=_current_role() in ('admin', 'saisie'),
+                           is_admin=_current_role() == 'admin')
+
+
+@app.route('/api/logistique/bons/add', methods=['POST'])
+@role_required('admin', 'saisie')
+def api_bon_add():
+    def fd(k):
+        v = request.form.get(k, '').strip()
+        try:
+            return datetime.strptime(v, '%Y-%m-%d').date() if v else None
+        except ValueError:
+            return None
+
+    year_str = str(date.today().year)
+    count    = BonCommande.query.filter(BonCommande.numero.like(f'BC-{year_str}-%')).count()
+    numero   = f'BC-{year_str}-{count + 1:04d}'
+
+    bon = BonCommande(
+        numero                = numero,
+        societe               = request.form.get('societe', '').strip(),
+        fournisseur           = request.form.get('fournisseur', '').strip().upper() or None,
+        statut                = request.form.get('statut', 'Brouillon'),
+        date_commande         = fd('date_commande') or date.today(),
+        date_livraison_prevue = fd('date_livraison_prevue'),
+        notes                 = request.form.get('notes', '').strip() or None,
+        cree_par              = session.get('username', ''),
+    )
+    db.session.add(bon)
+    db.session.flush()
+
+    designations   = request.form.getlist('designation[]')
+    quantites      = request.form.getlist('quantite[]')
+    unites         = request.form.getlist('unite[]')
+    prix_unitaires = request.form.getlist('prix_unitaire[]')
+    references     = request.form.getlist('reference[]')
+
+    for i, desig in enumerate(designations):
+        desig = desig.strip()
+        if not desig:
+            continue
+        try:
+            qty = float(quantites[i]) if i < len(quantites) and quantites[i].strip() else 1.0
+        except (ValueError, IndexError):
+            qty = 1.0
+        try:
+            prix = float(prix_unitaires[i]) if i < len(prix_unitaires) and prix_unitaires[i].strip() else None
+        except (ValueError, IndexError):
+            prix = None
+        ref   = references[i].strip() if i < len(references) else ''
+        unite = unites[i].strip() if i < len(unites) else ''
+        db.session.add(LigneCommande(bon_id=bon.id, reference=ref or None,
+                                     designation=desig, quantite=qty,
+                                     unite=unite or None, prix_unitaire=prix))
+    db.session.commit()
+    return redirect(url_for('logistique_bons'))
+
+
+@app.route('/api/logistique/bons/<int:bon_id>/statut', methods=['POST'])
+@role_required('admin', 'saisie')
+def api_bon_statut(bon_id):
+    bon = BonCommande.query.get_or_404(bon_id)
+    bon.statut = request.form.get('statut', bon.statut)
+    db.session.commit()
+    return redirect(url_for('logistique_bons'))
+
+
+@app.route('/api/logistique/bons/<int:bon_id>/delete', methods=['POST', 'DELETE'])
+@role_required('admin')
+def api_bon_delete(bon_id):
+    bon = BonCommande.query.get_or_404(bon_id)
+    db.session.delete(bon)
+    db.session.commit()
+    return redirect(url_for('logistique_bons'))
+
+
 # --- Suppression ---
 
 @app.route('/delete/<int:op_id>', methods=['DELETE', 'POST'])
@@ -1354,7 +1726,80 @@ with app.app_context():
         if op.statut != normalized_statut:
             op.statut = normalized_statut
 
+    # Seed référentiels depuis les opérations existantes (idempotent).
+    existing_clients = {c.nom.lower() for c in ClientLabel.query.all()}
+    client_vals = db.session.query(Operation.client).filter(
+        Operation.client.isnot(None), Operation.client != ''
+    ).distinct().all()
+    for (nom,) in client_vals:
+        nom = (nom or '').strip()
+        if nom and nom.lower() not in existing_clients:
+            db.session.add(ClientLabel(nom=nom))
+            existing_clients.add(nom.lower())
+
+    existing_remettants = {r.nom.lower() for r in RemettantLabel.query.all()}
+    remettant_vals = db.session.query(Operation.remettant).filter(
+        Operation.remettant.isnot(None), Operation.remettant != ''
+    ).distinct().all()
+    for (nom,) in remettant_vals:
+        nom = (nom or '').strip()
+        if nom and nom.lower() not in existing_remettants:
+            db.session.add(RemettantLabel(nom=nom))
+            existing_remettants.add(nom.lower())
+
     db.session.commit()
+
+    # Seed logistique depuis bon-md/logistics-data.js (idempotent, une seule fois)
+    if CommandeLogistique.query.count() == 0:
+        _js_path = os.path.abspath(os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), '..', 'bon-md', 'logistics-data.js'))
+        if os.path.exists(_js_path):
+            with open(_js_path, 'r', encoding='utf-8') as _f:
+                _content = _f.read()
+            _m = re.search(r'window\.LOGISTICS_SEED\s*=\s*(\[.*?\]);', _content, re.DOTALL)
+            if _m:
+                _data = json.loads(_m.group(1))
+                def _pd(s):
+                    if not s or not isinstance(s, str) or not s.strip():
+                        return None
+                    try:
+                        return datetime.strptime(s.strip(), '%Y-%m-%d').date()
+                    except ValueError:
+                        return None
+                def _pf(v):
+                    try:
+                        return float(v) if v is not None and v != '' else None
+                    except (TypeError, ValueError):
+                        return None
+                def _pi(v):
+                    try:
+                        return int(float(v)) if v is not None and v != '' else None
+                    except (TypeError, ValueError):
+                        return None
+                for _item in _data:
+                    db.session.add(CommandeLogistique(
+                        ref_log       = _item.get('id'),
+                        societe       = _item.get('company', ''),
+                        annee         = str(_item.get('year', '')) if _item.get('year') else None,
+                        date_d10      = _pd(_item.get('dateD10')),
+                        date_arrivee  = _pd(_item.get('arrivalDate')),
+                        fournisseur   = (_item.get('supplier') or '').upper() or None,
+                        produit       = _item.get('product') or None,
+                        emballage     = _item.get('packaging') or None,
+                        quantite      = _pf(_item.get('quantity')),
+                        tva           = _pf(_item.get('vat')),
+                        montant_eur   = _pf(_item.get('amountEur')),
+                        cours         = _pf(_item.get('rate')),
+                        date_facture  = _pd(_item.get('invoiceDate')),
+                        code_paiement = _item.get('paymentCode') or None,
+                        nb_jours      = _pi(_item.get('paymentDays')),
+                        date_echeance = _pd(_item.get('dueDate')),
+                        date_paiement = _pd(_item.get('paymentDate')),
+                        date_valeur   = _pd(_item.get('valueDate')),
+                        remarque      = _item.get('remark') or None,
+                        cree_par      = 'seed',
+                    ))
+                db.session.commit()
 
 
 if __name__ == '__main__':

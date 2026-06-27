@@ -81,6 +81,138 @@ class Operation(db.Model):
         }
 
 
+class ClientLabel(db.Model):
+    __tablename__ = 'client_labels'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nom = db.Column(db.String(200), unique=True, nullable=False)
+    actif = db.Column(db.Boolean, default=True, nullable=False)
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class RemettantLabel(db.Model):
+    __tablename__ = 'remettant_labels'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nom = db.Column(db.String(200), unique=True, nullable=False)
+    actif = db.Column(db.Boolean, default=True, nullable=False)
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class Fournisseur(db.Model):
+    __tablename__ = 'fournisseurs'
+
+    id            = db.Column(db.Integer, primary_key=True)
+    nom           = db.Column(db.String(200), unique=True, nullable=False)
+    actif         = db.Column(db.Boolean, default=True, nullable=False)
+    date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class CommandeLogistique(db.Model):
+    __tablename__ = 'commandes_logistique'
+
+    id                = db.Column(db.Integer, primary_key=True)
+    ref_log           = db.Column(db.String(20))          # LOG-0001 etc.
+    societe           = db.Column(db.String(50), nullable=False)
+    annee             = db.Column(db.String(4))
+    date_d10          = db.Column(db.Date)
+    date_arrivee      = db.Column(db.Date)
+    fournisseur       = db.Column(db.String(200))
+    produit           = db.Column(db.String(200))
+    emballage         = db.Column(db.String(100))
+    quantite          = db.Column(db.Float)
+    tva               = db.Column(db.Float)
+    montant_eur       = db.Column(db.Float)
+    cours             = db.Column(db.Float)               # 4 décimales
+    date_facture      = db.Column(db.Date)
+    code_paiement     = db.Column(db.String(10))          # T / R / CAD
+    nb_jours          = db.Column(db.Integer)
+    date_echeance     = db.Column(db.Date)
+    date_paiement     = db.Column(db.Date)
+    date_valeur       = db.Column(db.Date)
+    remarque          = db.Column(db.Text)
+    cree_par          = db.Column(db.String(100))
+    date_creation     = db.Column(db.DateTime, default=datetime.utcnow)
+    date_modification = db.Column(db.DateTime, onupdate=datetime.utcnow)
+
+    @property
+    def montant_da(self):
+        if self.montant_eur and self.cours:
+            return round(self.montant_eur * self.cours, 2)
+        return None
+
+    @property
+    def statut(self):
+        today = date.today()
+        if self.date_valeur:
+            return 'PAYÉ'
+        if self.date_paiement:
+            return 'EN COURS DE PAIEMENT'
+        if self.date_echeance:
+            if self.date_echeance < today:
+                return 'ÉCHU'
+            return 'À ÉCHÉANCE'
+        if self.date_arrivee:
+            return 'ARRIVÉ'
+        return ''
+
+
+class BonCommande(db.Model):
+    __tablename__ = 'bons_commande'
+
+    id                    = db.Column(db.Integer, primary_key=True)
+    numero                = db.Column(db.String(50), unique=True)
+    societe               = db.Column(db.String(50), nullable=False)
+    fournisseur           = db.Column(db.String(200))
+    statut                = db.Column(db.String(30), default='Brouillon')
+    date_commande         = db.Column(db.Date, nullable=False)
+    date_livraison_prevue = db.Column(db.Date)
+    notes                 = db.Column(db.Text)
+    cree_par              = db.Column(db.String(100))
+    date_creation         = db.Column(db.DateTime, default=datetime.utcnow)
+    lignes                = db.relationship('LigneCommande', backref='bon',
+                                            lazy=True, cascade='all, delete-orphan')
+
+    @property
+    def total_eur(self):
+        return sum((l.quantite or 0) * (l.prix_unitaire or 0) for l in self.lignes)
+
+    def to_dict(self):
+        return {
+            'id':                    self.id,
+            'numero':                self.numero,
+            'societe':               self.societe,
+            'fournisseur':           self.fournisseur,
+            'statut':                self.statut,
+            'date_commande':         self.date_commande.strftime('%Y-%m-%d') if self.date_commande else None,
+            'date_livraison_prevue': self.date_livraison_prevue.strftime('%Y-%m-%d') if self.date_livraison_prevue else None,
+            'notes':                 self.notes,
+            'lignes': [
+                {
+                    'id':            l.id,
+                    'reference':     l.reference,
+                    'designation':   l.designation,
+                    'quantite':      l.quantite,
+                    'unite':         l.unite,
+                    'prix_unitaire': l.prix_unitaire,
+                }
+                for l in self.lignes
+            ],
+        }
+
+
+class LigneCommande(db.Model):
+    __tablename__ = 'lignes_commande'
+
+    id            = db.Column(db.Integer, primary_key=True)
+    bon_id        = db.Column(db.Integer, db.ForeignKey('bons_commande.id'), nullable=False)
+    reference     = db.Column(db.String(100))
+    designation   = db.Column(db.String(300), nullable=False)
+    quantite      = db.Column(db.Float, nullable=False, default=1)
+    unite         = db.Column(db.String(50))
+    prix_unitaire = db.Column(db.Float)
+
+
 class AuditLog(db.Model):
     __tablename__ = 'audit_log'
 
