@@ -115,15 +115,15 @@
                     <div class="w-3 h-3 rounded-full bg-{{ statut_colors[statut] }}-500"></div>
                     <span class="font-bold text-sm">{{ statut }}s</span>
                 </div>
-                <p class="font-bold text-lg text-{{ statut_colors[statut] }}-400 mb-2">{{ "{:,.0f}".format(info.montant) }} DA</p>
+                <p class="font-bold text-lg text-{{ statut_colors[statut] }}-400 mb-2">{{ info.montant|currency(0) }} DA</p>
                 <div class="space-y-1 text-xs border-t border-base-300 pt-2">
                     <div class="flex justify-between">
                         <span class="text-blue-400">SRID</span>
-                        <span><span class="font-semibold text-blue-400">{{ "{:,.0f}".format(info.srid_montant) }} DA</span></span>
+                        <span><span class="font-semibold text-blue-400">{{ info.srid_montant|currency(0) }} DA</span></span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-pink-400">Genetics</span>
-                        <span><span class="font-semibold text-pink-400">{{ "{:,.0f}".format(info.genetics_montant) }} DA</span></span>
+                        <span><span class="font-semibold text-pink-400">{{ info.genetics_montant|currency(0) }} DA</span></span>
                     </div>
                 </div>
             </div>
@@ -147,15 +147,15 @@
                 <div class="space-y-1 text-sm">
                     <div class="flex justify-between">
                         <span class="opacity-70">Total</span>
-                        <span class="font-bold">{{ "{:,.0f}".format(info.total.montant) }} DA</span>
+                        <span class="font-bold">{{ info.total.montant|currency(0) }} DA</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-blue-400">SRID</span>
-                        <span class="font-semibold text-blue-400">{{ "{:,.0f}".format(info.SRID.montant) }} DA</span>
+                        <span class="font-semibold text-blue-400">{{ info.SRID.montant|currency(0) }} DA</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-pink-400">Genetics</span>
-                        <span class="font-semibold text-pink-400">{{ "{:,.0f}".format(info.Genetics.montant) }} DA</span>
+                        <span class="font-semibold text-pink-400">{{ info.Genetics.montant|currency(0) }} DA</span>
                     </div>
                 </div>
             </div>
@@ -249,7 +249,7 @@
                         <div class="flex-1">
                             <div class="flex justify-between items-center mb-1">
                                 <span class="text-sm font-medium truncate max-w-[180px]">{{ client_name or 'N/A' }}</span>
-                                <span class="text-sm font-bold">{{ "{:,.0f}".format(total) }} DA</span>
+                                <span class="text-sm font-bold">{{ total|currency(0) }} DA</span>
                             </div>
                             <progress class="progress progress-primary w-full h-2" value="{{ total }}" max="{{ top_clients[0][1] if top_clients else 1 }}"></progress>
                         </div>
@@ -298,7 +298,7 @@
                             </td>
                             <td class="text-xs">{{ op.societe }}</td>
                             <td class="max-w-32 truncate">{{ op.client }}</td>
-                            <td class="text-right font-mono font-semibold">{{ "{:,.2f}".format(op.montant) }}</td>
+                            <td class="text-right font-mono font-semibold">{{ op.montant|currency }}</td>
                             <td>
                                 <span class="badge badge-sm font-semibold whitespace-nowrap
                                     {% if op.statut == 'Encaissé' %}bg-emerald-600 text-white border-emerald-700

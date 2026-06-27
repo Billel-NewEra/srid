@@ -10,145 +10,123 @@
         </a>
     </div>
 
-    <!-- Layout deux colonnes : tableau + notifications à droite -->
-    <div class="flex gap-4 items-start">
+    <!-- Notifications échéances -->
+    <div id="notifications-panel"
+         hx-get="{{ url_for('api_notifications') }}"
+         hx-trigger="refreshGlobalAlert from:body"
+         hx-swap="innerHTML"
+         class="mb-4">
+        {% include 'partials/notifications_panel.html' %}
+    </div>
 
-        <!-- Colonne principale : filtres + tableau -->
-        <div class="flex-1 min-w-0 flex flex-col gap-4">
+    <!-- Notifications rejets -->
+    <div id="rejections-panel"
+         hx-get="{{ url_for('api_rejections') }}"
+         hx-trigger="refreshGlobalAlert from:body"
+         hx-swap="innerHTML"
+         class="mb-4">
+        {% include 'partials/rejections_panel.html' %}
+    </div>
 
-            <!-- Barre de recherche -->
-            <div class="card bg-base-100 shadow">
-                <div class="card-body p-4">
-                    <div class="flex flex-col gap-4">
-                        <!-- Recherche texte -->
-                        <div class="form-control">
-                            <div class="input-group flex">
-                                <span class="bg-primary text-primary-content px-3 flex items-center rounded-l-lg"><i class="fas fa-search"></i></span>
-                                <input type="text" id="search-input" name="search"
-                                       placeholder="Rechercher un client, banque, n° pièce..."
-                                       class="input input-bordered flex-1"
-                                       hx-get="{{ url_for('api_operations') }}"
-                                       hx-trigger="keyup changed delay:300ms"
-                                       hx-target="#results-table"
-                                       hx-include="[name='type_operation'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='type_cheque']">
-                            </div>
-                        </div>
+    <!-- Barre de recherche -->
+    <div class="card bg-base-100 shadow mb-4">
+        <div class="card-body p-4">
+            <div class="flex flex-col gap-4">
+                <!-- Recherche texte -->
+                <div class="form-control">
+                    <div class="input-group flex">
+                        <span class="bg-primary text-primary-content px-3 flex items-center rounded-l-lg"><i class="fas fa-search"></i></span>
+                        <input type="text" id="search-input" name="search"
+                               placeholder="Rechercher un client, banque, n° pièce..."
+                               class="input input-bordered flex-1"
+                               hx-get="{{ url_for('api_operations') }}"
+                               hx-trigger="keyup changed delay:300ms"
+                               hx-target="#results-table"
+                               hx-include="[name='type_operation'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']">
+                    </div>
+                </div>
 
-                        <!-- Filtres -->
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
-                            <select name="type_operation" class="select select-bordered select-sm w-full"
-                                    hx-get="{{ url_for('api_operations') }}"
-                                    hx-trigger="change"
-                                    hx-target="#results-table"
-                                    hx-include="[name='search'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='type_cheque']"
-                                    data-type-operation-filter>
-                                <option value="">Tous les types</option>
-                                <option value="Chèque">Chèque</option>
-                                <option value="Virement">Virement</option>
-                                <option value="Versement">Versement</option>
-                                <option value="Transfer">Transfer</option>
-                                <option value="Autre">Autre</option>
-                            </select>
-                            <select name="societe" class="select select-bordered select-sm w-full"
-                                    hx-get="{{ url_for('api_operations') }}"
-                                    hx-trigger="change"
-                                    hx-target="#results-table"
-                                    hx-include="[name='search'],[name='type_operation'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='type_cheque']">
-                                <option value="">Toutes les sociétés</option>
-                                <option value="SRID">SRID</option>
-                                <option value="Genetics">Genetics</option>
-                            </select>
-                            <select name="statut" class="select select-bordered select-sm w-full"
-                                    hx-get="{{ url_for('api_operations') }}"
-                                    hx-trigger="change"
-                                    hx-target="#results-table"
-                                    hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='type_cheque']">
-                                <option value="">Tous les statuts</option>
-                                <option value="Encaissé">Encaissé</option>
-                                <option value="Rejeté">Rejeté</option>
-                                <option value="Échéance">Échéance</option>
-                                <option value="En cours">En cours</option>
-                                <option value="Arrive à échéance">Arrive à échéance</option>
-                                <option value="Échu">Échu</option>
-                            </select>
-                            <div class="form-control">
-                                <label class="label label-text text-xs py-0">Filtrer dates par</label>
-                                <select name="date_filter" class="select select-bordered select-sm w-full"
-                                        hx-get="{{ url_for('api_operations') }}"
-                                        hx-trigger="change"
-                                        hx-target="#results-table"
-                                        hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_debut'],[name='date_fin'],[name='type_cheque']"
-                                        data-date-filter>
-                                    <option value="date_operation">Date dép/vir</option>
-                                    <option value="date_reception">Date réc</option>
-                                    <option value="date_echeance">Date échéance</option>
-                                </select>
-                            </div>
-                            <div class="form-control">
-                                <label class="label label-text text-xs py-0">Du</label>
-                                <input type="date" name="date_debut" class="input input-bordered input-sm w-full"
-                                       hx-get="{{ url_for('api_operations') }}"
-                                       hx-trigger="change"
-                                       hx-target="#results-table"
-                                       hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_fin'],[name='type_cheque']">
-                            </div>
-                            <div class="form-control">
-                                <label class="label label-text text-xs py-0">Au</label>
-                                <input type="date" name="date_fin" class="input input-bordered input-sm w-full"
-                                       hx-get="{{ url_for('api_operations') }}"
-                                       hx-trigger="change"
-                                       hx-target="#results-table"
-                                       hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='type_cheque']">
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3" data-cheque-filters-wrap>
-                            <div class="form-control">
-                                <label class="label label-text text-xs py-0">Type chèque</label>
-                                <input type="hidden" name="type_cheque" value="" data-type-cheque-filter>
-                                <div class="flex flex-wrap gap-2 mt-1" data-type-cheque-pills>
-                                    <button type="button" class="badge badge-outline badge-sm px-3 py-3" data-type-cheque-option="">Tous</button>
-                                    <button type="button" class="badge badge-outline badge-sm px-3 py-3" data-type-cheque-option="Garantie">Garantie</button>
-                                    <button type="button" class="badge badge-outline badge-sm px-3 py-3" data-type-cheque-option="À encaisser">À encaisser</button>
-                                    <button type="button" class="badge badge-outline badge-sm px-3 py-3" data-type-cheque-option="À échéance">À échéance</button>
-                                </div>
-                                <label class="label"><span class="label-text-alt opacity-70">Disponible quand Type opération = Chèque</span></label>
-                            </div>
-                        </div>
+                <!-- Filtres -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+                    <select name="type_operation" class="select select-bordered select-sm w-full"
+                            hx-get="{{ url_for('api_operations') }}"
+                            hx-trigger="change"
+                            hx-target="#results-table"
+                            hx-include="[name='search'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']"
+                            data-type-operation-filter>
+                        <option value="">Tous les types</option>
+                        <option value="Chèque">Chèque</option>
+                        <option value="Virement">Virement</option>
+                        <option value="Versement">Versement</option>
+                        <option value="Transfer">Transfer</option>
+                        <option value="Autre">Autre</option>
+                    </select>
+                    <select name="societe" class="select select-bordered select-sm w-full"
+                            hx-get="{{ url_for('api_operations') }}"
+                            hx-trigger="change"
+                            hx-target="#results-table"
+                            hx-include="[name='search'],[name='type_operation'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']">
+                        <option value="">Toutes les sociétés</option>
+                        <option value="SRID">SRID</option>
+                        <option value="Genetics">Genetics</option>
+                    </select>
+                    <select name="statut" class="select select-bordered select-sm w-full"
+                            hx-get="{{ url_for('api_operations') }}"
+                            hx-trigger="change"
+                            hx-target="#results-table"
+                            hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='date_filter'],[name='date_debut'],[name='date_fin']">
+                        <option value="">Tous les statuts</option>
+                        <option value="Encaissé">Encaissé</option>
+                        <option value="Rejeté">Rejeté</option>
+                        <option value="Échéance">Échéance</option>
+                        <option value="En cours">En cours</option>
+                        <option value="Arrive à échéance">Arrive à échéance</option>
+                        <option value="Échu">Échu</option>
+                    </select>
+                    <div class="form-control">
+                        <label class="label label-text text-xs py-0">Filtrer dates par</label>
+                        <select name="date_filter" class="select select-bordered select-sm w-full"
+                                hx-get="{{ url_for('api_operations') }}"
+                                hx-trigger="change"
+                                hx-target="#results-table"
+                                hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_debut'],[name='date_fin']"
+                                data-date-filter>
+                            <option value="date_operation">Date dép/vir</option>
+                            <option value="date_reception">Date réc</option>
+                            <option value="date_echeance">Date échéance</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label class="label label-text text-xs py-0">Du</label>
+                        <input type="date" name="date_debut" class="input input-bordered input-sm w-full"
+                               hx-get="{{ url_for('api_operations') }}"
+                               hx-trigger="change"
+                               hx-target="#results-table"
+                               hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_fin']">
+                    </div>
+                    <div class="form-control">
+                        <label class="label label-text text-xs py-0">Au</label>
+                        <input type="date" name="date_fin" class="input input-bordered input-sm w-full"
+                               hx-get="{{ url_for('api_operations') }}"
+                               hx-trigger="change"
+                               hx-target="#results-table"
+                               hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut']">
                     </div>
                 </div>
             </div>
-
-            <!-- Tableau des résultats -->
-            <div class="card bg-base-100 shadow">
-                <div class="card-body p-4">
-                    <div class="overflow-x-auto" id="results-table"
-                         hx-get="{{ url_for('api_operations') }}"
-                         hx-trigger="refreshResultsTable from:body"
-                         hx-swap="innerHTML">
-                        {% include 'partials/operations_table.html' %}
-                    </div>
-                </div>
-            </div>
-
         </div>
+    </div>
 
-        <!-- Colonne droite : notifications -->
-        <div id="notifications-column" class="w-80 shrink-0 flex flex-col gap-4">
-            <div id="notifications-panel"
-                 hx-get="{{ url_for('api_notifications') }}"
-                 hx-trigger="refreshGlobalAlert from:body"
+    <!-- Tableau des résultats -->
+    <div class="card bg-base-100 shadow">
+        <div class="card-body p-4">
+            <div class="overflow-x-auto" id="results-table"
+                 hx-get="{{ url_for('api_operations') }}"
+                 hx-trigger="refreshResultsTable from:body"
                  hx-swap="innerHTML">
-                {% include 'partials/notifications_panel.html' %}
-            </div>
-            <div id="rejections-panel"
-                 hx-get="{{ url_for('api_rejections') }}"
-                 hx-trigger="refreshGlobalAlert from:body"
-                 hx-swap="innerHTML">
-                {% include 'partials/rejections_panel.html' %}
+                {% include 'partials/operations_table.html' %}
             </div>
         </div>
-
     </div>
 
     <!-- Modal détail -->
@@ -192,7 +170,6 @@
     const filterSelectors = [
         '[name="search"]',
         '[name="type_operation"]',
-        '[name="type_cheque"]',
         '[name="societe"]',
         '[name="statut"]',
         '[name="date_filter"]',
@@ -273,51 +250,16 @@
         exportLink.setAttribute('href', url.pathname + url.search);
     }
 
-    function syncChequeFilters() {
+    function syncDateFilters() {
         const typeOperationField = document.querySelector('[name="type_operation"]');
-        const typeChequeField = document.querySelector('[name="type_cheque"]');
         const dateFilterField = document.querySelector('[name="date_filter"]');
-        const chequeFiltersWrap = document.querySelector('[data-cheque-filters-wrap]');
-        const chequePillsWrap = document.querySelector('[data-type-cheque-pills]');
-        const typeChequePills = document.querySelectorAll('[data-type-cheque-option]');
-
+        if (!dateFilterField) return;
         const isCheque = typeOperationField && typeOperationField.value === 'Chèque';
-        if (chequeFiltersWrap) chequeFiltersWrap.classList.remove('hidden');
-        if (chequePillsWrap) {
-            chequePillsWrap.classList.toggle('opacity-50', !isCheque);
-        }
-        if (typeChequeField && !isCheque) {
-            typeChequeField.value = '';
-        }
-
-        const isEcheance = isCheque && typeChequeField && typeChequeField.value === 'À échéance';
-        if (dateFilterField) {
-            const receptionOption = dateFilterField.querySelector('option[value="date_reception"]');
-            const echeanceOption = dateFilterField.querySelector('option[value="date_echeance"]');
-            if (receptionOption) {
-                receptionOption.hidden = !isCheque;
-                receptionOption.disabled = !isCheque;
-            }
-            if (echeanceOption) {
-                echeanceOption.hidden = !isEcheance;
-                echeanceOption.disabled = !isEcheance;
-            }
-            if (!isCheque && dateFilterField.value !== 'date_operation') {
-                dateFilterField.value = 'date_operation';
-            }
-            if (isCheque && !isEcheance && dateFilterField.value === 'date_echeance') {
-                dateFilterField.value = 'date_operation';
-            }
-        }
-
-        typeChequePills.forEach((pill) => {
-            const isActive = (pill.getAttribute('data-type-cheque-option') || '') === (typeChequeField?.value || '');
-            pill.disabled = !isCheque;
-            pill.classList.toggle('pointer-events-none', !isCheque);
-            pill.classList.toggle('badge-primary', isActive);
-            pill.classList.toggle('text-primary-content', isActive);
-            pill.classList.toggle('badge-outline', !isActive);
-        });
+        const receptionOption = dateFilterField.querySelector('option[value="date_reception"]');
+        const echeanceOption  = dateFilterField.querySelector('option[value="date_echeance"]');
+        if (receptionOption) { receptionOption.hidden = !isCheque; receptionOption.disabled = !isCheque; }
+        if (echeanceOption)  { echeanceOption.hidden  = !isCheque; echeanceOption.disabled  = !isCheque; }
+        if (!isCheque && dateFilterField.value !== 'date_operation') dateFilterField.value = 'date_operation';
     }
 
     filterSelectors.forEach((selector) => {
@@ -325,20 +267,8 @@
         if (!field) return;
         field.addEventListener('input', updateExportLink);
         field.addEventListener('change', () => {
-            syncChequeFilters();
+            syncDateFilters();
             updateExportLink();
-        });
-    });
-
-    document.querySelectorAll('[data-type-cheque-option]').forEach((pill) => {
-        pill.addEventListener('click', () => {
-            const typeChequeField = document.querySelector('[name="type_cheque"]');
-            const typeOperationField = document.querySelector('[name="type_operation"]');
-            if (!typeChequeField || !typeOperationField || typeOperationField.value !== 'Chèque') return;
-            typeChequeField.value = pill.getAttribute('data-type-cheque-option') || '';
-            syncChequeFilters();
-            updateExportLink();
-            refreshResultsTable();
         });
     });
 
@@ -391,32 +321,14 @@
         alert('Erreur lors du changement de statut.');
     });
 
-    syncChequeFilters();
+    syncDateFilters();
     updateExportLink();
-
-    // Masque la colonne droite si les deux panels sont vides ou fermés
-    window.syncNotificationsColumn = function() {
-        const col = document.getElementById('notifications-column');
-        if (!col) return;
-        const notifPanel = document.getElementById('notifications-panel');
-        const rejPanel   = document.getElementById('rejections-panel');
-        const notifHasContent = notifPanel && notifPanel.innerHTML.trim() !== '' && notifPanel.style.display !== 'none';
-        const rejHasContent   = rejPanel   && rejPanel.innerHTML.trim()   !== '' && rejPanel.style.display   !== 'none';
-        col.style.display = (notifHasContent || rejHasContent) ? '' : 'none';
-    };
 
     document.body.addEventListener('htmx:afterSwap', function(event) {
         if (event.detail.target.id === 'results-table') {
             refreshNotificationsPanel();
             htmx.trigger(document.body, 'refreshGlobalAlert');
         }
-        if (event.detail.target.id === 'notifications-panel' ||
-            event.detail.target.id === 'rejections-panel') {
-            window.syncNotificationsColumn();
-        }
     });
-
-    // Vérification initiale au chargement
-    window.syncNotificationsColumn();
 </script>
 {% endblock %}

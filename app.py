@@ -13,6 +13,17 @@ app = Flask(__name__)
 app.config.from_object(Config)
 db.init_app(app)
 
+@app.template_filter('currency')
+def currency_filter(value, decimals=2):
+    """Formate un montant en format français : 1\u2009234\u2009567,89 (ou sans centimes si decimals=0)"""
+    try:
+        formatted = "{:,.{d}f}".format(float(value), d=decimals)
+        # virgule -> espace fine (milliers), point -> virgule (décimale)
+        formatted = formatted.replace(",", "\u2009").replace(".", ",")
+        return formatted
+    except (TypeError, ValueError):
+        return value
+
 
 ROLE_ALIASES = {
     'boss': 'admin',
