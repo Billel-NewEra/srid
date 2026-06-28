@@ -120,7 +120,7 @@
                         <tr class="bg-base-200">
                             <th class="w-32">Réf.</th>
                             <th>Désignation *</th>
-                            <th class="text-right w-20">Qté</th>
+                            <th class="text-right w-28">Qté</th>
                             <th class="text-right w-28">Prix unit. €</th>
                             <th class="text-right w-28">Total €</th>
                             <th class="w-8"></th>
@@ -537,7 +537,7 @@ function printBon(bon, autoprint) {
     if (autoprint === undefined) autoprint = true;
     var company = bon.societe || 'SRID';
     var isGenetics = company.toUpperCase().indexOf('GENETICS') !== -1;
-    var letterheadUrl = '/static/img/' + (isGenetics ? 'entete-srid-genetics.png' : 'entete-srid.png');
+    var letterheadUrl = SCRIPT_ROOT + '/static/img/' + (isGenetics ? 'entete-srid-genetics.png' : 'entete-srid.png');
     var euro2 = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     var lignes = bon.lignes || [];
     var grandTotal = lignes.reduce(function(s, l) { return s + (Number(l.quantite)||0)*(Number(l.prix_unitaire)||0); }, 0);
