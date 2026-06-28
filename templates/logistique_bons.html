@@ -93,11 +93,6 @@
                                data-fournisseur-input>
                         <div class="absolute left-0 right-0 top-full mt-1 z-50 hidden max-h-48 overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-lg"
                              data-fournisseur-list>
-                            {% for f in fournisseurs %}
-                            <button type="button"
-                                    class="block w-full px-3 py-2 text-left text-sm hover:bg-base-200"
-                                    data-fournisseur-option="{{ f }}">{{ f }}</button>
-                            {% endfor %}
                         </div>
                     </div>
                 </div>
@@ -219,18 +214,41 @@ function escapeHtml(s) {
     return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ─── Fournisseur autocomplete ─────────────────────────────────────────────────
-(function() {
-    var input = document.querySelector('[data-fournisseur-input]');
-    var list  = document.querySelector('[data-fournisseur-list]');
-    if (!input || !list) return;
+// ─── Fournisseur autocomplete (dynamic by société) ──────────────────────────
+const FOURNISSEURS_MAP = {{ fournisseurs_json | safe }};
 
-    var options = Array.from(list.querySelectorAll('[data-fournisseur-option]'));
+(function() {
+    var input   = document.querySelector('[data-fournisseur-input]');
+    var list    = document.querySelector('[data-fournisseur-list]');
+    var socSel  = document.getElementById('bon-societe');
+    if (!input || !list || !socSel) return;
+
+    function buildOptions() {
+        var societe = socSel.value;
+        var items = FOURNISSEURS_MAP[societe] || [];
+        list.innerHTML = items.map(function(f) {
+            return '<button type="button" class="block w-full px-3 py-2 text-left text-sm hover:bg-base-200" data-fournisseur-option="' + f + '">' + f + '</button>';
+        }).join('');
+        input.value = '';
+        bindOptions();
+    }
+
+    function bindOptions() {
+        var btns = Array.from(list.querySelectorAll('[data-fournisseur-option]'));
+        btns.forEach(function(btn) {
+            btn.addEventListener('mousedown', function(e) { e.preventDefault(); });
+            btn.addEventListener('click', function() {
+                input.value = btn.getAttribute('data-fournisseur-option') || '';
+                list.classList.add('hidden');
+            });
+        });
+    }
 
     function filterAndShow() {
         var q = input.value.trim().toUpperCase();
+        var btns = Array.from(list.querySelectorAll('[data-fournisseur-option]'));
         var visible = 0;
-        options.forEach(function(btn) {
+        btns.forEach(function(btn) {
             var val = (btn.getAttribute('data-fournisseur-option') || '').toUpperCase();
             var show = !q || val.includes(q);
             btn.classList.toggle('hidden', !show);
@@ -239,23 +257,21 @@ function escapeHtml(s) {
         list.classList.toggle('hidden', visible === 0);
     }
 
-    // Afficher à la mise en focus
     input.addEventListener('focus', filterAndShow);
-    // Filtrer à la saisie
     input.addEventListener('input', filterAndShow);
-    // Masquer à la perte de focus (avec délai pour laisser le clic s'enregistrer)
+
+    var mouseInList = false;
+    list.addEventListener('mousedown', function() { mouseInList = true; });
+    document.addEventListener('mouseup', function() { mouseInList = false; });
+
     input.addEventListener('blur', function() {
-        setTimeout(function() { list.classList.add('hidden'); }, 160);
+        setTimeout(function() {
+            if (!mouseInList) list.classList.add('hidden');
+        }, 160);
     });
 
-    options.forEach(function(btn) {
-        // mousedown + preventDefault : empêche le blur de l'input avant que le click ne s'enregistre
-        btn.addEventListener('mousedown', function(e) { e.preventDefault(); });
-        btn.addEventListener('click', function() {
-            input.value = btn.getAttribute('data-fournisseur-option') || '';
-            list.classList.add('hidden');
-        });
-    });
+    socSel.addEventListener('change', buildOptions);
+    buildOptions();
 })();
 
 // ─── Lignes de commande ───────────────────────────────────────────────────────

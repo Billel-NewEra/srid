@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}Référentiels Logistique - SRID COM{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <div class="mb-6">
+        <h1 class="text-2xl font-bold"><i class="fas fa-list text-teal-400 mr-2"></i>Référentiels Logistique</h1>
+        <p class="text-sm opacity-60 mt-1">Gérez les listes de fournisseurs utilisées dans les bons de commande.</p>
+    </div>
+
+    <div class="max-w-xl">
+        <div class="card bg-base-100 shadow">
+            <div class="card-body p-5">
+                <h2 class="card-title text-base mb-4">
+                    <i class="fas fa-building text-teal-400 mr-2"></i>Fournisseurs
+                </h2>
+
+                <!-- Switcher société -->
+                <div class="tabs tabs-boxed mb-4" id="societe-tabs">
+                    <button type="button" class="tab tab-active" data-societe="SRID"
+                            onclick="switchSociete('SRID')">SRID</button>
+                    <button type="button" class="tab" data-societe="SRID GENETICS"
+                            onclick="switchSociete('SRID GENETICS')">SRID GENETICS</button>
+                </div>
+
+                <form id="form-add-fournisseur"
+                      hx-post="{{ url_for('api_ref_fournisseur_add') }}"
+                      hx-target="#fournisseurs-list"
+                      hx-swap="innerHTML"
+                      hx-on::after-request="this.querySelector('[name=nom]').value=''; document.getElementById('filter-fournisseurs').value=''"
+                      class="flex gap-2 mb-3">
+                    <input type="hidden" name="societe" id="add-societe" value="SRID">
+                    <input type="text" name="nom"
+                           placeholder="Nouveau fournisseur..."
+                           class="input input-bordered input-sm flex-1"
+                           required maxlength="200">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fas fa-plus mr-1"></i>Ajouter
+                    </button>
+                </form>
+
+                <input type="text" name="search" id="filter-fournisseurs"
+                       placeholder="Rechercher un fournisseur..."
+                       class="input input-bordered input-sm w-full mb-3"
+                       hx-get="{{ url_for('api_ref_fournisseurs_list') }}?societe=SRID"
+                       hx-trigger="input changed delay:300ms"
+                       hx-target="#fournisseurs-list"
+                       hx-swap="innerHTML">
+
+                <div id="fournisseurs-list" class="max-h-[380px] overflow-y-auto"
+                     hx-get="{{ url_for('api_ref_fournisseurs_list') }}?societe=SRID"
+                     hx-trigger="load"
+                     hx-swap="innerHTML">
+                    <div class="flex justify-center py-8">
+                        <span class="loading loading-spinner loading-md opacity-40"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function switchSociete(societe) {
+    // Update active tab
+    document.querySelectorAll('#societe-tabs .tab').forEach(function(t) {
+        t.classList.toggle('tab-active', t.getAttribute('data-societe') === societe);
+    });
+    // Update hidden field
+    document.getElementById('add-societe').value = societe;
+    // Update search hx-get
+    var encoded = encodeURIComponent(societe);
+    var searchInput = document.getElementById('filter-fournisseurs');
+    searchInput.setAttribute('hx-get', '{{ url_for("api_ref_fournisseurs_list") }}?societe=' + encoded);
+    searchInput.value = '';
+    htmx.process(searchInput);
+    // Reload list
+    var listDiv = document.getElementById('fournisseurs-list');
+    htmx.ajax('GET', '{{ url_for("api_ref_fournisseurs_list") }}?societe=' + encoded, {target: listDiv, swap: 'innerHTML'});
+}
+</script>
+{% endblock %}

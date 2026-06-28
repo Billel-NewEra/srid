@@ -1033,6 +1033,74 @@ def api_ref_remettant_delete(item_id):
 
 # ─── LOGISTIQUE ──────────────────────────────────────────────────────────────
 
+# ── Référentiels Fournisseurs ──
+
+def _ref_fournisseurs_ctx(is_admin, page=1, search='', societe=''):
+    q = Fournisseur.query.order_by(Fournisseur.nom)
+    if societe:
+        q = q.filter(Fournisseur.societe == societe)
+    if search:
+        q = q.filter(Fournisseur.nom.ilike(f'%{search}%'))
+    total = q.count()
+    fournisseurs = q.offset((page - 1) * REF_PER_PAGE).limit(REF_PER_PAGE).all()
+    return dict(fournisseurs=fournisseurs, is_admin=is_admin, page=page, search=search,
+                societe=societe, total=total, total_pages=max(1, (total + REF_PER_PAGE - 1) // REF_PER_PAGE))
+
+
+@app.route('/logistique/referentiels')
+@role_required('admin', 'saisie')
+def logistique_referentiels():
+    return render_template('logistique_referentiels.html', is_admin=_current_role() == 'admin')
+
+
+@app.route('/api/logistique/referentiels/fournisseurs/list')
+@role_required('admin', 'saisie')
+def api_ref_fournisseurs_list():
+    page    = request.args.get('page', 1, type=int)
+    search  = request.args.get('search', '').strip()
+    societe = request.args.get('societe', '').strip()
+    return render_template('partials/ref_fournisseurs_list.html',
+                           **_ref_fournisseurs_ctx(_current_role() == 'admin', page, search, societe))
+
+
+@app.route('/api/logistique/referentiels/fournisseurs/add', methods=['POST'])
+@role_required('admin', 'saisie')
+def api_ref_fournisseur_add():
+    nom     = (request.form.get('nom') or '').strip()
+    societe = (request.form.get('societe') or '').strip()
+    if not nom:
+        return '<p class="text-error text-sm">Nom requis.</p>', 400
+    if not societe:
+        return '<p class="text-error text-sm">Société requise.</p>', 400
+    if Fournisseur.query.filter(db.func.lower(Fournisseur.nom) == nom.lower(), Fournisseur.societe == societe).first():
+        return '<p class="text-error text-sm">Ce fournisseur existe déjà pour cette société.</p>', 400
+    db.session.add(Fournisseur(nom=nom, societe=societe))
+    db.session.commit()
+    return render_template('partials/ref_fournisseurs_list.html',
+                           **_ref_fournisseurs_ctx(_current_role() == 'admin', societe=societe))
+
+
+@app.route('/api/logistique/referentiels/fournisseurs/<int:item_id>/toggle', methods=['POST'])
+@role_required('admin', 'saisie')
+def api_ref_fournisseur_toggle(item_id):
+    item = Fournisseur.query.get_or_404(item_id)
+    item.actif = not item.actif
+    db.session.commit()
+    return render_template('partials/ref_fournisseurs_list.html',
+                           **_ref_fournisseurs_ctx(_current_role() == 'admin', societe=item.societe))
+
+
+@app.route('/api/logistique/referentiels/fournisseurs/<int:item_id>/delete', methods=['DELETE', 'POST'])
+@role_required('admin')
+def api_ref_fournisseur_delete(item_id):
+    item = Fournisseur.query.get_or_404(item_id)
+    societe = item.societe
+    db.session.delete(item)
+    db.session.commit()
+    return render_template('partials/ref_fournisseurs_list.html',
+                           **_ref_fournisseurs_ctx(_current_role() == 'admin', societe=societe))
+
+
 def _log_kpis():
     """Calcule les KPIs logistique (nombre d'entrées par statut)."""
     kpis = {'ARRIVÉ': 0, 'D10': 0, 'ÉCHÉANCE': 0, 'ARRIVE À ÉCHÉANCE': 0,
@@ -1392,18 +1460,18 @@ def logistique_bons():
     bons        = q.offset((page - 1) * BON_PER_PAGE).limit(BON_PER_PAGE).all()
     total_pages = max(1, (total + BON_PER_PAGE - 1) // BON_PER_PAGE)
 
-    fournisseurs = [r[0] for r in db.session.query(CommandeLogistique.fournisseur)
-                    .filter(CommandeLogistique.fournisseur.isnot(None), CommandeLogistique.fournisseur != '')
-                    .distinct().order_by(CommandeLogistique.fournisseur).all()]
+    fournisseurs_srid = [f.nom for f in Fournisseur.query.filter_by(societe='SRID', actif=True).order_by(Fournisseur.nom).all()]
+    fournisseurs_genetics = [f.nom for f in Fournisseur.query.filter_by(societe='SRID GENETICS', actif=True).order_by(Fournisseur.nom).all()]
 
     import json as _json
     products = Product.query.order_by(Product.company, Product.designation).all()
     products_json = _json.dumps([p.to_dict() for p in products])
+    fournisseurs_json = _json.dumps({'SRID': fournisseurs_srid, 'SRID GENETICS': fournisseurs_genetics})
 
     return render_template('logistique_bons.html',
                            bons=bons, page=page, total_pages=total_pages, total=total,
                            search=search, societe=societe, statut_f=statut_f,
-                           bon_statuts=BON_STATUTS, fournisseurs=fournisseurs,
+                           bon_statuts=BON_STATUTS, fournisseurs_json=fournisseurs_json,
                            products_json=products_json,
                            can_write=_current_role() in ('admin', 'saisie'),
                            is_admin=_current_role() == 'admin')

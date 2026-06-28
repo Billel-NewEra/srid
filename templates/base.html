@@ -567,6 +567,13 @@
                         <i class="nav-icon fas fa-truck"></i>
                         <span>Gestion des commandes</span>
                     </a>
+                    {% if can_write %}
+                    <a href="{{ url_for('logistique_referentiels') }}"
+                       class="nav-link nav-link-logistique {% if request.endpoint == 'logistique_referentiels' %}active{% endif %}">
+                        <i class="nav-icon fas fa-list"></i>
+                        <span>Référentiels</span>
+                    </a>
+                    {% endif %}
 
                     <!-- ── ADMINISTRATION ── -->
                     <div class="pt-5 pb-1.5">
@@ -657,6 +664,37 @@
             }
             return true;
         }
+    </script>
+
+    <!-- Modal de confirmation de suppression -->
+    <dialog id="modal-confirm-delete" class="modal">
+        <div class="modal-box max-w-sm">
+            <h3 class="font-bold text-lg mb-2"><i class="fas fa-exclamation-triangle text-warning mr-2"></i>Confirmation</h3>
+            <p id="modal-confirm-msg" class="py-2 text-sm"></p>
+            <div class="modal-action">
+                <button class="btn btn-sm" onclick="document.getElementById('modal-confirm-delete').close()">Annuler</button>
+                <button id="modal-confirm-btn" class="btn btn-error btn-sm">Supprimer</button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
+    <script>
+    // Override htmx confirm with DaisyUI modal
+    document.body.addEventListener('htmx:confirm', function(e) {
+        if (!e.detail.question) return;
+        e.preventDefault();
+        var dialog = document.getElementById('modal-confirm-delete');
+        document.getElementById('modal-confirm-msg').textContent = e.detail.question;
+        var btn = document.getElementById('modal-confirm-btn');
+        var newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        newBtn.addEventListener('click', function() {
+            dialog.close();
+            e.detail.issueRequest(true);
+        });
+        dialog.showModal();
+    });
     </script>
 
     {% block scripts %}{% endblock %}

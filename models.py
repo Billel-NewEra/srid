@@ -103,9 +103,12 @@ class Fournisseur(db.Model):
     __tablename__ = 'fournisseurs'
 
     id            = db.Column(db.Integer, primary_key=True)
-    nom           = db.Column(db.String(200), unique=True, nullable=False)
+    nom           = db.Column(db.String(200), nullable=False)
+    societe       = db.Column(db.String(50), nullable=False, default='SRID')
     actif         = db.Column(db.Boolean, default=True, nullable=False)
     date_creation = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (db.UniqueConstraint('nom', 'societe', name='uq_fournisseur_nom_societe'),)
 
 
 class CommandeLogistique(db.Model):

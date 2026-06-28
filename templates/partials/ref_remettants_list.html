@@ -12,7 +12,7 @@
         <button class="btn btn-ghost btn-xs tooltip" data-tip="Supprimer"
                 hx-post="{{ url_for('api_ref_remettant_delete', item_id=item.id) }}"
                 hx-target="#remettants-list" hx-swap="innerHTML"
-                hx-confirm="Supprimer « {{ item.nom }} » ?">
+                hx-confirm="Supprimer le remettant « {{ item.nom }} » ?">
             <i class="fas fa-trash text-error"></i>
         </button>
         {% endif %}
