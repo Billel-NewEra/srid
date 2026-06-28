@@ -317,19 +317,25 @@ def _get_recent_rejections(limit=8):
         AuditLog.details.ilike('%Rejeté%'),
     ).order_by(desc(AuditLog.date_action)).limit(limit).all()
     
-    # Grouper par operation_id et récupérer les infos de l'opération
+    # Récupérer tous les operation_ids en une seule requête
+    op_ids = list({a.operation_id for a in rejections})
+    if op_ids:
+        ops_map = {op.id: op for op in Operation.query.filter(
+            Operation.id.in_(op_ids), Operation.statut == 'Rejeté'
+        ).all()}
+    else:
+        ops_map = {}
+
     rejection_ops = []
     seen_ops = set()
     for audit in rejections:
-        if audit.operation_id not in seen_ops:
-            op = Operation.query.get(audit.operation_id)
-            if op and op.statut == 'Rejeté':
-                rejection_ops.append({
-                    'operation': op,
-                    'rejected_at': audit.date_action,
-                    'rejected_by': audit.utilisateur,
-                })
-                seen_ops.add(audit.operation_id)
+        if audit.operation_id not in seen_ops and audit.operation_id in ops_map:
+            rejection_ops.append({
+                'operation': ops_map[audit.operation_id],
+                'rejected_at': audit.date_action,
+                'rejected_by': audit.utilisateur,
+            })
+            seen_ops.add(audit.operation_id)
     
     return {
         'rejections': rejection_ops,
@@ -660,19 +666,26 @@ def dashboard():
 def api_dashboard_monthly():
     year = request.args.get('year', date.today().year, type=int)
     prev_year = year - 1
-    monthly_data = []
-    monthly_data_prev = []
-    for month in range(1, 13):
-        total = db.session.query(func.sum(Operation.montant)).filter(
-            extract('year', Operation.date_operation) == year,
-            extract('month', Operation.date_operation) == month
-        ).scalar() or 0
-        total_prev = db.session.query(func.sum(Operation.montant)).filter(
-            extract('year', Operation.date_operation) == prev_year,
-            extract('month', Operation.date_operation) == month
-        ).scalar() or 0
-        monthly_data.append(float(total))
-        monthly_data_prev.append(float(total_prev))
+
+    # 1 query pour l'année courante, 1 pour la précédente
+    rows = db.session.query(
+        extract('month', Operation.date_operation),
+        func.sum(Operation.montant)
+    ).filter(
+        extract('year', Operation.date_operation) == year
+    ).group_by(extract('month', Operation.date_operation)).all()
+    monthly_map = {int(m): float(t) for m, t in rows}
+
+    rows_prev = db.session.query(
+        extract('month', Operation.date_operation),
+        func.sum(Operation.montant)
+    ).filter(
+        extract('year', Operation.date_operation) == prev_year
+    ).group_by(extract('month', Operation.date_operation)).all()
+    monthly_map_prev = {int(m): float(t) for m, t in rows_prev}
+
+    monthly_data = [monthly_map.get(m, 0) for m in range(1, 13)]
+    monthly_data_prev = [monthly_map_prev.get(m, 0) for m in range(1, 13)]
     return jsonify({'year': year, 'prev_year': prev_year, 'data': monthly_data, 'data_prev': monthly_data_prev})
 
 
@@ -680,21 +693,23 @@ def api_dashboard_monthly():
 @login_required
 def api_dashboard_societes():
     year = request.args.get('year', date.today().year, type=int)
-    monthly_srid = []
-    monthly_genetics = []
-    for month in range(1, 13):
-        t_srid = db.session.query(func.sum(Operation.montant)).filter(
-            extract('year', Operation.date_operation) == year,
-            extract('month', Operation.date_operation) == month,
-            Operation.societe == 'SRID'
-        ).scalar() or 0
-        t_genetics = db.session.query(func.sum(Operation.montant)).filter(
-            extract('year', Operation.date_operation) == year,
-            extract('month', Operation.date_operation) == month,
-            Operation.societe == 'Genetics'
-        ).scalar() or 0
-        monthly_srid.append(float(t_srid))
-        monthly_genetics.append(float(t_genetics))
+
+    rows = db.session.query(
+        extract('month', Operation.date_operation),
+        Operation.societe,
+        func.sum(Operation.montant)
+    ).filter(
+        extract('year', Operation.date_operation) == year
+    ).group_by(extract('month', Operation.date_operation), Operation.societe).all()
+
+    monthly_srid = [0.0] * 12
+    monthly_genetics = [0.0] * 12
+    for m, soc, total in rows:
+        idx = int(m) - 1
+        if soc == 'SRID':
+            monthly_srid[idx] = float(total)
+        elif soc == 'Genetics':
+            monthly_genetics[idx] = float(total)
     return jsonify({'year': year, 'srid': monthly_srid, 'genetics': monthly_genetics})
 
 
@@ -703,33 +718,35 @@ def api_dashboard_societes():
 def api_dashboard_statuts_monthly():
     year = request.args.get('year', date.today().year, type=int)
     status_labels = STATUS_CHOICES
+
+    # 1 seule requête groupée au lieu de 216
+    rows = db.session.query(
+        extract('month', Operation.date_operation),
+        Operation.statut,
+        Operation.societe,
+        func.sum(Operation.montant)
+    ).filter(
+        extract('year', Operation.date_operation) == year
+    ).group_by(
+        extract('month', Operation.date_operation), Operation.statut, Operation.societe
+    ).all()
+
     monthly_statuts_views = {
-        'total': {s: [] for s in status_labels},
-        'srid': {s: [] for s in status_labels},
-        'genetics': {s: [] for s in status_labels},
+        'total': {s: [0.0] * 12 for s in status_labels},
+        'srid': {s: [0.0] * 12 for s in status_labels},
+        'genetics': {s: [0.0] * 12 for s in status_labels},
     }
-    for month in range(1, 13):
-        for statut in status_labels:
-            total_mt = db.session.query(func.sum(Operation.montant)).filter(
-                extract('year', Operation.date_operation) == year,
-                extract('month', Operation.date_operation) == month,
-                Operation.statut == statut
-            ).scalar() or 0
-            srid_mt = db.session.query(func.sum(Operation.montant)).filter(
-                extract('year', Operation.date_operation) == year,
-                extract('month', Operation.date_operation) == month,
-                Operation.statut == statut,
-                Operation.societe == 'SRID'
-            ).scalar() or 0
-            genetics_mt = db.session.query(func.sum(Operation.montant)).filter(
-                extract('year', Operation.date_operation) == year,
-                extract('month', Operation.date_operation) == month,
-                Operation.statut == statut,
-                Operation.societe == 'Genetics'
-            ).scalar() or 0
-            monthly_statuts_views['total'][statut].append(float(total_mt))
-            monthly_statuts_views['srid'][statut].append(float(srid_mt))
-            monthly_statuts_views['genetics'][statut].append(float(genetics_mt))
+
+    for m, statut, societe, total in rows:
+        idx = int(m) - 1
+        amt = float(total or 0)
+        if statut in monthly_statuts_views['total']:
+            monthly_statuts_views['total'][statut][idx] += amt
+            if societe == 'SRID':
+                monthly_statuts_views['srid'][statut][idx] += amt
+            elif societe == 'Genetics':
+                monthly_statuts_views['genetics'][statut][idx] += amt
+
     return jsonify({'year': year, 'data': monthly_statuts_views['total'], 'views': monthly_statuts_views})
 
 
@@ -1102,13 +1119,62 @@ def api_ref_fournisseur_delete(item_id):
 
 
 def _log_kpis():
-    """Calcule les KPIs logistique (nombre d'entrées par statut)."""
-    kpis = {'ARRIVÉ': 0, 'D10': 0, 'ÉCHÉANCE': 0, 'ARRIVE À ÉCHÉANCE': 0,
-            'ÉCHU': 0, 'PAIEMENT EN COURS': 0, 'PAYÉ': 0, 'EN COURS': 0}
-    for c in CommandeLogistique.query.all():
-        s = c.statut
-        kpis[s] = kpis.get(s, 0) + 1
-    return kpis
+    """Calcule les KPIs logistique par statut via SQL (sans charger tous les objets)."""
+    today = date.today()
+    alert_date = today + timedelta(days=7)
+
+    # Compter en SQL selon la logique de la propriété .statut
+    paye = CommandeLogistique.query.filter(CommandeLogistique.date_valeur.isnot(None)).count()
+    paiement_en_cours = CommandeLogistique.query.filter(
+        CommandeLogistique.date_valeur.is_(None),
+        CommandeLogistique.date_paiement.isnot(None)
+    ).count()
+    echu = CommandeLogistique.query.filter(
+        CommandeLogistique.date_valeur.is_(None),
+        CommandeLogistique.date_paiement.is_(None),
+        CommandeLogistique.date_echeance.isnot(None),
+        CommandeLogistique.date_echeance < today
+    ).count()
+    arrive_echeance = CommandeLogistique.query.filter(
+        CommandeLogistique.date_valeur.is_(None),
+        CommandeLogistique.date_paiement.is_(None),
+        CommandeLogistique.date_echeance.isnot(None),
+        CommandeLogistique.date_echeance >= today,
+        CommandeLogistique.date_echeance <= alert_date
+    ).count()
+    echeance = CommandeLogistique.query.filter(
+        CommandeLogistique.date_valeur.is_(None),
+        CommandeLogistique.date_paiement.is_(None),
+        CommandeLogistique.date_echeance.isnot(None),
+        CommandeLogistique.date_echeance > alert_date
+    ).count()
+    arrive = CommandeLogistique.query.filter(
+        CommandeLogistique.date_valeur.is_(None),
+        CommandeLogistique.date_paiement.is_(None),
+        CommandeLogistique.date_echeance.is_(None),
+        CommandeLogistique.date_arrivee.isnot(None)
+    ).count()
+    d10 = CommandeLogistique.query.filter(
+        CommandeLogistique.date_valeur.is_(None),
+        CommandeLogistique.date_paiement.is_(None),
+        CommandeLogistique.date_echeance.is_(None),
+        CommandeLogistique.date_arrivee.is_(None),
+        CommandeLogistique.date_d10.isnot(None)
+    ).count()
+    en_cours = CommandeLogistique.query.filter(
+        CommandeLogistique.date_valeur.is_(None),
+        CommandeLogistique.date_paiement.is_(None),
+        CommandeLogistique.date_echeance.is_(None),
+        CommandeLogistique.date_arrivee.is_(None),
+        CommandeLogistique.date_d10.is_(None)
+    ).count()
+
+    return {
+        'PAYÉ': paye, 'PAIEMENT EN COURS': paiement_en_cours,
+        'ÉCHU': echu, 'ARRIVE À ÉCHÉANCE': arrive_echeance,
+        'ÉCHÉANCE': echeance, 'ARRIVÉ': arrive,
+        'D10': d10, 'EN COURS': en_cours,
+    }
 
 
 def _get_logistique_notifications(limit=8):
@@ -1460,20 +1526,26 @@ def logistique_bons():
     bons        = q.offset((page - 1) * BON_PER_PAGE).limit(BON_PER_PAGE).all()
     total_pages = max(1, (total + BON_PER_PAGE - 1) // BON_PER_PAGE)
 
-    fournisseurs_srid = [f.nom for f in Fournisseur.query.filter_by(societe='SRID', actif=True).order_by(Fournisseur.nom).all()]
-    fournisseurs_genetics = [f.nom for f in Fournisseur.query.filter_by(societe='SRID GENETICS', actif=True).order_by(Fournisseur.nom).all()]
+    can_write = _current_role() in ('admin', 'saisie')
 
+    # Ne charger les données du formulaire que si l'utilisateur peut écrire
     import json as _json
-    products = Product.query.order_by(Product.company, Product.designation).all()
-    products_json = _json.dumps([p.to_dict() for p in products])
-    fournisseurs_json = _json.dumps({'SRID': fournisseurs_srid, 'SRID GENETICS': fournisseurs_genetics})
+    if can_write:
+        fournisseurs_srid = [f.nom for f in Fournisseur.query.filter_by(societe='SRID', actif=True).order_by(Fournisseur.nom).all()]
+        fournisseurs_genetics = [f.nom for f in Fournisseur.query.filter_by(societe='SRID GENETICS', actif=True).order_by(Fournisseur.nom).all()]
+        products = Product.query.order_by(Product.company, Product.designation).all()
+        products_json = _json.dumps([p.to_dict() for p in products])
+        fournisseurs_json = _json.dumps({'SRID': fournisseurs_srid, 'SRID GENETICS': fournisseurs_genetics})
+    else:
+        products_json = '[]'
+        fournisseurs_json = '{}'
 
     return render_template('logistique_bons.html',
                            bons=bons, page=page, total_pages=total_pages, total=total,
                            search=search, societe=societe, statut_f=statut_f,
                            bon_statuts=BON_STATUTS, fournisseurs_json=fournisseurs_json,
                            products_json=products_json,
-                           can_write=_current_role() in ('admin', 'saisie'),
+                           can_write=can_write,
                            is_admin=_current_role() == 'admin')
 
 

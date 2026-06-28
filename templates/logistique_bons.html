@@ -403,6 +403,7 @@ document.querySelectorAll('.bon-line').forEach(setupLineRow);
 
 // ─── Nouveau bon / Modifier bon ───────────────────────────────────────────────
 var ADD_BON_ACTION = "{{ url_for('api_bon_add') }}";
+var SCRIPT_ROOT = {{ request.script_root|tojson }};
 var _editingBon = null;
 
 function cancelAddBon() {
@@ -435,7 +436,7 @@ function openEditBon(bon) {
     _editingBon = bon;
     document.getElementById('modal-detail-bon').close();
     var form = document.getElementById('form-add-bon');
-    form.action = '/api/logistique/bons/' + bon.id + '/update';
+    form.action = SCRIPT_ROOT + '/api/logistique/bons/' + bon.id + '/update';
 
     // Remplir les champs d'en-tête
     var societe = document.getElementById('bon-societe');

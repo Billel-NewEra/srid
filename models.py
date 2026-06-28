@@ -28,13 +28,13 @@ class Operation(db.Model):
 
     # Type et catégorie
     type_operation = db.Column(db.String(20), nullable=False)  # Chèque, Virement, Versement
-    societe = db.Column(db.String(100), nullable=False)  # ENT, Genetics, etc.
+    societe = db.Column(db.String(100), nullable=False, index=True)
     famille = db.Column(db.String(100))
 
     # Dates
-    date_operation = db.Column(db.Date, nullable=False)
+    date_operation = db.Column(db.Date, nullable=False, index=True)
     date_reception = db.Column(db.Date)
-    date_encaissement = db.Column(db.Date)
+    date_encaissement = db.Column(db.Date, index=True)
     date_sortie = db.Column(db.Date)
 
     # Parties
@@ -47,7 +47,7 @@ class Operation(db.Model):
     numero_piece = db.Column(db.String(50))  # N° chèque ou N° versement
 
     # Statut et type détail
-    statut = db.Column(db.String(50), default='En attente')
+    statut = db.Column(db.String(50), default='En attente', index=True)
     type_detail = db.Column(db.String(50))  # Garantie, Courant, etc.
 
     # Mouvements
@@ -115,12 +115,12 @@ class CommandeLogistique(db.Model):
     __tablename__ = 'commandes_logistique'
 
     id                = db.Column(db.Integer, primary_key=True)
-    bon_id            = db.Column(db.Integer, db.ForeignKey('bons_commande.id'))
+    bon_id            = db.Column(db.Integer, db.ForeignKey('bons_commande.id'), index=True)
     ref_log           = db.Column(db.String(20))          # LOG-0001 etc.
-    societe           = db.Column(db.String(50), nullable=False)
+    societe           = db.Column(db.String(50), nullable=False, index=True)
     annee             = db.Column(db.String(4))
     date_d10          = db.Column(db.Date)
-    date_arrivee      = db.Column(db.Date)
+    date_arrivee      = db.Column(db.Date, index=True)
     fournisseur       = db.Column(db.String(200))
     produit           = db.Column(db.String(200))
     emballage         = db.Column(db.String(100))
@@ -131,7 +131,7 @@ class CommandeLogistique(db.Model):
     date_facture      = db.Column(db.Date)
     code_paiement     = db.Column(db.String(10))          # T / R / CAD
     nb_jours          = db.Column(db.Integer)
-    date_echeance     = db.Column(db.Date)
+    date_echeance     = db.Column(db.Date, index=True)
     date_paiement     = db.Column(db.Date)
     date_valeur       = db.Column(db.Date)
     remarque          = db.Column(db.Text)
@@ -173,10 +173,10 @@ class BonCommande(db.Model):
 
     id                    = db.Column(db.Integer, primary_key=True)
     numero                = db.Column(db.String(50), unique=True)
-    societe               = db.Column(db.String(50), nullable=False)
+    societe               = db.Column(db.String(50), nullable=False, index=True)
     fournisseur           = db.Column(db.String(200))
-    statut                = db.Column(db.String(30), default='Brouillon')
-    date_commande         = db.Column(db.Date, nullable=False)
+    statut                = db.Column(db.String(30), default='Brouillon', index=True)
+    date_commande         = db.Column(db.Date, nullable=False, index=True)
     date_livraison_prevue = db.Column(db.Date)
     notes                 = db.Column(db.Text)
     cree_par              = db.Column(db.String(100))
@@ -228,11 +228,11 @@ class AuditLog(db.Model):
     __tablename__ = 'audit_log'
 
     id = db.Column(db.Integer, primary_key=True)
-    operation_id = db.Column(db.Integer, nullable=False)
+    operation_id = db.Column(db.Integer, nullable=False, index=True)
     action = db.Column(db.String(20), nullable=False)  # création, modification, suppression
     utilisateur = db.Column(db.String(100))
     details = db.Column(db.Text)
-    date_action = db.Column(db.DateTime, default=datetime.utcnow)
+    date_action = db.Column(db.DateTime, default=datetime.utcnow, index=True)
 
 
 class Product(db.Model):

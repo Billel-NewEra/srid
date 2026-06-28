@@ -295,7 +295,7 @@ function cancelEditLog() {
 
 function _fillAndShowEditLog(d) {
     const f = document.getElementById('form-edit-log');
-    f.action = '/api/logistique/' + d.id + '/edit';
+    f.action = SCRIPT_ROOT + '/api/logistique/' + d.id + '/edit';
     const banner = f.querySelector('.ref-log-banner');
     if (banner) {
         if (d.refLog) { banner.querySelector('.ref-log-value').textContent = d.refLog; banner.classList.remove('hidden'); }
