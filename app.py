@@ -1572,8 +1572,12 @@ def print_bon(bon_id):
 @login_required
 def api_bon_detail(bon_id):
     """Return bon de commande data as JSON (used by gestion page viewer)."""
-    bon = BonCommande.query.get_or_404(bon_id)
-    return jsonify(bon.to_dict())
+    try:
+        bon = BonCommande.query.get_or_404(bon_id)
+        return jsonify(bon.to_dict())
+    except Exception as e:
+        app.logger.error(f'api_bon_detail error bon_id={bon_id}: {e}')
+        return jsonify({'error': str(e)}), 500
 
 
 # --- Suppression ---

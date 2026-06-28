@@ -193,6 +193,7 @@
 {% endif %}
 
 <script>
+var SCRIPT_ROOT = {{ request.script_root|tojson }};
 const today = new Date().toISOString().split('T')[0];
 
 // ── Mécanique detail → edit (comme bons de commandes) ──────────────────────
@@ -239,7 +240,7 @@ function openLogDetail(el) {
     if (d.bonId) {
         bonSection.classList.remove('hidden');
         bonLignes.innerHTML = '<p class="opacity-50 text-sm">Chargement...</p>';
-        fetch('/api/logistique/bons/' + d.bonId + '/detail', {credentials: 'same-origin'})
+        fetch(SCRIPT_ROOT + '/api/logistique/bons/' + d.bonId + '/detail', {credentials: 'same-origin'})
             .then(function(r) {
                 if (!r.ok) throw new Error('HTTP ' + r.status);
                 return r.json();
@@ -274,8 +275,9 @@ function openLogDetail(el) {
                     '<th class="text-right">Total €</th>' +
                     '</tr></thead><tbody>' + trs + '</tbody></table>';
             })
-            .catch(function() {
-                bonLignes.innerHTML = '<p class="text-error text-sm">Erreur de chargement</p>';
+            .catch(function(err) {
+                console.error('Detail bon fetch error:', err);
+                bonLignes.innerHTML = '<p class="text-error text-sm">Erreur de chargement: ' + err.message + '</p>';
             });
     } else {
         bonSection.classList.add('hidden');
@@ -342,7 +344,7 @@ function openBonViewer(bonId, event) {
     document.getElementById('bv-meta').textContent = '';
     document.getElementById('bv-lignes').innerHTML = '<p class="opacity-50 text-sm">Chargement...</p>';
     modal.showModal();
-    fetch('/api/logistique/bons/' + bonId + '/detail', {credentials: 'same-origin'})
+    fetch(SCRIPT_ROOT + '/api/logistique/bons/' + bonId + '/detail', {credentials: 'same-origin'})
         .then(function(r) {
             if (!r.ok) throw new Error('HTTP ' + r.status);
             return r.json();
@@ -382,8 +384,9 @@ function openBonViewer(bonId, event) {
                     (bon.notes ? '<div class="mt-3 p-3 border-l-4 border-primary bg-base-100 rounded text-sm"><span class="text-xs font-semibold opacity-60 block mb-1">REMARQUE</span>' + escHtml(bon.notes) + '</div>' : '');
             }
         })
-        .catch(function() {
-            document.getElementById('bv-lignes').innerHTML = '<p class="text-error text-sm">Erreur de chargement</p>';
+        .catch(function(err) {
+            console.error('Bon viewer fetch error:', err);
+            document.getElementById('bv-lignes').innerHTML = '<p class="text-error text-sm">Erreur de chargement: ' + err.message + '</p>';
         });
 }
 
