@@ -1038,6 +1038,43 @@ def _log_kpis():
     return kpis
 
 
+def _get_logistique_notifications(limit=8):
+    """Retourne les alertes d'échéance pour la gestion logistique."""
+    today = date.today()
+    alert_date = today + timedelta(days=7)
+
+    # Workflow échéance : uniquement les entrées non payées.
+    base_query = CommandeLogistique.query.filter(
+        CommandeLogistique.date_echeance.isnot(None),
+        CommandeLogistique.date_paiement.is_(None),
+        CommandeLogistique.date_valeur.is_(None),
+    )
+
+    overdue_count = base_query.filter(CommandeLogistique.date_echeance < today).count()
+    upcoming_count = base_query.filter(
+        CommandeLogistique.date_echeance >= today,
+        CommandeLogistique.date_echeance <= alert_date,
+    ).count()
+
+    critical_entries = base_query.filter(
+        or_(
+            CommandeLogistique.date_echeance < today,
+            (
+                (CommandeLogistique.date_echeance >= today) &
+                (CommandeLogistique.date_echeance <= alert_date)
+            ),
+        )
+    ).order_by(CommandeLogistique.date_echeance.asc(), CommandeLogistique.id.desc()).limit(limit).all()
+
+    return {
+        'today': today,
+        'overdue_count': overdue_count,
+        'upcoming_count': upcoming_count,
+        'total_alerts': overdue_count + upcoming_count,
+        'critical_entries': critical_entries,
+    }
+
+
 LOG_STATUTS = ['EN COURS', 'D10', 'ARRIVÉ', 'ÉCHÉANCE', 'ARRIVE À ÉCHÉANCE', 'ÉCHU', 'PAIEMENT EN COURS', 'PAYÉ']
 
 
@@ -1079,8 +1116,27 @@ def api_logistique_gestion_list():
     page     = request.args.get('page', 1, type=int)
     search   = request.args.get('search', '').strip()
     societe  = request.args.get('societe', '').strip()
-    annee    = request.args.get('annee', '').strip()
     statut_f = request.args.get('statut', '').strip()
+    date_filter = request.args.get('date_filter', '').strip()
+    date_debut_raw = request.args.get('date_debut', '').strip()
+    date_fin_raw = request.args.get('date_fin', '').strip()
+
+    def _parse_date(v):
+        try:
+            return datetime.strptime(v, '%Y-%m-%d').date() if v else None
+        except ValueError:
+            return None
+
+    date_debut = _parse_date(date_debut_raw)
+    date_fin = _parse_date(date_fin_raw)
+    date_fields = {
+        'date_d10': CommandeLogistique.date_d10,
+        'date_arrivee': CommandeLogistique.date_arrivee,
+        'date_facture': CommandeLogistique.date_facture,
+        'date_echeance': CommandeLogistique.date_echeance,
+        'date_paiement': CommandeLogistique.date_paiement,
+        'date_valeur': CommandeLogistique.date_valeur,
+    }
 
     q = CommandeLogistique.query
     if search:
@@ -1091,8 +1147,12 @@ def api_logistique_gestion_list():
         ))
     if societe:
         q = q.filter(CommandeLogistique.societe == societe)
-    if annee:
-        q = q.filter(CommandeLogistique.annee == annee)
+    if date_filter in date_fields:
+        df = date_fields[date_filter]
+        if date_debut:
+            q = q.filter(df >= date_debut)
+        if date_fin:
+            q = q.filter(df <= date_fin)
     q = q.order_by(CommandeLogistique.date_arrivee.desc().nullslast(), CommandeLogistique.id.desc())
 
     if statut_f:
@@ -1105,16 +1165,11 @@ def api_logistique_gestion_list():
         items = q.offset((page - 1) * LOG_PER_PAGE).limit(LOG_PER_PAGE).all()
 
     total_pages = max(1, (total + LOG_PER_PAGE - 1) // LOG_PER_PAGE)
-    years = [r[0] for r in db.session.query(CommandeLogistique.annee)
-             .filter(CommandeLogistique.annee.isnot(None), CommandeLogistique.annee != '')
-             .distinct().order_by(CommandeLogistique.annee.desc()).all()]
-    fournisseurs = [r[0] for r in db.session.query(CommandeLogistique.fournisseur)
-                    .filter(CommandeLogistique.fournisseur.isnot(None), CommandeLogistique.fournisseur != '')
-                    .distinct().order_by(CommandeLogistique.fournisseur).all()]
     return render_template('partials/logistique_gestion_table.html',
                            items=items, page=page, total_pages=total_pages, total=total,
-                           search=search, societe=societe, annee=annee, statut_f=statut_f,
-                           years=years, fournisseurs=fournisseurs,
+                           search=search, societe=societe,
+                           statut_f=statut_f, date_filter=date_filter,
+                           date_debut=date_debut_raw, date_fin=date_fin_raw,
                            today=date.today(),
                            can_write=_current_role() in ('admin', 'saisie'),
                            is_admin=_current_role() == 'admin')
@@ -1126,8 +1181,27 @@ def logistique_gestion():
     page     = request.args.get('page', 1, type=int)
     search   = request.args.get('search', '').strip()
     societe  = request.args.get('societe', '').strip()
-    annee    = request.args.get('annee', '').strip()
     statut_f = request.args.get('statut', '').strip()
+    date_filter = request.args.get('date_filter', '').strip()
+    date_debut_raw = request.args.get('date_debut', '').strip()
+    date_fin_raw = request.args.get('date_fin', '').strip()
+
+    def _parse_date(v):
+        try:
+            return datetime.strptime(v, '%Y-%m-%d').date() if v else None
+        except ValueError:
+            return None
+
+    date_debut = _parse_date(date_debut_raw)
+    date_fin = _parse_date(date_fin_raw)
+    date_fields = {
+        'date_d10': CommandeLogistique.date_d10,
+        'date_arrivee': CommandeLogistique.date_arrivee,
+        'date_facture': CommandeLogistique.date_facture,
+        'date_echeance': CommandeLogistique.date_echeance,
+        'date_paiement': CommandeLogistique.date_paiement,
+        'date_valeur': CommandeLogistique.date_valeur,
+    }
 
     q = CommandeLogistique.query
     if search:
@@ -1137,8 +1211,12 @@ def logistique_gestion():
         ))
     if societe:
         q = q.filter(CommandeLogistique.societe == societe)
-    if annee:
-        q = q.filter(CommandeLogistique.annee == annee)
+    if date_filter in date_fields:
+        df = date_fields[date_filter]
+        if date_debut:
+            q = q.filter(df >= date_debut)
+        if date_fin:
+            q = q.filter(df <= date_fin)
 
     q = q.order_by(CommandeLogistique.date_arrivee.desc().nullslast(),
                    CommandeLogistique.id.desc())
@@ -1154,22 +1232,26 @@ def logistique_gestion():
 
     total_pages  = max(1, (total + LOG_PER_PAGE - 1) // LOG_PER_PAGE)
 
-    years = [r[0] for r in db.session.query(CommandeLogistique.annee)
-             .filter(CommandeLogistique.annee.isnot(None), CommandeLogistique.annee != '')
-             .distinct().order_by(CommandeLogistique.annee.desc()).all()]
-
-    fournisseurs = [r[0] for r in db.session.query(CommandeLogistique.fournisseur)
-                    .filter(CommandeLogistique.fournisseur.isnot(None), CommandeLogistique.fournisseur != '')
-                    .distinct().order_by(CommandeLogistique.fournisseur).all()]
-
     return render_template('logistique_gestion.html',
                            items=items, page=page, total_pages=total_pages, total=total,
-                           search=search, societe=societe, annee=annee, statut_f=statut_f,
-                           years=years, kpis=_log_kpis(), fournisseurs=fournisseurs,
+                           search=search, societe=societe,
+                           statut_f=statut_f, date_filter=date_filter,
+                           date_debut=date_debut_raw, date_fin=date_fin_raw,
+                           kpis=_log_kpis(),
+                           notifications=_get_logistique_notifications(),
                            today=date.today(),
                            log_statuts=LOG_STATUTS,
                            can_write=_current_role() in ('admin', 'saisie'),
                            is_admin=_current_role() == 'admin')
+
+
+@app.route('/api/logistique/notifications')
+@login_required
+def api_logistique_notifications():
+    return render_template(
+        'partials/logistique_notifications_panel.html',
+        notifications=_get_logistique_notifications(),
+    )
 
 
 def _log_form_fields(c):
@@ -1658,12 +1740,20 @@ def api_notifications():
 @login_required
 def api_notifications_badge():
     notifications = _get_echeance_notifications()
+    log_notifications = _get_logistique_notifications()
     # Pour les non-admins, ajouter le compte des rejets récents
     rejections_count = 0 if _current_role() == 'admin' else _get_recent_rejections()['total']
+    consultation_total = (notifications.get('total_alerts', 0) if notifications else 0) + rejections_count
+    logistique_total = log_notifications.get('total_alerts', 0) if log_notifications else 0
+    target_url = url_for('consultation') if consultation_total > 0 else (
+        url_for('logistique_gestion') if logistique_total > 0 else url_for('consultation')
+    )
     return render_template(
         'partials/global_notifications_badge.html',
         notifications=notifications,
+        log_notifications=log_notifications,
         rejections_count=rejections_count,
+        target_url=target_url,
     )
 
 

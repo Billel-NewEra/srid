@@ -1,0 +1,79 @@
+{% if notifications and notifications.total_alerts > 0 %}
+<div class="mb-3 rounded-xl border border-orange-500/30 bg-gradient-to-r from-orange-500/15 to-rose-500/10 p-3">
+    <div class="flex items-center gap-2">
+        <div class="w-8 h-8 rounded-full bg-orange-500/25 text-orange-300 flex items-center justify-center shrink-0">
+            <i class="fas fa-bell text-sm"></i>
+        </div>
+        <div class="min-w-0 flex-1">
+            <div class="text-sm font-semibold leading-tight">Alertes échéance</div>
+            <div class="text-xs opacity-75 mt-0.5">
+                {% if notifications.overdue_count > 0 and notifications.upcoming_count > 0 %}
+                    <span class="text-rose-400">{{ notifications.overdue_count }} échu{{ 's' if notifications.overdue_count > 1 else '' }}</span>
+                    <span class="opacity-50"> • </span>
+                    <span class="text-cyan-400">{{ notifications.upcoming_count }} à venir (7j)</span>
+                {% elif notifications.overdue_count > 0 %}
+                    <span class="text-rose-400">{{ notifications.overdue_count }} échu{{ 's' if notifications.overdue_count > 1 else '' }}</span>
+                {% elif notifications.upcoming_count > 0 %}
+                    <span class="text-cyan-400">{{ notifications.upcoming_count }} à venir (7j)</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% if notifications and notifications.critical_entries %}
+<div class="card bg-base-200 border border-base-300 mb-3">
+    <div class="card-body p-3">
+        <div class="flex items-center justify-between mb-2">
+            <h3 class="font-semibold text-sm"><i class="fas fa-triangle-exclamation mr-1 text-warning"></i>Commandes à traiter</h3>
+            <span class="badge badge-sm badge-warning">{{ notifications.critical_entries|length }}</span>
+        </div>
+        <div class="space-y-1">
+            {% for item in notifications.critical_entries %}
+            {% set delta = (item.date_echeance - notifications.today).days %}
+            {% set display_statut = item.statut | lower | capitalize %}
+            <div class="flex items-center justify-between gap-2 bg-base-100 rounded px-2 py-1.5 cursor-pointer hover:bg-base-300 transition-colors"
+                 onclick="if (typeof openLogDetail === 'function') openLogDetail(this)"
+                 data-id="{{ item.id }}"
+                 data-ref-log="{{ item.ref_log or '' }}"
+                 data-bon-id="{{ item.bon_id or '' }}"
+                 data-societe="{{ item.societe or '' }}"
+                 data-date-d10="{{ item.date_d10.strftime('%Y-%m-%d') if item.date_d10 else '' }}"
+                 data-date-arrivee="{{ item.date_arrivee.strftime('%Y-%m-%d') if item.date_arrivee else '' }}"
+                 data-fournisseur="{{ item.fournisseur or '' }}"
+                 data-montant-eur="{{ item.montant_eur or '' }}"
+                 data-cours="{{ item.cours or '' }}"
+                 data-date-facture="{{ item.date_facture.strftime('%Y-%m-%d') if item.date_facture else '' }}"
+                 data-code-paiement="{{ item.code_paiement or '' }}"
+                 data-nb-jours="{{ item.nb_jours or '' }}"
+                 data-date-echeance="{{ item.date_echeance.strftime('%Y-%m-%d') if item.date_echeance else '' }}"
+                 data-date-paiement="{{ item.date_paiement.strftime('%Y-%m-%d') if item.date_paiement else '' }}"
+                 data-date-valeur="{{ item.date_valeur.strftime('%Y-%m-%d') if item.date_valeur else '' }}"
+                 data-remarque="{{ item.remarque or '' }}">
+                <div class="min-w-0">
+                    <div class="text-sm font-medium truncate">{{ item.fournisseur or '—' }}</div>
+                    <div class="text-xs opacity-80 mt-0.5">
+                        <span class="opacity-60">Bon :</span>
+                        <span class="font-mono">{{ item.ref_log or '—' }}</span>
+                        <span class="opacity-50"> • </span>
+                        <span class="opacity-60">Échéance :</span>
+                        <span class="text-slate-300 font-medium">{{ item.date_echeance.strftime('%d/%m/%Y') }}</span>
+                        {% if delta < 0 %}
+                            <span class="text-rose-400 font-bold">(retard {{ -delta }}j)</span>
+                        {% elif delta == 0 %}
+                            <span class="text-rose-300 font-bold">(aujourd'hui)</span>
+                        {% else %}
+                            <span class="text-cyan-400 font-bold">(J-{{ delta }})</span>
+                        {% endif %}
+                    </div>
+                </div>
+                <span class="badge badge-sm font-semibold whitespace-nowrap shrink-0 {% if item.statut == 'ÉCHU' %}bg-violet-600 text-white border-violet-700{% elif item.statut == 'ARRIVE À ÉCHÉANCE' %}bg-orange-500 text-white border-orange-600{% elif item.statut == 'ÉCHÉANCE' %}bg-amber-500 text-white border-amber-600{% else %}bg-gray-500 text-white border-gray-600{% endif %}">
+                    {{ display_statut }}
+                </span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+{% endif %}

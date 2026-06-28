@@ -18,7 +18,7 @@
 <div class="space-y-3 lg:hidden">
     {% for item in items %}
     {% set s = item.statut %}
-    <div class="card bg-base-100 border border-base-300 shadow-sm cursor-pointer {% if s == 'ÉCHU' %}!bg-rose-500/10{% elif s == 'ARRIVE À ÉCHÉANCE' %}!bg-orange-500/10{% endif %}"
+    <div class="card bg-base-100 border border-base-300 shadow-sm cursor-pointer {% if s == 'ÉCHU' %}!bg-rose-500/20{% elif s == 'ARRIVE À ÉCHÉANCE' %}!bg-cyan-500/20{% endif %}"
          data-id="{{ item.id }}"
          data-ref-log="{{ item.ref_log or '' }}"
          data-bon-id="{{ item.bon_id or '' }}"
@@ -62,7 +62,7 @@
         </div>
     </div>
     {% else %}
-    <div class="text-center py-12 opacity-50"><i class="fas fa-inbox text-4xl mb-2 block"></i>Aucune entrée{% if search or societe or annee or statut_f %} pour ces filtres{% endif %}</div>
+    <div class="text-center py-12 opacity-50"><i class="fas fa-inbox text-4xl mb-2 block"></i>Aucune entrée{% if search or societe or statut_f or date_filter or date_debut or date_fin %} pour ces filtres{% endif %}</div>
     {% endfor %}
 </div>
 
@@ -87,8 +87,8 @@
     <tbody>
     {% for item in items %}
     {% set s = item.statut %}
-    {% if s == 'ARRIVE À ÉCHÉANCE' %}{% set row_cls = '!bg-orange-500/15 hover:!bg-orange-500/25' %}
-    {% elif s == 'ÉCHU' %}{% set row_cls = '!bg-rose-500/15 hover:!bg-rose-500/25' %}
+    {% if s == 'ARRIVE À ÉCHÉANCE' %}{% set row_cls = '!bg-cyan-500/20 hover:!bg-cyan-500/35' %}
+    {% elif s == 'ÉCHU' %}{% set row_cls = '!bg-rose-500/20 hover:!bg-rose-500/35' %}
     {% else %}{% set row_cls = 'hover:bg-base-200' %}{% endif %}
     <tr class="cursor-pointer {{ row_cls }}"
         onclick="openLogDetail(this)"
@@ -108,7 +108,7 @@
         data-date-paiement="{{ item.date_paiement.strftime('%Y-%m-%d') if item.date_paiement else '' }}"
         data-date-valeur="{{ item.date_valeur.strftime('%Y-%m-%d') if item.date_valeur else '' }}"
         data-remarque="{{ item.remarque or '' }}">
-        <td class="text-sm">
+        <td class="text-sm {% if s == 'ARRIVE À ÉCHÉANCE' %}border-l-4 border-cyan-400{% elif s == 'ÉCHU' %}border-l-4 border-rose-400{% endif %}">
             {% if item.ref_log and item.bon_id %}<button type="button" onclick="openBonViewer({{ item.bon_id }}, event)" class="badge badge-outline badge-sm font-mono hover:badge-primary cursor-pointer">{{ item.ref_log }}</button>
             {% elif item.ref_log %}<span class="font-mono text-sm">{{ item.ref_log }}</span>
             {% else %}<span class="opacity-30">—</span>{% endif %}
@@ -140,7 +140,7 @@
     {% else %}
     <tr><td colspan="11" class="text-center py-12 opacity-50">
         <i class="fas fa-inbox text-4xl mb-2 block"></i>
-        Aucune entrée{% if search or societe or annee or statut_f %} pour ces filtres{% endif %}
+        Aucune entrée{% if search or societe or statut_f or date_filter or date_debut or date_fin %} pour ces filtres{% endif %}
     </td></tr>
     {% endfor %}
     </tbody>
@@ -155,7 +155,7 @@
         <button class="join-item btn btn-sm"
                 hx-get="{{ url_for('api_logistique_gestion_list') }}"
                 hx-target="#gestion-table"
-                hx-include="[name='search'],[name='societe'],[name='annee'],[name='statut']"
+                hx-include="[name='search'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']"
                 hx-vals='{"page": {{ page - 1 }}}'><i class="fas fa-chevron-left"></i></button>
         {% endif %}
         {% for p in range(1, total_pages + 1) %}
@@ -165,7 +165,7 @@
             <button class="join-item btn btn-sm"
                     hx-get="{{ url_for('api_logistique_gestion_list') }}"
                     hx-target="#gestion-table"
-                    hx-include="[name='search'],[name='societe'],[name='annee'],[name='statut']"
+                    hx-include="[name='search'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']"
                     hx-vals='{"page": {{ p }}}'>{{ p }}</button>
             {% elif p == 4 or p == total_pages - 2 %}
             <button class="join-item btn btn-sm btn-disabled">...</button>
@@ -175,7 +175,7 @@
         <button class="join-item btn btn-sm"
                 hx-get="{{ url_for('api_logistique_gestion_list') }}"
                 hx-target="#gestion-table"
-                hx-include="[name='search'],[name='societe'],[name='annee'],[name='statut']"
+                hx-include="[name='search'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']"
                 hx-vals='{"page": {{ page + 1 }}}'><i class="fas fa-chevron-right"></i></button>
         {% endif %}
     </div>

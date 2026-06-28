@@ -17,6 +17,15 @@
         {% endif %}
     </div>
 
+    <!-- Notifications échéances logistique -->
+    <div id="logistique-notifications-panel"
+         hx-get="{{ url_for('api_logistique_notifications') }}"
+         hx-trigger="refreshGlobalAlert from:body"
+         hx-swap="innerHTML"
+         class="mb-4">
+        {% include 'partials/logistique_notifications_panel.html' %}
+    </div>
+
     <!-- KPI Cards -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
         {% set kpi_config = [
@@ -27,7 +36,7 @@
             ('PAYÉ',              'fas fa-check-circle',       'text-green-400',  kpis.get('PAYÉ', 0)),
         ] %}
         {% for label, icon, color, count in kpi_config %}
-        <a href="{{ url_for('logistique_gestion', statut=label, societe=societe, annee=annee) }}"
+        <a href="{{ url_for('logistique_gestion', statut=label, societe=societe, date_filter=date_filter, date_debut=date_debut, date_fin=date_fin) }}"
            class="card bg-base-100 shadow hover:shadow-md transition-shadow cursor-pointer {% if statut_f == label %}ring-2 ring-primary{% endif %}">
             <div class="card-body p-4 text-center">
                 <i class="{{ icon }} text-2xl {{ color }} mb-1"></i>
@@ -41,8 +50,9 @@
     <!-- Filtres HTMX -->
     <div class="card bg-base-100 shadow mb-4">
         <div class="card-body p-4">
-            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
-                <div class="form-control sm:col-span-1">
+            <div class="flex flex-col gap-4">
+                <!-- Recherche texte -->
+                <div class="form-control">
                     <div class="input-group flex">
                         <span class="bg-primary text-primary-content px-3 flex items-center rounded-l-lg"><i class="fas fa-search"></i></span>
                         <input type="text" name="search" value="{{ search }}"
@@ -51,46 +61,73 @@
                                hx-get="{{ url_for('api_logistique_gestion_list') }}"
                                hx-trigger="keyup changed delay:300ms"
                                hx-target="#gestion-table"
-                               hx-include="[name='societe'],[name='annee'],[name='statut']">
+                               hx-include="[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']">
                     </div>
                 </div>
-                <select name="societe" class="select select-bordered select-sm"
-                        hx-get="{{ url_for('api_logistique_gestion_list') }}"
-                        hx-trigger="change"
-                        hx-target="#gestion-table"
-                        hx-include="[name='search'],[name='annee'],[name='statut']">
-                    <option value="">Toutes sociétés</option>
-                    <option value="SRID" {% if societe == 'SRID' %}selected{% endif %}>SRID</option>
-                    <option value="SRID GENETICS" {% if societe == 'SRID GENETICS' %}selected{% endif %}>SRID GENETICS</option>
-                </select>
-                <select name="annee" class="select select-bordered select-sm"
-                        hx-get="{{ url_for('api_logistique_gestion_list') }}"
-                        hx-trigger="change"
-                        hx-target="#gestion-table"
-                        hx-include="[name='search'],[name='societe'],[name='statut']">
-                    <option value="">Toutes années</option>
-                    {% for y in years %}
-                    <option value="{{ y }}" {% if annee == y %}selected{% endif %}>{{ y }}</option>
-                    {% endfor %}
-                </select>
-                <select name="statut" class="select select-bordered select-sm"
-                        hx-get="{{ url_for('api_logistique_gestion_list') }}"
-                        hx-trigger="change"
-                        hx-target="#gestion-table"
-                        hx-include="[name='search'],[name='societe'],[name='annee']">
-                    <option value="">Tous statuts</option>
-                    {% for s in log_statuts %}
-                    <option value="{{ s }}" {% if statut_f == s %}selected{% endif %}>{{ s }}</option>
-                    {% endfor %}
-                </select>
+
+                <!-- Filtres -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+                    <select name="societe" class="select select-bordered select-sm w-full"
+                            hx-get="{{ url_for('api_logistique_gestion_list') }}"
+                            hx-trigger="change"
+                            hx-target="#gestion-table"
+                            hx-include="[name='search'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']">
+                        <option value="">Toutes sociétés</option>
+                        <option value="SRID" {% if societe == 'SRID' %}selected{% endif %}>SRID</option>
+                        <option value="SRID GENETICS" {% if societe == 'SRID GENETICS' %}selected{% endif %}>SRID GENETICS</option>
+                    </select>
+                    <select name="statut" class="select select-bordered select-sm w-full"
+                            hx-get="{{ url_for('api_logistique_gestion_list') }}"
+                            hx-trigger="change"
+                            hx-target="#gestion-table"
+                            hx-include="[name='search'],[name='societe'],[name='date_filter'],[name='date_debut'],[name='date_fin']">
+                        <option value="">Tous statuts</option>
+                        {% for s in log_statuts %}
+                        <option value="{{ s }}" {% if statut_f == s %}selected{% endif %}>{{ s }}</option>
+                        {% endfor %}
+                    </select>
+                    <div class="form-control">
+                        <label class="label label-text text-xs py-0">Filtrer dates par</label>
+                        <select name="date_filter" class="select select-bordered select-sm w-full"
+                                hx-get="{{ url_for('api_logistique_gestion_list') }}"
+                                hx-trigger="change"
+                                hx-target="#gestion-table"
+                                hx-include="[name='search'],[name='societe'],[name='statut'],[name='date_debut'],[name='date_fin']">
+                            <option value="date_d10" {% if date_filter == 'date_d10' %}selected{% endif %}>Date D10</option>
+                            <option value="date_arrivee" {% if date_filter == 'date_arrivee' %}selected{% endif %}>Date arrivée</option>
+                            <option value="date_facture" {% if date_filter == 'date_facture' %}selected{% endif %}>Date facture</option>
+                            <option value="date_echeance" {% if date_filter == 'date_echeance' %}selected{% endif %}>Date échéance</option>
+                            <option value="date_paiement" {% if date_filter == 'date_paiement' %}selected{% endif %}>Date paiement</option>
+                            <option value="date_valeur" {% if date_filter == 'date_valeur' %}selected{% endif %}>Date valeur</option>
+                        </select>
+                    </div>
+                    <div class="form-control">
+                        <label class="label label-text text-xs py-0">Du</label>
+                        <input type="date" name="date_debut" value="{{ date_debut or '' }}" class="input input-bordered input-sm w-full"
+                               hx-get="{{ url_for('api_logistique_gestion_list') }}"
+                               hx-trigger="change"
+                               hx-target="#gestion-table"
+                               hx-include="[name='search'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_fin']">
+                    </div>
+                    <div class="form-control">
+                        <label class="label label-text text-xs py-0">Au</label>
+                        <input type="date" name="date_fin" value="{{ date_fin or '' }}" class="input input-bordered input-sm w-full"
+                               hx-get="{{ url_for('api_logistique_gestion_list') }}"
+                               hx-trigger="change"
+                               hx-target="#gestion-table"
+                               hx-include="[name='search'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut']">
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- Table (HTMX target) -->
     <div class="card bg-base-100 shadow">
-        <div class="overflow-x-auto" id="gestion-table">
-            {% include 'partials/logistique_gestion_table.html' %}
+        <div class="card-body p-4">
+            <div class="overflow-x-auto" id="gestion-table">
+                {% include 'partials/logistique_gestion_table.html' %}
+            </div>
         </div>
     </div>
 

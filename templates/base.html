@@ -438,9 +438,10 @@
                 </div>
                 <div class="navbar-end gap-1">
                     <!-- Badge alertes global -->
-                    <a href="{{ url_for('consultation') }}"
+                          <a href="{{ url_for('consultation') }}"
                        id="global-alert-badge"
                        class="btn btn-ghost btn-sm btn-circle relative"
+                              onclick="return handleGlobalAlertClick(event, this)"
                        hx-get="{{ url_for('api_notifications_badge') }}"
                        hx-trigger="load, every 60s, refreshGlobalAlert from:body"
                        hx-swap="innerHTML"
@@ -644,6 +645,17 @@
         function openLogistiqueModal() {
             const modal = document.getElementById('logistique-modal');
             if (modal) modal.showModal();
+        }
+
+        function handleGlobalAlertClick(event, anchor) {
+            const targetEl = anchor.querySelector('[data-target-url]');
+            const targetUrl = targetEl ? targetEl.getAttribute('data-target-url') : null;
+            if (targetUrl) {
+                event.preventDefault();
+                window.location.href = targetUrl;
+                return false;
+            }
+            return true;
         }
     </script>
 

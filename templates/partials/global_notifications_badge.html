@@ -1,8 +1,11 @@
 {% set rejections_total = rejections_count | default(0) %}
 {% set echeance_total = notifications.total_alerts if notifications else 0 %}
-{% set grand_total = echeance_total + rejections_total %}
+{% set log_total = log_notifications.total_alerts if log_notifications else 0 %}
+{% set grand_total = echeance_total + rejections_total + log_total %}
 {% set has_alerts = grand_total > 0 %}
-{% set has_overdue = (notifications and notifications.overdue_count > 0) or rejections_total > 0 %}
+{% set has_overdue = (notifications and notifications.overdue_count > 0) or (log_notifications and log_notifications.overdue_count > 0) or rejections_total > 0 %}
+
+<span class="hidden" data-target-url="{{ target_url }}"></span>
 
 <i class="fas fa-bell text-lg {% if has_alerts %}{% if has_overdue %}text-red-400 animate-pulse{% else %}text-orange-400 animate-pulse{% endif %}{% else %}opacity-70{% endif %}"></i>
 {% if has_alerts %}
