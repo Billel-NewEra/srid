@@ -357,6 +357,7 @@ def login():
         password = request.form.get('password', '')
         user = User.query.filter_by(username=username).first()
         if user and user.check_password(password):
+            session.permanent = True
             session['user_id'] = user.id
             session['user_nom'] = user.nom_complet or user.username
             session['user_role'] = _normalize_role(user.role)

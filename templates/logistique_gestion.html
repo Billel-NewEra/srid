@@ -239,8 +239,11 @@ function openLogDetail(el) {
     if (d.bonId) {
         bonSection.classList.remove('hidden');
         bonLignes.innerHTML = '<p class="opacity-50 text-sm">Chargement...</p>';
-        fetch('/api/logistique/bons/' + d.bonId + '/detail')
-            .then(function(r) { return r.json(); })
+        fetch('/api/logistique/bons/' + d.bonId + '/detail', {credentials: 'same-origin'})
+            .then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                return r.json();
+            })
             .then(function(bon) {
                 var lignes = bon.lignes || [];
                 document.getElementById('detail-log-bon-title').textContent = bon.numero || '—';
