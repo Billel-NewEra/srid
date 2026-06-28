@@ -91,7 +91,7 @@ This document is the single source of truth for the SRID COM project status:
 - Dropdown custom style remains opaque and readable.
 - PWA manifest and service worker behavior verified on target domain/subpath.
 
-## 10) Change Log (High Level)
+### 10) Change Log (High Level)
 - Deployment hardening for cPanel subpath.
 - Dashboard filter behavior restoration and refinement.
 - Opaque custom dropdown style introduction.
