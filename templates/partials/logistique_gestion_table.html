@@ -1,0 +1,183 @@
+{% macro badge_cls(s) %}
+    {% if s == 'PAYÉ' %}bg-emerald-600 text-white border-emerald-700
+    {% elif s == 'PAIEMENT EN COURS' %}bg-sky-600 text-white border-sky-700
+    {% elif s == 'ARRIVE À ÉCHÉANCE' %}bg-orange-500 text-white border-orange-600
+    {% elif s == 'ÉCHU' %}bg-violet-600 text-white border-violet-700
+    {% elif s == 'ÉCHÉANCE' %}bg-amber-500 text-white border-amber-600
+    {% elif s == 'ARRIVÉ' %}bg-teal-600 text-white border-teal-700
+    {% elif s == 'D10' %}bg-blue-600 text-white border-blue-700
+    {% elif s == 'EN COURS' %}bg-gray-500 text-white border-gray-600
+    {% else %}bg-gray-400 text-white border-gray-500{% endif %}
+{% endmacro %}
+
+<div class="flex justify-between items-center mb-3 text-sm opacity-70" data-current-page="{{ page }}">
+    <span><span class="font-semibold">{{ total }}</span> entrée{{ 's' if total != 1 else '' }}</span>
+</div>
+
+<!-- Vue mobile (cards) -->
+<div class="space-y-3 lg:hidden">
+    {% for item in items %}
+    {% set s = item.statut %}
+    <div class="card bg-base-100 border border-base-300 shadow-sm cursor-pointer {% if s == 'ÉCHU' %}!bg-rose-500/10{% elif s == 'ARRIVE À ÉCHÉANCE' %}!bg-orange-500/10{% endif %}"
+         data-id="{{ item.id }}"
+         data-ref-log="{{ item.ref_log or '' }}"
+         data-bon-id="{{ item.bon_id or '' }}"
+         data-societe="{{ item.societe or '' }}"
+         data-date-d10="{{ item.date_d10.strftime('%Y-%m-%d') if item.date_d10 else '' }}"
+         data-date-arrivee="{{ item.date_arrivee.strftime('%Y-%m-%d') if item.date_arrivee else '' }}"
+         data-fournisseur="{{ item.fournisseur or '' }}"
+         data-montant-eur="{{ item.montant_eur or '' }}"
+         data-cours="{{ item.cours or '' }}"
+         data-date-facture="{{ item.date_facture.strftime('%Y-%m-%d') if item.date_facture else '' }}"
+         data-code-paiement="{{ item.code_paiement or '' }}"
+         data-nb-jours="{{ item.nb_jours or '' }}"
+         data-date-echeance="{{ item.date_echeance.strftime('%Y-%m-%d') if item.date_echeance else '' }}"
+         data-date-paiement="{{ item.date_paiement.strftime('%Y-%m-%d') if item.date_paiement else '' }}"
+         data-date-valeur="{{ item.date_valeur.strftime('%Y-%m-%d') if item.date_valeur else '' }}"
+         data-remarque="{{ item.remarque or '' }}"
+         onclick="openLogDetail(this)">
+        <div class="card-body p-3">
+            <div class="flex items-start justify-between gap-2">
+                <div class="min-w-0">
+                    <div class="font-semibold">{{ item.fournisseur or '—' }}</div>
+                    <div class="text-xs opacity-70 mt-1">{{ item.societe }}{% if item.ref_log and item.bon_id %} · <button type="button" onclick="openBonViewer({{ item.bon_id }}, event)" class="font-mono underline decoration-dotted hover:text-primary">{{ item.ref_log }}</button>{% elif item.ref_log %} · <span class="font-mono">{{ item.ref_log }}</span>{% endif %}</div>
+                </div>
+                {% if s %}<span class="badge badge-sm font-semibold whitespace-nowrap {{ badge_cls(s) }}">{{ s | lower | capitalize }}</span>{% endif %}
+            </div>
+            <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-xs mt-2">
+                <div><span class="opacity-50">Montant DA</span><br><span class="font-mono font-semibold">{{ item.montant_da | currency(0) if item.montant_da else '—' }}</span></div>
+                <div><span class="opacity-50">Échéance</span><br>
+                    <span class="{% if item.date_echeance and item.date_echeance < today and not item.date_valeur %}text-error font-semibold{% endif %}">{{ item.date_echeance.strftime('%d/%m/%Y') if item.date_echeance else '—' }}</span>
+                </div>
+                <div><span class="opacity-50">D10</span><br>{{ item.date_d10.strftime('%d/%m/%Y') if item.date_d10 else '—' }}</div>
+                <div><span class="opacity-50">Arrivée</span><br>{{ item.date_arrivee.strftime('%d/%m/%Y') if item.date_arrivee else '—' }}</div>
+            </div>
+            {% if can_write and is_admin %}
+            <div class="flex justify-end pt-1" onclick="event.stopPropagation()">
+                <form method="POST" action="{{ url_for('api_logistique_delete', item_id=item.id) }}" style="display:inline" onsubmit="return confirm('Supprimer cette entrée ?')">
+                    <button type="submit" class="btn btn-ghost btn-xs tooltip" data-tip="Supprimer"><i class="fas fa-trash text-error"></i></button>
+                </form>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    {% else %}
+    <div class="text-center py-12 opacity-50"><i class="fas fa-inbox text-4xl mb-2 block"></i>Aucune entrée{% if search or societe or annee or statut_f %} pour ces filtres{% endif %}</div>
+    {% endfor %}
+</div>
+
+<!-- Vue desktop (table) -->
+<div class="hidden lg:block overflow-x-auto">
+<table class="table table-sm table-zebra w-full min-w-[860px]">
+    <thead>
+        <tr class="bg-base-200">
+            <th>N° Bon</th>
+            <th>Société</th>
+            <th>Fournisseur</th>
+            <th class="text-right">Montant DA</th>
+            <th class="whitespace-nowrap">D10</th>
+            <th class="whitespace-nowrap">Arrivée</th>
+            <th class="whitespace-nowrap">Échéance</th>
+            <th class="whitespace-nowrap">Paiement</th>
+            <th class="whitespace-nowrap">Val. Date</th>
+            <th>Statut</th>
+            {% if can_write %}<th class="text-center">Actions</th>{% endif %}
+        </tr>
+    </thead>
+    <tbody>
+    {% for item in items %}
+    {% set s = item.statut %}
+    {% if s == 'ARRIVE À ÉCHÉANCE' %}{% set row_cls = '!bg-orange-500/15 hover:!bg-orange-500/25' %}
+    {% elif s == 'ÉCHU' %}{% set row_cls = '!bg-rose-500/15 hover:!bg-rose-500/25' %}
+    {% else %}{% set row_cls = 'hover:bg-base-200' %}{% endif %}
+    <tr class="cursor-pointer {{ row_cls }}"
+        onclick="openLogDetail(this)"
+        data-id="{{ item.id }}"
+        data-ref-log="{{ item.ref_log or '' }}"
+        data-bon-id="{{ item.bon_id or '' }}"
+        data-societe="{{ item.societe or '' }}"
+        data-date-d10="{{ item.date_d10.strftime('%Y-%m-%d') if item.date_d10 else '' }}"
+        data-date-arrivee="{{ item.date_arrivee.strftime('%Y-%m-%d') if item.date_arrivee else '' }}"
+        data-fournisseur="{{ item.fournisseur or '' }}"
+        data-montant-eur="{{ item.montant_eur or '' }}"
+        data-cours="{{ item.cours or '' }}"
+        data-date-facture="{{ item.date_facture.strftime('%Y-%m-%d') if item.date_facture else '' }}"
+        data-code-paiement="{{ item.code_paiement or '' }}"
+        data-nb-jours="{{ item.nb_jours or '' }}"
+        data-date-echeance="{{ item.date_echeance.strftime('%Y-%m-%d') if item.date_echeance else '' }}"
+        data-date-paiement="{{ item.date_paiement.strftime('%Y-%m-%d') if item.date_paiement else '' }}"
+        data-date-valeur="{{ item.date_valeur.strftime('%Y-%m-%d') if item.date_valeur else '' }}"
+        data-remarque="{{ item.remarque or '' }}">
+        <td class="text-sm">
+            {% if item.ref_log and item.bon_id %}<button type="button" onclick="openBonViewer({{ item.bon_id }}, event)" class="badge badge-outline badge-sm font-mono hover:badge-primary cursor-pointer">{{ item.ref_log }}</button>
+            {% elif item.ref_log %}<span class="font-mono text-sm">{{ item.ref_log }}</span>
+            {% else %}<span class="opacity-30">—</span>{% endif %}
+        </td>
+        <td class="text-sm">{{ item.societe }}</td>
+        <td class="text-sm font-medium">{{ item.fournisseur or '—' }}</td>
+        <td class="text-right font-mono font-semibold text-sm">{{ item.montant_da | currency(0) if item.montant_da else '—' }}</td>
+        <td class="text-sm whitespace-nowrap opacity-70">{{ item.date_d10.strftime('%d/%m/%Y') if item.date_d10 else '—' }}</td>
+        <td class="text-sm whitespace-nowrap font-medium">{{ item.date_arrivee.strftime('%d/%m/%Y') if item.date_arrivee else '—' }}</td>
+        <td class="text-sm whitespace-nowrap {% if item.date_echeance and item.date_echeance < today and not item.date_valeur %}text-error font-semibold{% endif %}">
+            {{ item.date_echeance.strftime('%d/%m/%Y') if item.date_echeance else '—' }}
+        </td>
+        <td class="text-sm whitespace-nowrap opacity-70">{{ item.date_paiement.strftime('%d/%m/%Y') if item.date_paiement else '—' }}</td>
+        <td class="text-sm whitespace-nowrap opacity-70">{{ item.date_valeur.strftime('%d/%m/%Y') if item.date_valeur else '—' }}</td>
+        <td>
+            {% if s %}<span class="badge badge-sm font-semibold whitespace-nowrap {{ badge_cls(s) }}">{{ s | lower | capitalize }}</span>
+            {% else %}<span class="opacity-30">—</span>{% endif %}
+        </td>
+        {% if can_write %}
+        <td class="text-center whitespace-nowrap" onclick="event.stopPropagation()">
+            {% if is_admin %}
+            <form method="POST" action="{{ url_for('api_logistique_delete', item_id=item.id) }}" style="display:inline" onsubmit="return confirm('Supprimer cette entrée ?')">
+                <button type="submit" class="btn btn-ghost btn-xs tooltip" data-tip="Supprimer"><i class="fas fa-trash text-error"></i></button>
+            </form>
+            {% endif %}
+        </td>
+        {% endif %}
+    </tr>
+    {% else %}
+    <tr><td colspan="11" class="text-center py-12 opacity-50">
+        <i class="fas fa-inbox text-4xl mb-2 block"></i>
+        Aucune entrée{% if search or societe or annee or statut_f %} pour ces filtres{% endif %}
+    </td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<!-- Pagination (style join) -->
+{% if total_pages > 1 %}
+<div class="flex justify-center mt-4">
+    <div class="join">
+        {% if page > 1 %}
+        <button class="join-item btn btn-sm"
+                hx-get="{{ url_for('api_logistique_gestion_list') }}"
+                hx-target="#gestion-table"
+                hx-include="[name='search'],[name='societe'],[name='annee'],[name='statut']"
+                hx-vals='{"page": {{ page - 1 }}}'><i class="fas fa-chevron-left"></i></button>
+        {% endif %}
+        {% for p in range(1, total_pages + 1) %}
+            {% if p == page %}
+            <button class="join-item btn btn-sm btn-primary">{{ p }}</button>
+            {% elif p <= 3 or p >= total_pages - 1 or (p >= page - 1 and p <= page + 1) %}
+            <button class="join-item btn btn-sm"
+                    hx-get="{{ url_for('api_logistique_gestion_list') }}"
+                    hx-target="#gestion-table"
+                    hx-include="[name='search'],[name='societe'],[name='annee'],[name='statut']"
+                    hx-vals='{"page": {{ p }}}'>{{ p }}</button>
+            {% elif p == 4 or p == total_pages - 2 %}
+            <button class="join-item btn btn-sm btn-disabled">...</button>
+            {% endif %}
+        {% endfor %}
+        {% if page < total_pages %}
+        <button class="join-item btn btn-sm"
+                hx-get="{{ url_for('api_logistique_gestion_list') }}"
+                hx-target="#gestion-table"
+                hx-include="[name='search'],[name='societe'],[name='annee'],[name='statut']"
+                hx-vals='{"page": {{ page + 1 }}}'><i class="fas fa-chevron-right"></i></button>
+        {% endif %}
+    </div>
+</div>
+{% endif %}

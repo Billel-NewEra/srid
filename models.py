@@ -112,6 +112,7 @@ class CommandeLogistique(db.Model):
     __tablename__ = 'commandes_logistique'
 
     id                = db.Column(db.Integer, primary_key=True)
+    bon_id            = db.Column(db.Integer, db.ForeignKey('bons_commande.id'))
     ref_log           = db.Column(db.String(20))          # LOG-0001 etc.
     societe           = db.Column(db.String(50), nullable=False)
     annee             = db.Column(db.String(4))
@@ -143,18 +144,25 @@ class CommandeLogistique(db.Model):
 
     @property
     def statut(self):
+        """Machine à états pour le suivi logistique (ordre de priorité strict)."""
         today = date.today()
         if self.date_valeur:
             return 'PAYÉ'
         if self.date_paiement:
-            return 'EN COURS DE PAIEMENT'
+            return 'PAIEMENT EN COURS'
         if self.date_echeance:
             if self.date_echeance < today:
                 return 'ÉCHU'
-            return 'À ÉCHÉANCE'
+            days_left = (self.date_echeance - today).days
+            if days_left <= 7:
+                return 'ARRIVE À ÉCHÉANCE'
+            return 'ÉCHÉANCE'
         if self.date_arrivee:
             return 'ARRIVÉ'
-        return ''
+        if self.date_d10:
+            return 'D10'
+        return 'EN COURS'
+
 
 
 class BonCommande(db.Model):
@@ -222,3 +230,27 @@ class AuditLog(db.Model):
     utilisateur = db.Column(db.String(100))
     details = db.Column(db.Text)
     date_action = db.Column(db.DateTime, default=datetime.utcnow)
+
+
+class Product(db.Model):
+    __tablename__ = 'products'
+
+    id           = db.Column(db.Integer, primary_key=True)
+    company      = db.Column(db.String(100), nullable=False, index=True)  # 'SRID' ou 'Genetics'
+    reference    = db.Column(db.String(100), nullable=False)
+    designation  = db.Column(db.String(300), nullable=False)
+    date_added   = db.Column(db.DateTime, default=datetime.utcnow)
+
+    __table_args__ = (db.UniqueConstraint('company', 'reference', name='uq_product_company_ref'),)
+
+    def __repr__(self):
+        return f'<Product {self.company}/{self.reference}>'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'company': self.company,
+            'reference': self.reference,
+            'designation': self.designation,
+        }
+

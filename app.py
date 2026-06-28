@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, send_file, send_from_directory, make_response
 from config import Config
-from models import db, Operation, User, AuditLog, ClientLabel, RemettantLabel, CommandeLogistique, BonCommande, LigneCommande, Fournisseur
+from models import db, Operation, User, AuditLog, ClientLabel, RemettantLabel, CommandeLogistique, BonCommande, LigneCommande, Fournisseur, Product
 from datetime import datetime, date, timedelta
 from sqlalchemy import or_, func, extract, desc, case
 from functools import wraps
@@ -1030,12 +1030,94 @@ def api_ref_remettant_delete(item_id):
 
 def _log_kpis():
     """Calcule les KPIs logistique (nombre d'entrées par statut)."""
-    kpis = {'ARRIVÉ': 0, 'EN COURS DE PAIEMENT': 0, 'À ÉCHÉANCE': 0, 'ÉCHU': 0, 'PAYÉ': 0, '': 0}
+    kpis = {'ARRIVÉ': 0, 'D10': 0, 'ÉCHÉANCE': 0, 'ARRIVE À ÉCHÉANCE': 0,
+            'ÉCHU': 0, 'PAIEMENT EN COURS': 0, 'PAYÉ': 0, 'EN COURS': 0}
     for c in CommandeLogistique.query.all():
         s = c.statut
-        if s in kpis:
-            kpis[s] += 1
+        kpis[s] = kpis.get(s, 0) + 1
     return kpis
+
+
+LOG_STATUTS = ['EN COURS', 'D10', 'ARRIVÉ', 'ÉCHÉANCE', 'ARRIVE À ÉCHÉANCE', 'ÉCHU', 'PAIEMENT EN COURS', 'PAYÉ']
+
+
+@app.route('/api/logistique/bons')
+@login_required
+def api_logistique_bons_list():
+    """HTMX partial: retourne la table des bons filtrée."""
+    page     = request.args.get('page', 1, type=int)
+    search   = request.args.get('search', '').strip()
+    societe  = request.args.get('societe', '').strip()
+    statut_f = request.args.get('statut', '').strip()
+
+    q = BonCommande.query
+    if search:
+        q = q.filter(or_(
+            BonCommande.fournisseur.ilike(f'%{search}%'),
+            BonCommande.numero.ilike(f'%{search}%'),
+        ))
+    if societe:
+        q = q.filter(BonCommande.societe == societe)
+    if statut_f:
+        q = q.filter(BonCommande.statut == statut_f)
+    q = q.order_by(BonCommande.date_commande.desc(), BonCommande.id.desc())
+    total       = q.count()
+    bons        = q.offset((page - 1) * BON_PER_PAGE).limit(BON_PER_PAGE).all()
+    total_pages = max(1, (total + BON_PER_PAGE - 1) // BON_PER_PAGE)
+    return render_template('partials/logistique_bons_table.html',
+                           bons=bons, page=page, total_pages=total_pages, total=total,
+                           search=search, societe=societe, statut_f=statut_f,
+                           bon_statuts=BON_STATUTS,
+                           can_write=_current_role() in ('admin', 'saisie'),
+                           is_admin=_current_role() == 'admin')
+
+
+@app.route('/api/logistique/gestion')
+@login_required
+def api_logistique_gestion_list():
+    """HTMX partial: retourne la table de gestion filtrée."""
+    page     = request.args.get('page', 1, type=int)
+    search   = request.args.get('search', '').strip()
+    societe  = request.args.get('societe', '').strip()
+    annee    = request.args.get('annee', '').strip()
+    statut_f = request.args.get('statut', '').strip()
+
+    q = CommandeLogistique.query
+    if search:
+        q = q.filter(or_(
+            CommandeLogistique.produit.ilike(f'%{search}%'),
+            CommandeLogistique.fournisseur.ilike(f'%{search}%'),
+            CommandeLogistique.remarque.ilike(f'%{search}%'),
+        ))
+    if societe:
+        q = q.filter(CommandeLogistique.societe == societe)
+    if annee:
+        q = q.filter(CommandeLogistique.annee == annee)
+    q = q.order_by(CommandeLogistique.date_arrivee.desc().nullslast(), CommandeLogistique.id.desc())
+
+    if statut_f:
+        all_items  = q.all()
+        filtered   = [c for c in all_items if c.statut == statut_f]
+        total      = len(filtered)
+        items      = filtered[(page - 1) * LOG_PER_PAGE: page * LOG_PER_PAGE]
+    else:
+        total = q.count()
+        items = q.offset((page - 1) * LOG_PER_PAGE).limit(LOG_PER_PAGE).all()
+
+    total_pages = max(1, (total + LOG_PER_PAGE - 1) // LOG_PER_PAGE)
+    years = [r[0] for r in db.session.query(CommandeLogistique.annee)
+             .filter(CommandeLogistique.annee.isnot(None), CommandeLogistique.annee != '')
+             .distinct().order_by(CommandeLogistique.annee.desc()).all()]
+    fournisseurs = [r[0] for r in db.session.query(CommandeLogistique.fournisseur)
+                    .filter(CommandeLogistique.fournisseur.isnot(None), CommandeLogistique.fournisseur != '')
+                    .distinct().order_by(CommandeLogistique.fournisseur).all()]
+    return render_template('partials/logistique_gestion_table.html',
+                           items=items, page=page, total_pages=total_pages, total=total,
+                           search=search, societe=societe, annee=annee, statut_f=statut_f,
+                           years=years, fournisseurs=fournisseurs,
+                           today=date.today(),
+                           can_write=_current_role() in ('admin', 'saisie'),
+                           is_admin=_current_role() == 'admin')
 
 
 @app.route('/logistique/gestion')
@@ -1085,6 +1167,7 @@ def logistique_gestion():
                            search=search, societe=societe, annee=annee, statut_f=statut_f,
                            years=years, kpis=_log_kpis(), fournisseurs=fournisseurs,
                            today=date.today(),
+                           log_statuts=LOG_STATUTS,
                            can_write=_current_role() in ('admin', 'saisie'),
                            is_admin=_current_role() == 'admin')
 
@@ -1110,11 +1193,13 @@ def _log_form_fields(c):
         except ValueError:
             return None
 
-    c.societe       = request.form.get('societe', '').strip()
+    if 'societe' in request.form:
+        c.societe       = request.form.get('societe', '').strip()
     c.annee         = request.form.get('annee', '').strip() or None
     c.date_d10      = fd('date_d10')
     c.date_arrivee  = fd('date_arrivee')
-    c.fournisseur   = request.form.get('fournisseur', '').strip().upper() or None
+    if 'fournisseur' in request.form:
+        c.fournisseur   = request.form.get('fournisseur', '').strip().upper() or None
     c.produit       = request.form.get('produit', '').strip() or None
     c.emballage     = request.form.get('emballage', '').strip() or None
     c.quantite      = ff('quantite')
@@ -1158,6 +1243,41 @@ def api_logistique_delete(item_id):
     return redirect(url_for('logistique_gestion'))
 
 
+# ── Products (Referentiels) ──────────────────────────────────────────────────
+
+@app.route('/api/products/by-company')
+@login_required
+def api_products_by_company():
+    """Get products filtered by company for autofill."""
+    company = request.args.get('company', '').strip()
+    if not company:
+        return jsonify([])
+    
+    products = Product.query.filter_by(company=company).order_by(Product.reference).all()
+    return jsonify([p.to_dict() for p in products])
+
+
+@app.route('/api/products/search')
+@login_required
+def api_products_search():
+    """Search products by reference or designation."""
+    q = request.args.get('q', '').strip()
+    company = request.args.get('company', '').strip()
+    
+    query = Product.query
+    if company:
+        query = query.filter_by(company=company)
+    
+    if q:
+        query = query.filter(or_(
+            Product.reference.ilike(f'%{q}%'),
+            Product.designation.ilike(f'%{q}%')
+        ))
+    
+    products = query.order_by(Product.reference).limit(50).all()
+    return jsonify([p.to_dict() for p in products])
+
+
 # ── Bons de commande ──────────────────────────────────────────────────────────
 
 @app.route('/logistique/bons')
@@ -1189,10 +1309,15 @@ def logistique_bons():
                     .filter(CommandeLogistique.fournisseur.isnot(None), CommandeLogistique.fournisseur != '')
                     .distinct().order_by(CommandeLogistique.fournisseur).all()]
 
+    import json as _json
+    products = Product.query.order_by(Product.company, Product.designation).all()
+    products_json = _json.dumps([p.to_dict() for p in products])
+
     return render_template('logistique_bons.html',
                            bons=bons, page=page, total_pages=total_pages, total=total,
                            search=search, societe=societe, statut_f=statut_f,
                            bon_statuts=BON_STATUTS, fournisseurs=fournisseurs,
+                           products_json=products_json,
                            can_write=_current_role() in ('admin', 'saisie'),
                            is_admin=_current_role() == 'admin')
 
@@ -1248,6 +1373,27 @@ def api_bon_add():
                                      designation=desig, quantite=qty,
                                      unite=unite or None, prix_unitaire=prix))
     db.session.commit()
+
+    # Créer automatiquement l'entrée dans CommandeLogistique
+    total_montant = sum(
+        (float(quantites[i]) if i < len(quantites) and quantites[i].strip() else 1.0) *
+        (float(prix_unitaires[i]) if i < len(prix_unitaires) and prix_unitaires[i].strip() else 0)
+        for i in range(len(designations))
+        if designations[i].strip()
+    )
+    
+    log_entry = CommandeLogistique(
+        bon_id            = bon.id,
+        ref_log           = numero,  # Même numéro que le bon
+        societe           = bon.societe,
+        annee             = str(date.today().year),
+        fournisseur       = bon.fournisseur,
+        montant_eur       = total_montant if total_montant else None,
+        cree_par          = session.get('username', ''),
+    )
+    db.session.add(log_entry)
+    db.session.commit()
+
     return redirect(url_for('logistique_bons'))
 
 
@@ -1260,6 +1406,63 @@ def api_bon_statut(bon_id):
     return redirect(url_for('logistique_bons'))
 
 
+@app.route('/api/logistique/bons/<int:bon_id>/update', methods=['POST'])
+@role_required('admin', 'saisie')
+def api_bon_update(bon_id):
+    bon = BonCommande.query.get_or_404(bon_id)
+
+    def fd(k):
+        v = request.form.get(k, '').strip()
+        try:
+            return datetime.strptime(v, '%Y-%m-%d').date() if v else None
+        except ValueError:
+            return None
+
+    bon.societe       = request.form.get('societe', bon.societe).strip()
+    bon.fournisseur   = request.form.get('fournisseur', '').strip().upper() or None
+    bon.statut        = request.form.get('statut', bon.statut)
+    bon.date_commande = fd('date_commande') or bon.date_commande
+    bon.notes         = request.form.get('notes', '').strip() or None
+
+    # Remplacer les lignes existantes
+    LigneCommande.query.filter_by(bon_id=bon.id).delete()
+    db.session.flush()
+
+    designations   = request.form.getlist('designation[]')
+    quantites      = request.form.getlist('quantite[]')
+    prix_unitaires = request.form.getlist('prix_unitaire[]')
+    references     = request.form.getlist('reference[]')
+
+    total_montant = 0.0
+    for i, desig in enumerate(designations):
+        desig = desig.strip()
+        if not desig:
+            continue
+        try:
+            qty = float(quantites[i]) if i < len(quantites) and quantites[i].strip() else 1.0
+        except (ValueError, IndexError):
+            qty = 1.0
+        try:
+            prix = float(prix_unitaires[i]) if i < len(prix_unitaires) and prix_unitaires[i].strip() else None
+        except (ValueError, IndexError):
+            prix = None
+        ref = references[i].strip() if i < len(references) else ''
+        db.session.add(LigneCommande(bon_id=bon.id, reference=ref or None,
+                                     designation=desig, quantite=qty,
+                                     prix_unitaire=prix))
+        total_montant += qty * (prix or 0)
+
+    # Mettre à jour l'entrée CommandeLogistique associée
+    log_entry = CommandeLogistique.query.filter_by(bon_id=bon.id).first()
+    if log_entry:
+        log_entry.societe     = bon.societe
+        log_entry.fournisseur = bon.fournisseur
+        log_entry.montant_eur = total_montant or None
+
+    db.session.commit()
+    return redirect(url_for('logistique_bons'))
+
+
 @app.route('/api/logistique/bons/<int:bon_id>/delete', methods=['POST', 'DELETE'])
 @role_required('admin')
 def api_bon_delete(bon_id):
@@ -1267,6 +1470,23 @@ def api_bon_delete(bon_id):
     db.session.delete(bon)
     db.session.commit()
     return redirect(url_for('logistique_bons'))
+
+
+@app.route('/logistique/bons/<int:bon_id>/print')
+@login_required
+def print_bon(bon_id):
+    """Print bon de commande."""
+    bon = BonCommande.query.get_or_404(bon_id)
+    from datetime import datetime
+    return render_template('bon_print.html', bon=bon, now=datetime.now())
+
+
+@app.route('/api/logistique/bons/<int:bon_id>/detail')
+@login_required
+def api_bon_detail(bon_id):
+    """Return bon de commande data as JSON (used by gestion page viewer)."""
+    bon = BonCommande.query.get_or_404(bon_id)
+    return jsonify(bon.to_dict())
 
 
 # --- Suppression ---

@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bon de Commande - {{ bon.numero }}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: white;
+            color: #333;
+            line-height: 1.5;
+        }
+        
+        .print-container {
+            max-width: 21cm;
+            margin: 0 auto;
+            padding: 20mm;
+            background: white;
+        }
+        
+        /* Header with logo */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 30px;
+            border-bottom: 3px solid #008B8B;
+            padding-bottom: 15px;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            color: #008B8B;
+            font-weight: bold;
+        }
+        
+        .header-right {
+            text-align: right;
+        }
+        
+        .header-right p {
+            font-size: 12px;
+            opacity: 0.7;
+            margin: 3px 0;
+        }
+        
+        /* Bon meta info */
+        .bon-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-bottom: 20px;
+            font-size: 13px;
+        }
+        
+        .bon-info-section {
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+        
+        .bon-info-section strong {
+            display: block;
+            color: #008B8B;
+            font-weight: 600;
+            margin-bottom: 5px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 3px;
+        }
+        
+        .bon-info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 3px 0;
+        }
+        
+        .bon-info-row .label {
+            font-weight: 600;
+        }
+        
+        /* Lines table */
+        .table-section {
+            margin: 30px 0;
+        }
+        
+        .table-section h3 {
+            font-size: 12px;
+            color: #008B8B;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 10px;
+            letter-spacing: 1px;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        
+        thead {
+            background: #008B8B;
+            color: white;
+        }
+        
+        th {
+            padding: 8px;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid #008B8B;
+        }
+        
+        th.text-right {
+            text-align: right;
+            padding-right: 12px;
+        }
+        
+        td {
+            padding: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        td.text-right {
+            text-align: right;
+            padding-right: 12px;
+        }
+        
+        tbody tr:nth-child(even) {
+            background: #fafafa;
+        }
+        
+        tbody tr:hover {
+            background: #f0f0f0;
+        }
+        
+        /* Totals */
+        .totals-section {
+            margin-top: 30px;
+            text-align: right;
+            border-top: 2px solid #008B8B;
+            padding-top: 15px;
+        }
+        
+        .total-row {
+            display: flex;
+            justify-content: flex-end;
+            gap: 50px;
+            margin: 8px 0;
+            font-size: 13px;
+        }
+        
+        .total-row.grand-total {
+            font-size: 16px;
+            font-weight: bold;
+            color: #008B8B;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 2px solid #008B8B;
+        }
+        
+        .total-label {
+            width: 120px;
+            text-align: right;
+            font-weight: 600;
+        }
+        
+        .total-value {
+            width: 100px;
+            text-align: right;
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+        }
+        
+        /* Notes section */
+        .notes-section {
+            margin-top: 30px;
+            padding: 12px;
+            background: #f9f9f9;
+            border-left: 4px solid #008B8B;
+            border-radius: 2px;
+        }
+        
+        .notes-section h4 {
+            font-size: 11px;
+            color: #008B8B;
+            font-weight: 600;
+            text-transform: uppercase;
+            margin-bottom: 6px;
+            letter-spacing: 0.5px;
+        }
+        
+        .notes-section p {
+            font-size: 12px;
+            line-height: 1.6;
+            color: #666;
+            white-space: pre-wrap;
+        }
+        
+        /* Footer */
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            text-align: center;
+            font-size: 10px;
+            color: #999;
+        }
+        
+        /* Print styles */
+        @media print {
+            body { margin: 0; padding: 0; }
+            .print-container { max-width: 100%; padding: 0; }
+            .no-print { display: none !important; }
+            a { color: #008B8B; text-decoration: none; }
+            page-break-after: always;
+        }
+        
+        .print-button {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        
+        .print-button button {
+            padding: 10px 20px;
+            background: #008B8B;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .print-button button:hover {
+            background: #006b6b;
+        }
+        
+        /* Empty rows message */
+        .empty-message {
+            padding: 40px 20px;
+            text-align: center;
+            color: #999;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <div class="print-container">
+        <!-- Print button (hidden in actual print) -->
+        <div class="print-button no-print">
+            <button onclick="window.print(); return false;">
+                <i class="fas fa-print"></i> Imprimer ce bon
+            </button>
+        </div>
+        
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <h1>BON DE COMMANDE</h1>
+                <p style="margin-top: 8px; font-size: 16px; color: #666;">{{ bon.numero }}</p>
+            </div>
+            <div class="header-right">
+                <p><strong>SRID COM</strong></p>
+                <p>Sarl. SRID</p>
+                <p>Alger, Algérie</p>
+                <p style="margin-top: 10px; font-size: 11px;">
+                    Date d'impression: {{ now.strftime('%d/%m/%Y %H:%M') }}
+                </p>
+            </div>
+        </div>
+        
+        <!-- Bon Information -->
+        <div class="bon-info">
+            <div class="bon-info-section">
+                <strong>SOCIETE</strong>
+                <div style="margin: 8px 0; font-size: 14px; font-weight: 600;">{{ bon.societe }}</div>
+            </div>
+            <div class="bon-info-section">
+                <strong>FOURNISSEUR</strong>
+                <div style="margin: 8px 0; font-size: 14px; font-weight: 600;">{{ bon.fournisseur or '—' }}</div>
+            </div>
+            <div class="bon-info-section">
+                <strong>STATUT</strong>
+                <div style="margin: 8px 0; font-size: 14px; font-weight: 600; color: #008B8B;">{{ bon.statut }}</div>
+            </div>
+            <div class="bon-info-section">
+                <strong>DATES</strong>
+                <div class="bon-info-row" style="margin: 5px 0;">
+                    <span class="label">Commande:</span>
+                    <span>{{ bon.date_commande.strftime('%d/%m/%Y') if bon.date_commande else '—' }}</span>
+                </div>
+                {% if bon.date_livraison_prevue %}
+                <div class="bon-info-row">
+                    <span class="label">Livraison:</span>
+                    <span>{{ bon.date_livraison_prevue.strftime('%d/%m/%Y') }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Lines table -->
+        <div class="table-section">
+            <h3>Articles commandés</h3>
+            {% if bon.lignes %}
+            <table>
+                <thead>
+                    <tr>
+                        <th>Référence</th>
+                        <th>Désignation</th>
+                        <th class="text-right" style="width: 60px;">Qté</th>
+                        <th class="text-right" style="width: 80px;">Prix unit. €</th>
+                        <th class="text-right" style="width: 100px;">Total €</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for ligne in bon.lignes %}
+                    <tr>
+                        <td style="font-family: 'Courier New', monospace; font-size: 11px; font-weight: 500;">
+                            {{ ligne.reference or '' }}
+                        </td>
+                        <td>{{ ligne.designation or '—' }}</td>
+                        <td class="text-right">{{ ligne.quantite or '—' }}</td>
+                        <td class="text-right" style="font-family: 'Courier New', monospace;">
+                            {% if ligne.prix_unitaire %}
+                                {{ "%.2f"|format(ligne.prix_unitaire) }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                        <td class="text-right" style="font-family: 'Courier New', monospace; font-weight: 600;">
+                            {% if ligne.quantite and ligne.prix_unitaire %}
+                                {{ "%.2f"|format(ligne.quantite * ligne.prix_unitaire) }}
+                            {% else %}
+                                —
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+            {% else %}
+            <p class="empty-message">Aucune ligne de commande</p>
+            {% endif %}
+        </div>
+        
+        <!-- Totals -->
+        {% if bon.lignes %}
+        <div class="totals-section">
+            <div class="total-row">
+                <div class="total-label">Montant total:</div>
+                <div class="total-value">{{ "%.2f"|format(bon.total_eur or 0) }} €</div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Notes -->
+        {% if bon.notes %}
+        <div class="notes-section">
+            <h4>Remarques</h4>
+            <p>{{ bon.notes }}</p>
+        </div>
+        {% endif %}
+        
+        <!-- Footer -->
+        <div class="footer">
+            <p>Document généré automatiquement par SRID COM Logistique</p>
+            <p style="margin-top: 5px;">{{ bon.numero }} | Imprimé le {{ now.strftime('%d/%m/%Y à %H:%M:%S') }}</p>
+        </div>
+    </div>
+    
+    <script>
+        // Auto-print on mobile or if requested
+        if (new URLSearchParams(window.location.search).get('autoprint')) {
+            window.print();
+        }
+    </script>
+</body>
+</html>

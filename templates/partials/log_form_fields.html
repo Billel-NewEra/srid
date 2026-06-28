@@ -1,59 +1,10 @@
+<!-- Bannière N° Bon (affichée uniquement en édition si lié à un bon) -->
+<div class="ref-log-banner hidden alert alert-info py-2 px-4 mb-3 rounded-lg">
+    <i class="fas fa-link text-info mr-2"></i>
+    <span class="text-sm">Lié au bon de commande : <strong class="ref-log-value font-mono ml-1"></strong></span>
+</div>
+
 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-
-    <!-- Société -->
-    <div class="form-control">
-        <label class="label pb-1"><span class="label-text text-xs font-semibold">Société *</span></label>
-        <select name="societe" class="select select-bordered select-sm" required>
-            <option value="">—</option>
-            <option value="SRID">SRID</option>
-            <option value="SRID GENETICS">SRID GENETICS</option>
-        </select>
-    </div>
-
-    <!-- Année -->
-    <div class="form-control">
-        <label class="label pb-1"><span class="label-text text-xs font-semibold">Année</span></label>
-        <input type="number" name="annee" min="2000" max="2099" step="1"
-               class="input input-bordered input-sm" placeholder="{{ now().year }}">
-    </div>
-
-    <!-- Fournisseur -->
-    <div class="form-control">
-        <label class="label pb-1"><span class="label-text text-xs font-semibold">Fournisseur</span></label>
-        <input type="text" name="fournisseur" class="input input-bordered input-sm"
-               placeholder="NOM FOURNISSEUR">
-    </div>
-
-    <!-- Produit -->
-    <div class="form-control">
-        <label class="label pb-1"><span class="label-text text-xs font-semibold">Produit</span></label>
-        <input type="text" name="produit" class="input input-bordered input-sm"
-               placeholder="Description du produit">
-    </div>
-
-    <!-- Emballage / Conditionnement -->
-    <div class="form-control">
-        <label class="label pb-1"><span class="label-text text-xs font-semibold">Conditionnement</span></label>
-        <input type="text" name="emballage" class="input input-bordered input-sm"
-               placeholder="Ex: SAC 25KG">
-    </div>
-
-    <!-- Quantité -->
-    <div class="form-control">
-        <label class="label pb-1"><span class="label-text text-xs font-semibold">Quantité</span></label>
-        <input type="number" name="quantite" step="any" min="0"
-               class="input input-bordered input-sm" placeholder="0">
-    </div>
-
-    <!-- TVA -->
-    <div class="form-control">
-        <label class="label pb-1"><span class="label-text text-xs font-semibold">TVA</span></label>
-        <select name="tva" class="select select-bordered select-sm">
-            <option value="">—</option>
-            <option value="0.09">9%</option>
-            <option value="0.19">19%</option>
-        </select>
-    </div>
 
     <!-- Montant EUR -->
     <div class="form-control">
@@ -65,8 +16,8 @@
     <!-- Cours -->
     <div class="form-control">
         <label class="label pb-1"><span class="label-text text-xs font-semibold">Cours (€→DA)</span></label>
-        <input type="number" name="cours" step="any" min="0"
-               class="input input-bordered input-sm" placeholder="145.0000">
+        <input type="number" name="cours" step="0.0001" min="0"
+               class="input input-bordered input-sm" placeholder="0.0000">
     </div>
 
     <!-- Montant DA (calculé) -->

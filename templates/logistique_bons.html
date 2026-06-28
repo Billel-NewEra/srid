@@ -10,167 +10,74 @@
             <h1 class="text-2xl font-bold">
                 <i class="fas fa-file-invoice text-teal-400 mr-2"></i>Bons de commande
             </h1>
-            <p class="text-sm opacity-60 mt-1">{{ total }} bon{{ 's' if total != 1 else '' }} de commande</p>
         </div>
         {% if can_write %}
-        <button class="btn btn-primary btn-sm" onclick="document.getElementById('modal-add-bon').showModal()">
+        <button class="btn btn-primary btn-sm" onclick="openNewBon()">
             <i class="fas fa-plus mr-1"></i>Nouveau bon
         </button>
         {% endif %}
     </div>
 
-    <!-- Filtres -->
-    <form method="GET" action="{{ url_for('logistique_bons') }}"
-          class="card bg-base-100 shadow mb-4">
+    <!-- Filtres HTMX -->
+    <div class="card bg-base-100 shadow mb-4">
         <div class="card-body p-4">
-            <div class="flex flex-wrap gap-2 items-end">
-                <input type="text" name="search" value="{{ search }}"
-                       placeholder="N° bon / Fournisseur..."
-                       class="input input-bordered input-sm flex-1 min-w-[160px]">
-                <select name="societe" class="select select-bordered select-sm">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="form-control sm:col-span-1">
+                    <div class="input-group flex">
+                        <span class="bg-primary text-primary-content px-3 flex items-center rounded-l-lg"><i class="fas fa-search"></i></span>
+                        <input type="text" name="search" value="{{ search }}"
+                               placeholder="N° bon / Fournisseur..."
+                               class="input input-bordered flex-1"
+                               hx-get="{{ url_for('api_logistique_bons_list') }}"
+                               hx-trigger="keyup changed delay:300ms"
+                               hx-target="#bons-table"
+                               hx-include="[name='societe'],[name='statut']">
+                    </div>
+                </div>
+                <select name="societe" class="select select-bordered select-sm"
+                        hx-get="{{ url_for('api_logistique_bons_list') }}"
+                        hx-trigger="change"
+                        hx-target="#bons-table"
+                        hx-include="[name='search'],[name='statut']">
                     <option value="">Toutes sociétés</option>
                     <option value="SRID" {% if societe == 'SRID' %}selected{% endif %}>SRID</option>
                     <option value="SRID GENETICS" {% if societe == 'SRID GENETICS' %}selected{% endif %}>SRID GENETICS</option>
                 </select>
-                <select name="statut" class="select select-bordered select-sm">
+                <select name="statut" class="select select-bordered select-sm"
+                        hx-get="{{ url_for('api_logistique_bons_list') }}"
+                        hx-trigger="change"
+                        hx-target="#bons-table"
+                        hx-include="[name='search'],[name='societe']">
                     <option value="">Tous statuts</option>
                     {% for s in bon_statuts %}
                     <option value="{{ s }}" {% if statut_f == s %}selected{% endif %}>{{ s }}</option>
                     {% endfor %}
                 </select>
-                <button type="submit" class="btn btn-primary btn-sm">
-                    <i class="fas fa-search mr-1"></i>Filtrer
-                </button>
-                {% if search or societe or statut_f %}
-                <a href="{{ url_for('logistique_bons') }}" class="btn btn-ghost btn-sm">
-                    <i class="fas fa-times mr-1"></i>Effacer
-                </a>
-                {% endif %}
             </div>
         </div>
-    </form>
+    </div>
 
     <!-- Table -->
     <div class="card bg-base-100 shadow">
-        <div class="overflow-x-auto">
-            <table class="table table-sm w-full">
-                <thead>
-                    <tr class="bg-base-200 text-xs uppercase tracking-wide">
-                        <th>N° Bon</th>
-                        <th>Société</th>
-                        <th>Fournisseur</th>
-                        <th>Date</th>
-                        <th>Livraison prévue</th>
-                        <th>Statut</th>
-                        <th class="text-right">Total €</th>
-                        <th>Notes</th>
-                        {% if can_write %}<th class="text-center">Actions</th>{% endif %}
-                    </tr>
-                </thead>
-                <tbody>
-                {% for bon in bons %}
-                {% if bon.statut == 'Approuvé' %}{% set bon_badge = 'badge-success' %}
-                {% elif bon.statut == 'Envoyé' %}{% set bon_badge = 'badge-info' %}
-                {% elif bon.statut == 'Reçu' %}{% set bon_badge = 'badge-primary' %}
-                {% elif bon.statut == 'En attente' %}{% set bon_badge = 'badge-warning' %}
-                {% else %}{% set bon_badge = 'badge-ghost' %}{% endif %}
-                <tr class="hover border-b border-base-300">
-                    <td class="font-mono font-semibold text-sm">{{ bon.numero }}</td>
-                    <td><span class="badge badge-ghost badge-xs">{{ bon.societe }}</span></td>
-                    <td class="font-medium">{{ bon.fournisseur or '—' }}</td>
-                    <td class="text-sm">{{ bon.date_commande.strftime('%d/%m/%Y') if bon.date_commande else '—' }}</td>
-                    <td class="text-sm opacity-70">{{ bon.date_livraison_prevue.strftime('%d/%m/%Y') if bon.date_livraison_prevue else '—' }}</td>
-                    <td>
-                        <details class="dropdown">
-                            <summary class="badge {{ bon_badge }} cursor-pointer list-none">{{ bon.statut }}</summary>
-                            <ul class="dropdown-content menu bg-base-100 rounded-box shadow z-50 w-40 p-1">
-                                {% for s in bon_statuts %}
-                                <li>
-                                    <form method="POST" action="{{ url_for('api_bon_statut', bon_id=bon.id) }}">
-                                        <input type="hidden" name="statut" value="{{ s }}">
-                                        <button type="submit" class="text-sm w-full text-left">{{ s }}</button>
-                                    </form>
-                                </li>
-                                {% endfor %}
-                            </ul>
-                        </details>
-                    </td>
-                    <td class="text-right font-mono font-semibold">
-                        {{ bon.total_eur | currency(2) if bon.total_eur else '—' }}
-                    </td>
-                    <td class="max-w-[180px] truncate text-xs opacity-60" title="{{ bon.notes }}">{{ bon.notes or '' }}</td>
-                    {% if can_write %}
-                    <td class="text-center whitespace-nowrap">
-                        <button class="btn btn-ghost btn-xs tooltip" data-tip="Voir détail"
-                                onclick="openBonDetail({{ bon.to_dict() | tojson }})">
-                            <i class="fas fa-eye text-primary"></i>
-                        </button>
-                        {% if is_admin %}
-                        <form method="POST" action="{{ url_for('api_bon_delete', bon_id=bon.id) }}"
-                              style="display:inline"
-                              onsubmit="return confirm('Supprimer le bon {{ bon.numero }} ?')">
-                            <button type="submit" class="btn btn-ghost btn-xs tooltip" data-tip="Supprimer">
-                                <i class="fas fa-trash text-error"></i>
-                            </button>
-                        </form>
-                        {% endif %}
-                    </td>
-                    {% endif %}
-                </tr>
-                {% else %}
-                <tr><td colspan="9" class="text-center py-12 opacity-50">
-                    <i class="fas fa-inbox text-4xl block mb-3"></i>
-                    Aucun bon de commande{% if search or societe or statut_f %} pour ces filtres{% endif %}
-                </td></tr>
-                {% endfor %}
-                </tbody>
-            </table>
+        <div class="card-body p-4" id="bons-table">
+            {% include 'partials/logistique_bons_table.html' %}
         </div>
-
-        <!-- Pagination -->
-        {% if total_pages > 1 %}
-        <div class="flex justify-between items-center px-4 py-3 border-t border-base-300">
-            <span class="text-xs opacity-60">
-                {{ ((page-1)*25)+1 }}–{{ [page*25, total]|min }} sur {{ total }}
-            </span>
-            <div class="flex items-center gap-1">
-                {% set base_url = url_for('logistique_bons', search=search, societe=societe, statut=statut_f) %}
-                {% if page > 1 %}
-                <a href="{{ base_url }}&page={{ page - 1 }}" class="btn btn-ghost btn-xs">
-                    <i class="fas fa-chevron-left"></i>
-                </a>
-                {% else %}
-                <button class="btn btn-ghost btn-xs" disabled><i class="fas fa-chevron-left"></i></button>
-                {% endif %}
-                <span class="text-sm px-2">{{ page }} / {{ total_pages }}</span>
-                {% if page < total_pages %}
-                <a href="{{ base_url }}&page={{ page + 1 }}" class="btn btn-ghost btn-xs">
-                    <i class="fas fa-chevron-right"></i>
-                </a>
-                {% else %}
-                <button class="btn btn-ghost btn-xs" disabled><i class="fas fa-chevron-right"></i></button>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
     </div>
 
 </div>
 
-<!-- ═══════ MODAL AJOUT BON ═══════ -->
 {% if can_write %}
 <dialog id="modal-add-bon" class="modal">
-    <div class="modal-box max-w-3xl">
-        <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button></form>
-        <h3 class="font-bold text-lg mb-4">
+    <div class="modal-box max-w-4xl w-full">
+        <h3 class="font-bold text-lg mb-4" id="modal-add-bon-title">
             <i class="fas fa-file-invoice text-primary mr-2"></i>Nouveau bon de commande
         </h3>
-        <form method="POST" action="{{ url_for('api_bon_add') }}">
+        <form method="POST" action="{{ url_for('api_bon_add') }}" id="form-add-bon">
 
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
                 <div class="form-control">
                     <label class="label pb-1"><span class="label-text text-xs font-semibold">Société *</span></label>
-                    <select name="societe" class="select select-bordered select-sm" required>
+                    <select name="societe" id="bon-societe" class="select select-bordered select-sm w-full" required>
                         <option value="">—</option>
                         <option value="SRID">SRID</option>
                         <option value="SRID GENETICS">SRID GENETICS</option>
@@ -178,75 +85,86 @@
                 </div>
                 <div class="form-control">
                     <label class="label pb-1"><span class="label-text text-xs font-semibold">Fournisseur</span></label>
-                    <input type="text" name="fournisseur" class="input input-bordered input-sm"
-                           placeholder="NOM FOURNISSEUR" list="list-fournisseurs-bon">
-                    <datalist id="list-fournisseurs-bon">
-                        {% for f in fournisseurs %}<option value="{{ f }}">{% endfor %}
-                    </datalist>
+                    <div class="relative">
+                        <input type="text" name="fournisseur" id="bon-fournisseur"
+                               class="input input-bordered input-sm w-full"
+                               placeholder="Nom du fournisseur"
+                               autocomplete="off"
+                               data-fournisseur-input>
+                        <div class="absolute left-0 right-0 top-full mt-1 z-50 hidden max-h-48 overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-lg"
+                             data-fournisseur-list>
+                            {% for f in fournisseurs %}
+                            <button type="button"
+                                    class="block w-full px-3 py-2 text-left text-sm hover:bg-base-200"
+                                    data-fournisseur-option="{{ f }}">{{ f }}</button>
+                            {% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="form-control">
+                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Date de commande</span></label>
+                    <input type="date" name="date_commande" class="input input-bordered input-sm w-full"
+                           value="{{ now().strftime('%Y-%m-%d') }}">
                 </div>
                 <div class="form-control">
                     <label class="label pb-1"><span class="label-text text-xs font-semibold">Statut</span></label>
-                    <select name="statut" class="select select-bordered select-sm">
+                    <select name="statut" class="select select-bordered select-sm w-full">
                         {% for s in bon_statuts %}
                         <option value="{{ s }}" {% if s == 'Brouillon' %}selected{% endif %}>{{ s }}</option>
                         {% endfor %}
                     </select>
                 </div>
-                <div class="form-control">
-                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Date commande</span></label>
-                    <input type="date" name="date_commande" class="input input-bordered input-sm"
-                           value="{{ now().strftime('%Y-%m-%d') }}">
-                </div>
-                <div class="form-control sm:col-span-2">
-                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Livraison prévue</span></label>
-                    <input type="date" name="date_livraison_prevue" class="input input-bordered input-sm w-48">
-                </div>
             </div>
 
-            <!-- Lignes de commande -->
+            <div class="divider divider-start text-sm font-semibold opacity-70">
+                <i class="fas fa-list mr-1"></i> Lignes de commande
+            </div>
             <div class="mb-3">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-sm font-semibold">Lignes de commande</span>
-                    <button type="button" class="btn btn-ghost btn-xs" onclick="addBonLine()">
-                        <i class="fas fa-plus mr-1"></i>Ajouter une ligne
-                    </button>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="table table-xs w-full">
-                        <thead>
-                            <tr class="bg-base-200 text-xs">
-                                <th>Référence</th>
-                                <th>Désignation *</th>
-                                <th class="text-right w-20">Qté</th>
-                                <th class="w-20">Unité</th>
-                                <th class="text-right w-28">Prix unit. €</th>
-                                <th class="w-8"></th>
-                            </tr>
-                        </thead>
-                        <tbody id="bon-lines">
-                            <tr class="bon-line">
-                                <td><input type="text" name="reference[]" class="input input-bordered input-xs w-full" placeholder="REF"></td>
-                                <td><input type="text" name="designation[]" class="input input-bordered input-xs w-full" placeholder="Désignation du produit"></td>
-                                <td><input type="number" name="quantite[]" step="any" min="0" class="input input-bordered input-xs w-full text-right" value="1"></td>
-                                <td><input type="text" name="unite[]" class="input input-bordered input-xs w-full" placeholder="KG"></td>
-                                <td><input type="number" name="prix_unitaire[]" step="any" min="0" class="input input-bordered input-xs w-full text-right" placeholder="0.00"></td>
-                                <td></td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
+                <table class="table table-sm w-full" id="bon-lines-table">
+                    <thead>
+                        <tr class="bg-base-200">
+                            <th class="w-32">Réf.</th>
+                            <th>Désignation *</th>
+                            <th class="text-right w-20">Qté</th>
+                            <th class="text-right w-28">Prix unit. €</th>
+                            <th class="text-right w-28">Total €</th>
+                            <th class="w-8"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="bon-lines">
+                        <tr class="bon-line">
+                            <td><input type="text" name="reference[]" class="input input-bordered input-sm w-full line-ref" placeholder="REF" readonly></td>
+                            <td class="relative">
+                                <input type="text" name="designation[]" class="input input-bordered input-sm w-full line-name" placeholder="Désignation (choisir société d'abord)" autocomplete="off">
+                                <div class="hidden absolute left-0 top-full mt-1 z-50 bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-40 overflow-y-auto prod-dropdown" style="min-width:280px"></div>
+                            </td>
+                            <td><input type="number" name="quantite[]" step="any" min="0" class="input input-bordered input-sm w-full text-right line-qty" value="1"></td>
+                            <td><input type="number" name="prix_unitaire[]" step="any" min="0" class="input input-bordered input-sm w-full text-right line-price" placeholder="0.00"></td>
+                            <td class="line-total text-right font-mono text-sm font-semibold">0,00 €</td>
+                            <td><button type="button" class="btn btn-ghost btn-sm text-error" onclick="removeBonLine(this)">×</button></td>
+                        </tr>
+                    </tbody>
+                </table>
             </div>
+            <button type="button" class="btn btn-ghost btn-xs mb-4" onclick="addBonLine()">
+                <i class="fas fa-plus mr-1"></i>Ajouter une ligne
+            </button>
 
-            <!-- Notes -->
-            <div class="form-control mb-4">
-                <label class="label pb-1"><span class="label-text text-xs font-semibold">Notes</span></label>
-                <textarea name="notes" rows="2" class="textarea textarea-bordered text-sm"
-                          placeholder="Instructions spéciales, conditions..."></textarea>
+            <div class="flex gap-4 items-end mb-4">
+                <div class="form-control flex-1">
+                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Remarque</span></label>
+                    <textarea name="notes" rows="2" class="textarea textarea-bordered textarea-sm w-full"
+                              placeholder="Instructions spéciales, conditions..."></textarea>
+                </div>
+                <div class="bg-base-200 rounded-lg p-4 min-w-48 text-right">
+                    <div class="text-xs opacity-60 mb-1">Montant total</div>
+                    <div id="grand-total" class="text-xl font-bold font-mono text-primary">0,00 EUR</div>
+                </div>
             </div>
 
             <div class="modal-action">
-                <form method="dialog"><button class="btn btn-ghost btn-sm">Annuler</button></form>
-                <button type="submit" class="btn btn-primary btn-sm">
+                <button type="button" class="btn btn-ghost btn-sm" onclick="cancelAddBon()">Annuler</button>
+                <button type="submit" form="form-add-bon" class="btn btn-primary btn-sm" id="modal-add-bon-submit">
                     <i class="fas fa-save mr-1"></i>Créer le bon
                 </button>
             </div>
@@ -255,16 +173,23 @@
     <form method="dialog" class="modal-backdrop"><button>close</button></form>
 </dialog>
 
-<!-- ═══════ MODAL DÉTAIL BON ═══════ -->
 <dialog id="modal-detail-bon" class="modal">
-    <div class="modal-box max-w-2xl">
-        <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button></form>
-        <h3 class="font-bold text-lg mb-1" id="detail-bon-numero">—</h3>
+    <div class="modal-box max-w-3xl w-full">
+        <h3 class="font-bold text-lg mb-1" id="detail-bon-numero">---</h3>
         <p class="text-xs opacity-60 mb-4" id="detail-bon-meta"></p>
-        <div id="detail-bon-lignes" class="overflow-x-auto">
+        <div id="detail-bon-lignes" class="overflow-x-auto mb-4">
             <p class="opacity-50 text-sm">Aucune ligne</p>
         </div>
         <div class="modal-action">
+            <button type="button" id="edit-bon-btn" class="btn btn-warning btn-sm">
+                <i class="fas fa-edit mr-1"></i>Modifier
+            </button>
+            <button type="button" id="preview-bon-btn" class="btn btn-info btn-sm">
+                <i class="fas fa-eye mr-1"></i>Aperçu
+            </button>
+            <button type="button" id="print-bon-btn" class="btn btn-outline btn-sm">
+                <i class="fas fa-print mr-1"></i>Imprimer
+            </button>
             <form method="dialog"><button class="btn btn-ghost btn-sm">Fermer</button></form>
         </div>
     </div>
@@ -272,50 +197,395 @@
 </dialog>
 {% endif %}
 
+{% endblock %}
+
+{% block scripts %}
 <script>
-function addBonLine() {
-    const row = document.createElement('tr');
-    row.className = 'bon-line';
-    row.innerHTML = `
-        <td><input type="text" name="reference[]" class="input input-bordered input-xs w-full" placeholder="REF"></td>
-        <td><input type="text" name="designation[]" class="input input-bordered input-xs w-full" placeholder="Désignation du produit"></td>
-        <td><input type="number" name="quantite[]" step="any" min="0" class="input input-bordered input-xs w-full text-right" value="1"></td>
-        <td><input type="text" name="unite[]" class="input input-bordered input-xs w-full" placeholder="KG"></td>
-        <td><input type="number" name="prix_unitaire[]" step="any" min="0" class="input input-bordered input-xs w-full text-right" placeholder="0.00"></td>
-        <td><button type="button" class="btn btn-ghost btn-xs text-error" onclick="this.closest('tr').remove()"><i class="fas fa-times"></i></button></td>
-    `;
-    document.getElementById('bon-lines').appendChild(row);
+// ─── Catalogue produits ───────────────────────────────────────────────────────
+const PRODUCT_CATALOG = {{ products_json | safe }};
+
+function productsForCompany(societe) {
+    if (!societe) return [];
+    // DB stocke 'SRID' et 'Genetics' — le select utilise 'SRID' et 'SRID GENETICS'
+    var company = (societe === 'SRID GENETICS') ? 'Genetics' : societe;
+    return PRODUCT_CATALOG.filter(function(p) { return p.company === company; });
 }
 
-function openBonDetail(bon) {
-    document.getElementById('detail-bon-numero').textContent = bon.numero || '—';
-    const fournisseur = bon.fournisseur || '—';
-    const societe     = bon.societe || '—';
-    const statut      = bon.statut || '—';
-    document.getElementById('detail-bon-meta').textContent =
-        `${societe} · ${fournisseur} · ${statut}`;
+function normalizeText(s) {
+    return String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+}
 
-    const lignes = bon.lignes || [];
-    const container = document.getElementById('detail-bon-lignes');
+function escapeHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── Fournisseur autocomplete ─────────────────────────────────────────────────
+(function() {
+    var input = document.querySelector('[data-fournisseur-input]');
+    var list  = document.querySelector('[data-fournisseur-list]');
+    if (!input || !list) return;
+
+    var options = Array.from(list.querySelectorAll('[data-fournisseur-option]'));
+
+    function filterAndShow() {
+        var q = input.value.trim().toUpperCase();
+        var visible = 0;
+        options.forEach(function(btn) {
+            var val = (btn.getAttribute('data-fournisseur-option') || '').toUpperCase();
+            var show = !q || val.includes(q);
+            btn.classList.toggle('hidden', !show);
+            if (show) visible++;
+        });
+        list.classList.toggle('hidden', visible === 0);
+    }
+
+    // Afficher à la mise en focus
+    input.addEventListener('focus', filterAndShow);
+    // Filtrer à la saisie
+    input.addEventListener('input', filterAndShow);
+    // Masquer à la perte de focus (avec délai pour laisser le clic s'enregistrer)
+    input.addEventListener('blur', function() {
+        setTimeout(function() { list.classList.add('hidden'); }, 160);
+    });
+
+    options.forEach(function(btn) {
+        // mousedown + preventDefault : empêche le blur de l'input avant que le click ne s'enregistre
+        btn.addEventListener('mousedown', function(e) { e.preventDefault(); });
+        btn.addEventListener('click', function() {
+            input.value = btn.getAttribute('data-fournisseur-option') || '';
+            list.classList.add('hidden');
+        });
+    });
+})();
+
+// ─── Lignes de commande ───────────────────────────────────────────────────────
+function fmtEuro(n) {
+    return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+}
+
+function updateGrandTotal() {
+    var total = 0;
+    document.querySelectorAll('.bon-line').forEach(function(row) {
+        var qty   = parseFloat((row.querySelector('.line-qty')  || {}).value) || 0;
+        var price = parseFloat((row.querySelector('.line-price') || {}).value) || 0;
+        var t = qty * price;
+        total += t;
+        var cell = row.querySelector('.line-total');
+        if (cell) cell.textContent = fmtEuro(t);
+    });
+    var el = document.getElementById('grand-total');
+    if (el) el.textContent = fmtEuro(total);
+}
+
+function setupProductSuggestion(row) {
+    // Guard : ne s'initialise qu'une seule fois par ligne
+    if (row._prodReady) return;
+    row._prodReady = true;
+
+    var nameInput = row.querySelector('.line-name');
+    var refInput  = row.querySelector('.line-ref');
+    var dropdown  = row.querySelector('.prod-dropdown');
+    if (!nameInput || !refInput || !dropdown) return;
+
+    function getCompany() {
+        var sel = document.getElementById('bon-societe');
+        return sel ? sel.value : '';
+    }
+
+    function renderDropdown(products) {
+        if (!products.length) { dropdown.classList.add('hidden'); return; }
+        dropdown.innerHTML = products.map(function(p) {
+            return '<button type="button" class="block w-full px-3 py-2 text-left text-xs hover:bg-base-200"' +
+                ' data-ref="' + escapeHtml(p.reference) + '" data-name="' + escapeHtml(p.designation) + '">' +
+                '<span class="font-mono font-semibold text-primary mr-2">' + escapeHtml(p.reference) + '</span>' +
+                '<span class="opacity-70">' + escapeHtml(p.designation) + '</span></button>';
+        }).join('');
+        dropdown.querySelectorAll('button').forEach(function(btn) {
+            // mousedown + preventDefault : empêche le blur avant le click
+            btn.addEventListener('mousedown', function(e) { e.preventDefault(); });
+            btn.addEventListener('click', function() {
+                nameInput.value = btn.dataset.name;
+                refInput.value  = btn.dataset.ref;
+                dropdown.classList.add('hidden');
+                updateGrandTotal();
+            });
+        });
+        dropdown.classList.remove('hidden');
+    }
+
+    function openSuggestions() {
+        var company = getCompany();
+        if (!company) {
+            dropdown.innerHTML = '<p class="px-3 py-2 text-xs opacity-60 italic">Sélectionnez d\'abord une société</p>';
+            dropdown.classList.remove('hidden');
+            return;
+        }
+        var q = normalizeText(nameInput.value);
+        var all = productsForCompany(company);
+        var results = q
+            ? all.filter(function(p) {
+                return normalizeText(p.designation).includes(q) || normalizeText(p.reference).includes(q);
+              })
+            : all.slice(0, 40); // top 40 affiché si champ vide
+        renderDropdown(results);
+    }
+
+    nameInput.addEventListener('focus', openSuggestions);
+
+    nameInput.addEventListener('input', function() {
+        openSuggestions();
+        // Auto-remplissage référence si correspondance exacte
+        var company = getCompany();
+        if (company) {
+            var q = normalizeText(nameInput.value);
+            var exact = productsForCompany(company).find(function(p) {
+                return normalizeText(p.designation) === q;
+            });
+            if (exact) refInput.value = exact.reference;
+        }
+        updateGrandTotal();
+    });
+
+    nameInput.addEventListener('blur', function() {
+        setTimeout(function() { dropdown.classList.add('hidden'); }, 160);
+    });
+}
+
+function setupLineRow(row) {
+    var qty   = row.querySelector('.line-qty');
+    var price = row.querySelector('.line-price');
+    if (qty)   qty.addEventListener('input', updateGrandTotal);
+    if (price) price.addEventListener('input', updateGrandTotal);
+    setupProductSuggestion(row);
+}
+
+function addBonLine() {
+    var tbody = document.getElementById('bon-lines');
+    var tr = document.createElement('tr');
+    tr.className = 'bon-line';
+    tr.innerHTML =
+        '<td><input type="text" name="reference[]" class="input input-bordered input-sm w-full line-ref" placeholder="REF" readonly></td>' +
+        '<td class="relative">' +
+            '<input type="text" name="designation[]" class="input input-bordered input-sm w-full line-name" placeholder="Désignation (choisir société d\'abord)" autocomplete="off">' +
+            '<div class="hidden absolute left-0 top-full mt-1 z-50 bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-40 overflow-y-auto prod-dropdown" style="min-width:280px"></div>' +
+        '</td>' +
+        '<td><input type="number" name="quantite[]" step="any" min="0" class="input input-bordered input-sm w-full text-right line-qty" value="1"></td>' +
+        '<td><input type="number" name="prix_unitaire[]" step="any" min="0" class="input input-bordered input-sm w-full text-right line-price" placeholder="0.00"></td>' +
+        '<td class="line-total text-right font-mono text-sm font-semibold">0,00 €</td>' +
+        '<td><button type="button" class="btn btn-ghost btn-sm text-error" onclick="removeBonLine(this)">×</button></td>';
+    tbody.appendChild(tr);
+    setupLineRow(tr);
+}
+
+function removeBonLine(btn) {
+    var lines = document.querySelectorAll('#bon-lines .bon-line');
+    if (lines.length > 1) { btn.closest('tr').remove(); updateGrandTotal(); }
+}
+
+// Init la première ligne dès le chargement
+document.querySelectorAll('.bon-line').forEach(setupLineRow);
+
+// ─── Nouveau bon / Modifier bon ───────────────────────────────────────────────
+var ADD_BON_ACTION = "{{ url_for('api_bon_add') }}";
+var _editingBon = null;
+
+function cancelAddBon() {
+    document.getElementById('modal-add-bon').close();
+    if (_editingBon) {
+        var bon = _editingBon;
+        _editingBon = null;
+        openBonDetail({ getAttribute: function() { return JSON.stringify(bon); } });
+    }
+}
+
+function openNewBon() {
+    _editingBon = null;
+    var form = document.getElementById('form-add-bon');
+    form.reset();
+    form.action = ADD_BON_ACTION;
+    document.getElementById('modal-add-bon-title').innerHTML =
+        '<i class="fas fa-file-invoice text-primary mr-2"></i>Nouveau bon de commande';
+    var sub = document.getElementById('modal-add-bon-submit');
+    sub.innerHTML = '<i class="fas fa-save mr-1"></i>Créer le bon';
+    var tbody = document.getElementById('bon-lines');
+    tbody.innerHTML = '';
+    addBonLine();
+    var gt = document.getElementById('grand-total');
+    if (gt) gt.textContent = '0,00 EUR';
+    document.getElementById('modal-add-bon').showModal();
+}
+
+function openEditBon(bon) {
+    _editingBon = bon;
+    document.getElementById('modal-detail-bon').close();
+    var form = document.getElementById('form-add-bon');
+    form.action = '/api/logistique/bons/' + bon.id + '/update';
+
+    // Remplir les champs d'en-tête
+    var societe = document.getElementById('bon-societe');
+    if (societe) societe.value = bon.societe || '';
+
+    var fournisseur = document.getElementById('bon-fournisseur');
+    if (fournisseur) fournisseur.value = bon.fournisseur || '';
+
+    var dateCom = form.querySelector('[name="date_commande"]');
+    if (dateCom) dateCom.value = bon.date_commande || '';
+
+    var statut = form.querySelector('[name="statut"]');
+    if (statut) statut.value = bon.statut || '';
+
+    var notes = form.querySelector('[name="notes"]');
+    if (notes) notes.value = bon.notes || '';
+
+    // Reconstruire les lignes
+    var tbody = document.getElementById('bon-lines');
+    tbody.innerHTML = '';
+    var lignes = bon.lignes || [];
+    if (lignes.length === 0) {
+        addBonLine();
+    } else {
+        lignes.forEach(function(l) {
+            addBonLine();
+            var rows = tbody.querySelectorAll('.bon-line');
+            var row = rows[rows.length - 1];
+            var refInput   = row.querySelector('.line-ref');
+            var nameInput  = row.querySelector('.line-name');
+            var qtyInput   = row.querySelector('.line-qty');
+            var priceInput = row.querySelector('.line-price');
+            if (refInput)   refInput.value   = l.reference    || '';
+            if (nameInput)  nameInput.value  = l.designation  || '';
+            if (qtyInput)   qtyInput.value   = l.quantite     || 1;
+            if (priceInput) priceInput.value = l.prix_unitaire || '';
+        });
+        updateGrandTotal();
+    }
+
+    // Titre et bouton submit
+    document.getElementById('modal-add-bon-title').innerHTML =
+        '<i class="fas fa-file-invoice text-warning mr-2"></i>Modifier : ' + escapeHtml(bon.numero);
+    var sub = document.getElementById('modal-add-bon-submit');
+    sub.innerHTML = '<i class="fas fa-save mr-1"></i>Enregistrer';
+    document.getElementById('modal-add-bon').showModal();
+}
+
+// ─── Modal détail bon ─────────────────────────────────────────────────────────
+var dateFmt = function(d) { return d ? new Date(d + 'T12:00:00').toLocaleDateString('fr-FR') : '—'; };
+var euroFmt = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
+
+function openBonDetail(el) {
+    var bon;
+    try { bon = JSON.parse(el.getAttribute('data-bon')); }
+    catch(err) { console.error('openBonDetail: JSON parse error', err); return; }
+    document.getElementById('detail-bon-numero').textContent = bon.numero || '—';
+    document.getElementById('detail-bon-meta').textContent =
+        (bon.societe || '—') + ' · ' + (bon.fournisseur || '—') + ' · ' + (bon.statut || '—') + ' · ' + dateFmt(bon.date_commande);
+
+    var lignes = bon.lignes || [];
+    var container = document.getElementById('detail-bon-lignes');
+
     if (!lignes.length) {
         container.innerHTML = '<p class="opacity-50 text-sm">Aucune ligne</p>';
     } else {
-        let html = '<table class="table table-xs w-full"><thead><tr class="bg-base-200"><th>Réf.</th><th>Désignation</th><th class="text-right">Qté</th><th>Unité</th><th class="text-right">Prix u. €</th><th class="text-right">Total €</th></tr></thead><tbody>';
-        lignes.forEach(l => {
-            const total = (l.quantite && l.prix_unitaire) ? (l.quantite * l.prix_unitaire).toFixed(2) : '—';
-            html += `<tr>
-                <td class="font-mono text-xs">${l.reference || ''}</td>
-                <td>${l.designation || '—'}</td>
-                <td class="text-right">${l.quantite || '—'}</td>
-                <td class="text-xs opacity-70">${l.unite || ''}</td>
-                <td class="text-right font-mono">${l.prix_unitaire ? parseFloat(l.prix_unitaire).toFixed(2) : '—'}</td>
-                <td class="text-right font-mono font-semibold">${total}</td>
-            </tr>`;
-        });
-        html += '</tbody></table>';
-        container.innerHTML = html;
+        var total = 0;
+        var rows = lignes.map(function(l) {
+            var t = (Number(l.quantite) || 0) * (Number(l.prix_unitaire) || 0);
+            total += t;
+            return '<tr>' +
+                '<td class="font-mono text-xs font-semibold">' + escapeHtml(l.reference || '') + '</td>' +
+                '<td>' + escapeHtml(l.designation || '—') + '</td>' +
+                '<td class="text-right">' + (l.quantite || '—') + '</td>' +
+                '<td class="text-right font-mono">' + (l.prix_unitaire ? parseFloat(l.prix_unitaire).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) : '—') + '</td>' +
+                '<td class="text-right font-mono font-semibold">' + (t ? t.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €' : '—') + '</td>' +
+                '</tr>';
+        }).join('');
+        container.innerHTML =
+            '<table class="table table-xs w-full mb-2">' +
+            '<thead><tr class="bg-base-200"><th>Réf.</th><th>Désignation</th><th class="text-right">Quantité</th><th class="text-right">Prix unitaire €</th><th class="text-right">Total €</th></tr></thead>' +
+            '<tbody>' + rows + '</tbody></table>' +
+            '<div class="flex justify-end">' +
+            '<div class="bg-base-200 rounded-lg px-4 py-2 font-bold font-mono text-lg text-primary">Total : ' + euroFmt.format(total) + '</div>' +
+            '</div>' +
+            (bon.notes ? '<div class="mt-3 p-3 border-l-4 border-primary bg-base-100 rounded text-sm">' +
+                '<span class="text-xs font-semibold opacity-60 block mb-1">REMARQUE</span>' + escapeHtml(bon.notes) + '</div>' : '');
     }
+
+    document.getElementById('edit-bon-btn').onclick = function() { openEditBon(bon); };
+    document.getElementById('preview-bon-btn').onclick = function() { printBon(bon, false); };
+    document.getElementById('print-bon-btn').onclick = function() { printBon(bon, true); };
     document.getElementById('modal-detail-bon').showModal();
+}
+
+// ─── Impression (style bon-md) ────────────────────────────────────────────────
+function printBon(bon, autoprint) {
+    if (autoprint === undefined) autoprint = true;
+    var company = bon.societe || 'SRID';
+    var isGenetics = company.toUpperCase().indexOf('GENETICS') !== -1;
+    var letterheadUrl = '/static/img/' + (isGenetics ? 'entete-srid-genetics.png' : 'entete-srid.png');
+    var euro2 = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    var lignes = bon.lignes || [];
+    var grandTotal = lignes.reduce(function(s, l) { return s + (Number(l.quantite)||0)*(Number(l.prix_unitaire)||0); }, 0);
+
+    var rows = lignes.map(function(l) {
+        var t = (Number(l.quantite)||0) * (Number(l.prix_unitaire)||0);
+        return '<tr><td>' + escapeHtml(l.reference || '') + '</td><td>' + escapeHtml(l.designation || '—') + '</td>' +
+            '<td class="num">' + Number(l.quantite || 0).toLocaleString('fr-FR') + '</td>' +
+            '<td class="num">' + (l.prix_unitaire ? euro2.format(parseFloat(l.prix_unitaire)) : '—') + '</td>' +
+            '<td class="num"><strong>' + (t ? euro2.format(t) : '—') + '</strong></td></tr>';
+    }).join('');
+
+    var pw = window.open('', '_blank', 'width=900,height=760');
+    if (!pw) { alert("Autorisez les pop-ups pour imprimer"); return; }
+
+    var toolbar = autoprint ? '' :
+        '<div id="preview-toolbar" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#172421;padding:10px 20px;display:flex;gap:10px;align-items:center;box-shadow:0 2px 10px rgba(0,0,0,.5)">' +
+        '<span style="color:#fff;font-size:14px;font-weight:600;flex:1"><i style="margin-right:6px">👁</i>Aperçu — ' + escapeHtml(bon.numero) + '</span>' +
+        '<button onclick="window.print()" style="background:#075184;color:#fff;border:none;border-radius:5px;padding:7px 18px;cursor:pointer;font-size:13px;font-weight:600">🖨 Imprimer</button>' +
+        '<button onclick="window.close()" style="background:#555;color:#fff;border:none;border-radius:5px;padding:7px 14px;cursor:pointer;font-size:13px">✕ Fermer</button>' +
+        '</div>';
+
+    var topPad = autoprint ? '' : '.sheet-wrap{padding-top:52px}';
+
+    pw.document.write('<!doctype html><html lang="fr"><head><meta charset="utf-8"><title>' + escapeHtml(bon.numero) + '</title><style>' +
+        '@page{size:A4 portrait;margin:0}*{box-sizing:border-box}html,body{margin:0;padding:0;background:#ddd;font-family:Arial,sans-serif;color:#172421}' +
+        topPad +
+        '.sheet{position:relative;width:210mm;height:297mm;margin:0 auto;background:#fff;overflow:hidden}' +
+        '.letterhead{position:absolute;inset:0;width:210mm;height:297mm;object-fit:fill;z-index:0}' +
+        '.content{position:absolute;z-index:1;top:64mm;left:14mm;right:14mm;bottom:25mm;font-size:10.5px}' +
+        '.title-row{display:flex;justify-content:space-between;align-items:center;margin-bottom:6mm}' +
+        'h1{font-size:21px;margin:0;color:#075184}.co{font-size:8px;color:#55a73b;font-weight:700;letter-spacing:1px;margin-top:2px}' +
+        '.onum{background:rgba(238,246,241,.94);border:1px solid #55a73b;color:#075184;padding:7px 11px;border-radius:4px;font-weight:700}' +
+        '.info{display:grid;grid-template-columns:1fr 1fr;gap:5mm;margin-bottom:6mm}' +
+        '.box{border:1px solid #d7e2de;border-radius:4px;padding:3.5mm;background:rgba(255,255,255,.88)}' +
+        '.lbl{display:block;color:#71807c;font-size:7.5px;letter-spacing:1px;margin-bottom:4px}.box strong{font-size:11px}' +
+        'table{width:100%;border-collapse:collapse}thead{display:table-header-group}tr{break-inside:avoid}' +
+        'th{background:rgba(7,81,132,.74)!important;color:#fff!important;text-align:left;padding:8px;font-size:7.5px;letter-spacing:.6px;font-weight:800}' +
+        'td{padding:8px;border-bottom:1px solid rgba(124,150,142,.42)}.num{text-align:right}' +
+        '.total-wrap{display:flex;justify-content:flex-end;margin-top:5mm}' +
+        '.total-box{width:72mm;background:rgba(238,246,241,.95);padding:3.5mm;display:flex;justify-content:space-between;align-items:center;border-left:3px solid #55a73b;font-size:11px}' +
+        '.total-box strong{font-size:17px;color:#075184}' +
+        '.notes{position:absolute;left:0;right:0;bottom:0;min-height:20mm;padding:3mm;border-left:3px solid #55a73b;background:rgba(247,250,249,.70)}' +
+        '.notes .lbl{display:block;font-size:7.5px;color:#71807c;letter-spacing:1px;margin-bottom:3px}' +
+        '.notes p{margin:0;white-space:pre-wrap;font-size:10px}' +
+        '@media print{html,body{background:#fff}.sheet{margin:0;box-shadow:none;-webkit-print-color-adjust:exact;print-color-adjust:exact}#preview-toolbar{display:none!important}.sheet-wrap{padding-top:0!important}}' +
+        '</style></head><body>' +
+        toolbar +
+        '<div class="sheet-wrap"><section class="sheet"><img id="lh" class="letterhead" src="' + letterheadUrl + '" alt="">' +
+        '<main class="content"><div style="padding-bottom:' + (bon.notes ? '28mm' : '0') + '">' +
+        '<div class="title-row"><div><h1>Bon de commande</h1><div class="co">' + escapeHtml(company) + '</div></div>' +
+        '<div class="onum">' + escapeHtml(bon.numero) + '</div></div>' +
+        '<section class="info"><div class="box"><span class="lbl">FOURNISSEUR</span><strong>' + escapeHtml(bon.fournisseur || '—') + '</strong></div>' +
+        '<div class="box"><span class="lbl">INFORMATIONS</span><div style="margin-top:4px">' +
+        '<div style="font-size:9px">Date de commande<br><strong>' + dateFmt(bon.date_commande) + '</strong></div>' +
+        '</div></div></section>' +
+        '<table><thead><tr><th>RÉF.</th><th>DÉSIGNATION</th><th class="num">QUANTITÉ</th><th class="num">PRIX UNITAIRE</th><th class="num">TOTAL</th></tr></thead>' +
+        '<tbody>' + rows + '</tbody></table>' +
+        '<div class="total-wrap"><div class="total-box"><span>Montant total</span><strong>' + euro2.format(grandTotal) + ' €</strong></div></div>' +
+        '</div>' +
+        (bon.notes ? '<div class="notes"><span class="lbl">REMARQUE</span><p>' + escapeHtml(bon.notes) + '</p></div>' : '') +
+        '</main></section></div>' +
+        (autoprint ? '<script>var img=document.getElementById("lh"),done=false;function launch(){if(done)return;done=true;setTimeout(function(){window.print();},300);}img.addEventListener("load",launch);if(img.complete)launch();setTimeout(launch,2500);<\/script>' : '') +
+        '</body></html>');
+    pw.document.close();
 }
 </script>
 {% endblock %}

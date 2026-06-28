@@ -13,20 +13,18 @@
             <p class="text-sm opacity-60 mt-1">Suivi logistique des importations — {{ total }} entrée{{ 's' if total != 1 else '' }}</p>
         </div>
         {% if can_write %}
-        <button class="btn btn-primary btn-sm" onclick="document.getElementById('modal-add-log').showModal()">
-            <i class="fas fa-plus mr-1"></i>Nouvelle entrée
-        </button>
+        {# Bouton Nouvelle entrée supprimé : les entrées sont créées automatiquement depuis les bons de commande #}
         {% endif %}
     </div>
 
     <!-- KPI Cards -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
         {% set kpi_config = [
-            ('ARRIVÉ',               'fas fa-ship',          'text-teal-400',   kpis['ARRIVÉ']),
-            ('À ÉCHÉANCE',           'fas fa-clock',         'text-yellow-400', kpis['À ÉCHÉANCE']),
-            ('EN COURS DE PAIEMENT', 'fas fa-spinner',       'text-blue-400',   kpis['EN COURS DE PAIEMENT']),
-            ('ÉCHU',                 'fas fa-exclamation-triangle', 'text-red-400', kpis['ÉCHU']),
-            ('PAYÉ',                 'fas fa-check-circle',  'text-green-400',  kpis['PAYÉ']),
+            ('ARRIVÉ',            'fas fa-ship',               'text-teal-400',   kpis.get('ARRIVÉ', 0)),
+            ('ÉCHÉANCE',          'fas fa-clock',              'text-yellow-400', kpis.get('ÉCHÉANCE', 0)),
+            ('PAIEMENT EN COURS', 'fas fa-spinner',            'text-blue-400',   kpis.get('PAIEMENT EN COURS', 0)),
+            ('ÉCHU',              'fas fa-exclamation-triangle','text-red-400',   kpis.get('ÉCHU', 0)),
+            ('PAYÉ',              'fas fa-check-circle',       'text-green-400',  kpis.get('PAYÉ', 0)),
         ] %}
         {% for label, icon, color, count in kpi_config %}
         <a href="{{ url_for('logistique_gestion', statut=label, societe=societe, annee=annee) }}"
@@ -34,223 +32,119 @@
             <div class="card-body p-4 text-center">
                 <i class="{{ icon }} text-2xl {{ color }} mb-1"></i>
                 <div class="text-2xl font-bold">{{ count }}</div>
-                <div class="text-xs opacity-60 leading-tight">{{ label }}</div>
+                <div class="text-xs opacity-60 leading-tight">{{ label | lower | capitalize }}</div>
             </div>
         </a>
         {% endfor %}
     </div>
 
-    <!-- Filtres -->
-    <form method="GET" action="{{ url_for('logistique_gestion') }}"
-          class="card bg-base-100 shadow mb-4">
+    <!-- Filtres HTMX -->
+    <div class="card bg-base-100 shadow mb-4">
         <div class="card-body p-4">
-            <div class="flex flex-wrap gap-2 items-end">
-                <input type="text" name="search" value="{{ search }}"
-                       placeholder="Fournisseur / Produit..."
-                       class="input input-bordered input-sm flex-1 min-w-[160px]">
-                <select name="societe" class="select select-bordered select-sm">
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div class="form-control sm:col-span-1">
+                    <div class="input-group flex">
+                        <span class="bg-primary text-primary-content px-3 flex items-center rounded-l-lg"><i class="fas fa-search"></i></span>
+                        <input type="text" name="search" value="{{ search }}"
+                               placeholder="Fournisseur / Produit..."
+                               class="input input-bordered flex-1"
+                               hx-get="{{ url_for('api_logistique_gestion_list') }}"
+                               hx-trigger="keyup changed delay:300ms"
+                               hx-target="#gestion-table"
+                               hx-include="[name='societe'],[name='annee'],[name='statut']">
+                    </div>
+                </div>
+                <select name="societe" class="select select-bordered select-sm"
+                        hx-get="{{ url_for('api_logistique_gestion_list') }}"
+                        hx-trigger="change"
+                        hx-target="#gestion-table"
+                        hx-include="[name='search'],[name='annee'],[name='statut']">
                     <option value="">Toutes sociétés</option>
                     <option value="SRID" {% if societe == 'SRID' %}selected{% endif %}>SRID</option>
                     <option value="SRID GENETICS" {% if societe == 'SRID GENETICS' %}selected{% endif %}>SRID GENETICS</option>
                 </select>
-                <select name="annee" class="select select-bordered select-sm">
+                <select name="annee" class="select select-bordered select-sm"
+                        hx-get="{{ url_for('api_logistique_gestion_list') }}"
+                        hx-trigger="change"
+                        hx-target="#gestion-table"
+                        hx-include="[name='search'],[name='societe'],[name='statut']">
                     <option value="">Toutes années</option>
                     {% for y in years %}
                     <option value="{{ y }}" {% if annee == y %}selected{% endif %}>{{ y }}</option>
                     {% endfor %}
                 </select>
-                <select name="statut" class="select select-bordered select-sm">
+                <select name="statut" class="select select-bordered select-sm"
+                        hx-get="{{ url_for('api_logistique_gestion_list') }}"
+                        hx-trigger="change"
+                        hx-target="#gestion-table"
+                        hx-include="[name='search'],[name='societe'],[name='annee']">
                     <option value="">Tous statuts</option>
-                    {% for s in ['ARRIVÉ','EN COURS DE PAIEMENT','À ÉCHÉANCE','ÉCHU','PAYÉ'] %}
+                    {% for s in log_statuts %}
                     <option value="{{ s }}" {% if statut_f == s %}selected{% endif %}>{{ s }}</option>
                     {% endfor %}
                 </select>
-                <button type="submit" class="btn btn-primary btn-sm">
-                    <i class="fas fa-search mr-1"></i>Filtrer
-                </button>
-                {% if search or societe or annee or statut_f %}
-                <a href="{{ url_for('logistique_gestion') }}" class="btn btn-ghost btn-sm">
-                    <i class="fas fa-times mr-1"></i>Effacer
-                </a>
-                {% endif %}
             </div>
         </div>
-    </form>
+    </div>
 
-    <!-- Table -->
+    <!-- Table (HTMX target) -->
     <div class="card bg-base-100 shadow">
-        <div class="overflow-x-auto">
-            <table class="table table-xs w-full">
-                <thead>
-                    <tr class="bg-base-200 text-xs uppercase tracking-wide">
-                        <th class="sticky left-0 bg-base-200 z-10">Statut</th>
-                        <th>Société</th>
-                        <th>Fournisseur</th>
-                        <th>Produit</th>
-                        <th>Cond.</th>
-                        <th class="text-right">Qté</th>
-                        <th class="text-right">TVA</th>
-                        <th class="text-right">Montant €</th>
-                        <th class="text-right">Cours</th>
-                        <th class="text-right">Montant DA</th>
-                        <th>D10</th>
-                        <th>Arrivée</th>
-                        <th>Facture</th>
-                        <th class="text-center">Mode</th>
-                        <th class="text-center">J.</th>
-                        <th>Échéance</th>
-                        <th>Paiement</th>
-                        <th>Val. Date</th>
-                        <th>Remarque</th>
-                        {% if can_write %}<th class="text-center">Actions</th>{% endif %}
-                    </tr>
-                </thead>
-                <tbody>
-                {% for item in items %}
-                {% set s = item.statut %}
-                {% if s == 'PAYÉ' %}{% set badge_cls = 'badge-success' %}
-                {% elif s == 'EN COURS DE PAIEMENT' %}{% set badge_cls = 'badge-info' %}
-                {% elif s == 'À ÉCHÉANCE' %}{% set badge_cls = 'badge-warning' %}
-                {% elif s == 'ÉCHU' %}{% set badge_cls = 'badge-error' %}
-                {% elif s == 'ARRIVÉ' %}{% set badge_cls = 'badge-primary' %}
-                {% else %}{% set badge_cls = 'badge-ghost' %}{% endif %}
-                <tr class="hover text-xs border-b border-base-300">
-                    <td class="sticky left-0 bg-base-100 z-10">
-                        {% if s %}
-                        <span class="badge badge-xs {{ badge_cls }} whitespace-nowrap">{{ s }}</span>
-                        {% else %}<span class="opacity-30 text-[10px]">—</span>{% endif %}
-                    </td>
-                    <td class="whitespace-nowrap">
-                        <span class="badge badge-ghost badge-xs">{{ item.societe }}</span>
-                    </td>
-                    <td class="font-medium">{{ item.fournisseur or '—' }}</td>
-                    <td class="max-w-[140px] truncate" title="{{ item.produit }}">{{ item.produit or '—' }}</td>
-                    <td class="text-xs opacity-70">{{ item.emballage or '—' }}</td>
-                    <td class="text-right font-mono">{{ '{:,.0f}'.format(item.quantite) if item.quantite else '—' }}</td>
-                    <td class="text-right opacity-70">{{ '{:.0f}%'.format(item.tva * 100) if item.tva else '—' }}</td>
-                    <td class="text-right font-mono">{{ item.montant_eur | currency(0) if item.montant_eur else '—' }}</td>
-                    <td class="text-right font-mono text-xs">{{ '{:.4f}'.format(item.cours) if item.cours else '—' }}</td>
-                    <td class="text-right font-mono font-semibold">{{ item.montant_da | currency(0) if item.montant_da else '—' }}</td>
-                    <td class="text-xs opacity-70 whitespace-nowrap">{{ item.date_d10.strftime('%d/%m/%Y') if item.date_d10 else '—' }}</td>
-                    <td class="whitespace-nowrap font-medium">{{ item.date_arrivee.strftime('%d/%m/%Y') if item.date_arrivee else '—' }}</td>
-                    <td class="text-xs opacity-70 whitespace-nowrap">{{ item.date_facture.strftime('%d/%m/%Y') if item.date_facture else '—' }}</td>
-                    <td class="text-center">
-                        {% if item.code_paiement %}
-                        <span class="badge badge-ghost badge-xs">{{ item.code_paiement }}</span>
-                        {% else %}—{% endif %}
-                    </td>
-                    <td class="text-center opacity-70">{{ item.nb_jours or '—' }}</td>
-                    <td class="whitespace-nowrap {% if item.date_echeance and item.date_echeance < today and not item.date_valeur %}text-error font-semibold{% endif %}">
-                        {{ item.date_echeance.strftime('%d/%m/%Y') if item.date_echeance else '—' }}
-                    </td>
-                    <td class="whitespace-nowrap text-xs opacity-70">{{ item.date_paiement.strftime('%d/%m/%Y') if item.date_paiement else '—' }}</td>
-                    <td class="whitespace-nowrap text-xs opacity-70">{{ item.date_valeur.strftime('%d/%m/%Y') if item.date_valeur else '—' }}</td>
-                    <td class="max-w-[120px] truncate text-xs opacity-60" title="{{ item.remarque }}">{{ item.remarque or '' }}</td>
-                    {% if can_write %}
-                    <td class="text-center whitespace-nowrap">
-                        <button class="btn btn-ghost btn-xs tooltip" data-tip="Modifier"
-                                data-id="{{ item.id }}"
-                                data-societe="{{ item.societe or '' }}"
-                                data-annee="{{ item.annee or '' }}"
-                                data-date-d10="{{ item.date_d10.strftime('%Y-%m-%d') if item.date_d10 else '' }}"
-                                data-date-arrivee="{{ item.date_arrivee.strftime('%Y-%m-%d') if item.date_arrivee else '' }}"
-                                data-fournisseur="{{ item.fournisseur or '' }}"
-                                data-produit="{{ item.produit or '' }}"
-                                data-emballage="{{ item.emballage or '' }}"
-                                data-quantite="{{ item.quantite or '' }}"
-                                data-tva="{{ item.tva or '' }}"
-                                data-montant-eur="{{ item.montant_eur or '' }}"
-                                data-cours="{{ item.cours or '' }}"
-                                data-date-facture="{{ item.date_facture.strftime('%Y-%m-%d') if item.date_facture else '' }}"
-                                data-code-paiement="{{ item.code_paiement or '' }}"
-                                data-nb-jours="{{ item.nb_jours or '' }}"
-                                data-date-echeance="{{ item.date_echeance.strftime('%Y-%m-%d') if item.date_echeance else '' }}"
-                                data-date-paiement="{{ item.date_paiement.strftime('%Y-%m-%d') if item.date_paiement else '' }}"
-                                data-date-valeur="{{ item.date_valeur.strftime('%Y-%m-%d') if item.date_valeur else '' }}"
-                                data-remarque="{{ item.remarque or '' }}"
-                                onclick="openEditLog(this)">
-                            <i class="fas fa-pen text-primary"></i>
-                        </button>
-                        {% if is_admin %}
-                        <form method="POST" action="{{ url_for('api_logistique_delete', item_id=item.id) }}"
-                              style="display:inline"
-                              onsubmit="return confirm('Supprimer cette entrée ?')">
-                            <button type="submit" class="btn btn-ghost btn-xs tooltip" data-tip="Supprimer">
-                                <i class="fas fa-trash text-error"></i>
-                            </button>
-                        </form>
-                        {% endif %}
-                    </td>
-                    {% endif %}
-                </tr>
-                {% else %}
-                <tr><td colspan="20" class="text-center py-12 opacity-50">
-                    <i class="fas fa-inbox text-4xl block mb-3"></i>
-                    Aucune entrée{% if search or societe or annee or statut_f %} pour ces filtres{% endif %}
-                </td></tr>
-                {% endfor %}
-                </tbody>
-            </table>
+        <div class="overflow-x-auto" id="gestion-table">
+            {% include 'partials/logistique_gestion_table.html' %}
         </div>
-
-        <!-- Pagination -->
-        {% if total_pages > 1 %}
-        <div class="flex justify-between items-center px-4 py-3 border-t border-base-300">
-            <span class="text-xs opacity-60">
-                {{ ((page-1)*25)+1 }}–{{ [page*25, total]|min }} sur {{ total }}
-            </span>
-            <div class="flex items-center gap-1">
-                {% set base_url = url_for('logistique_gestion', search=search, societe=societe, annee=annee, statut=statut_f) %}
-                {% if page > 1 %}
-                <a href="{{ base_url }}&page={{ page - 1 }}" class="btn btn-ghost btn-xs">
-                    <i class="fas fa-chevron-left"></i>
-                </a>
-                {% else %}
-                <button class="btn btn-ghost btn-xs" disabled><i class="fas fa-chevron-left"></i></button>
-                {% endif %}
-                <span class="text-sm px-2">{{ page }} / {{ total_pages }}</span>
-                {% if page < total_pages %}
-                <a href="{{ base_url }}&page={{ page + 1 }}" class="btn btn-ghost btn-xs">
-                    <i class="fas fa-chevron-right"></i>
-                </a>
-                {% else %}
-                <button class="btn btn-ghost btn-xs" disabled><i class="fas fa-chevron-right"></i></button>
-                {% endif %}
-            </div>
-        </div>
-        {% endif %}
     </div>
 
 </div>
 
-<!-- ═══════ MODAL AJOUT ═══════ -->
-{% if can_write %}
-<dialog id="modal-add-log" class="modal">
-    <div class="modal-box max-w-4xl">
-        <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button></form>
-        <h3 class="font-bold text-lg mb-4"><i class="fas fa-plus text-primary mr-2"></i>Nouvelle entrée logistique</h3>
-        <form method="POST" action="{{ url_for('api_logistique_add') }}">
-            {% include 'partials/log_form_fields.html' %}
-            <div class="modal-action mt-4">
-                <form method="dialog"><button class="btn btn-ghost btn-sm">Annuler</button></form>
-                <button type="submit" class="btn btn-primary btn-sm">
-                    <i class="fas fa-save mr-1"></i>Enregistrer
-                </button>
-            </div>
-        </form>
+<!-- ═══════ MODAL BON VIEWER ═══════ -->
+<dialog id="modal-bon-viewer" class="modal">
+    <div class="modal-box max-w-3xl w-full">
+        <h3 class="font-bold text-lg mb-1" id="bv-numero">—</h3>
+        <p class="text-xs opacity-60 mb-4" id="bv-meta"></p>
+        <div id="bv-lignes" class="overflow-x-auto mb-4">
+            <p class="opacity-50 text-sm">Chargement...</p>
+        </div>
+        <div class="modal-action">
+            <form method="dialog"><button class="btn btn-ghost btn-sm">Fermer</button></form>
+        </div>
     </div>
     <form method="dialog" class="modal-backdrop"><button>close</button></form>
 </dialog>
 
+<!-- ═══════ MODAL DÉTAIL ═══════ -->
+{% if can_write %}
+<dialog id="modal-detail-log" class="modal">
+    <div class="modal-box max-w-3xl w-full">
+        <h3 class="font-bold text-lg mb-1" id="detail-log-titre">—</h3>
+        <p class="text-xs opacity-60 mb-4" id="detail-log-meta"></p>
+        <div id="detail-log-corps" class="mb-4"></div>
+        <!-- Lignes du bon associé (affichées si bonId présent) -->
+        <div id="detail-log-bon-section" class="hidden">
+            <div class="divider text-xs opacity-50 my-2"><i class="fas fa-file-alt mr-1"></i><span id="detail-log-bon-title"></span></div>
+            <div id="detail-log-bon-lignes" class="overflow-x-auto">
+                <p class="opacity-50 text-sm">Chargement...</p>
+            </div>
+        </div>
+        <div class="modal-action">
+            <button type="button" id="edit-log-btn" class="btn btn-warning btn-sm">
+                <i class="fas fa-edit mr-1"></i>Modifier
+            </button>
+            <form method="dialog"><button class="btn btn-ghost btn-sm">Fermer</button></form>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+{% endif %}
+
 <!-- ═══════ MODAL ÉDITION ═══════ -->
+{% if can_write %}
 <dialog id="modal-edit-log" class="modal">
     <div class="modal-box max-w-4xl">
-        <form method="dialog"><button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button></form>
         <h3 class="font-bold text-lg mb-4"><i class="fas fa-pen text-primary mr-2"></i>Modifier l'entrée</h3>
         <form id="form-edit-log" method="POST" action="">
             {% include 'partials/log_form_fields.html' %}
-            <div class="modal-action mt-4">
-                <form method="dialog"><button class="btn btn-ghost btn-sm">Annuler</button></form>
+            <div class="modal-action mt-6 pt-4 border-t border-base-300 flex justify-end gap-2">
+                <button type="button" onclick="cancelEditLog()" class="btn btn-ghost btn-sm">Annuler</button>
                 <button type="submit" class="btn btn-primary btn-sm">
                     <i class="fas fa-save mr-1"></i>Enregistrer
                 </button>
@@ -264,34 +158,190 @@
 <script>
 const today = new Date().toISOString().split('T')[0];
 
-function openEditLog(btn) {
-    const d = btn.dataset;
+// ── Mécanique detail → edit (comme bons de commandes) ──────────────────────
+var _detailLogEl = null;
+
+function openLogDetail(el) {
+    _detailLogEl = el;
+    const d = el.dataset;
+    const dateFmt = s => s ? new Date(s + 'T12:00:00').toLocaleDateString('fr-FR') : '—';
+
+    document.getElementById('detail-log-titre').textContent = d.fournisseur || '—';
+    document.getElementById('detail-log-meta').textContent =
+        (d.societe || '') + (d.refLog ? ' · ' + d.refLog : '');
+
+    const rows = [
+        ['Montant €',      d.montantEur ? parseFloat(d.montantEur).toLocaleString('fr-FR', {minimumFractionDigits:2}) + ' €' : '—'],
+        ['Cours (€→DA)',   d.cours ? parseFloat(d.cours).toFixed(4) : '—'],
+        ['Date D10',       dateFmt(d.dateD10)],
+        ['Date arrivée',   dateFmt(d.dateArrivee)],
+        ['Date facture',   dateFmt(d.dateFacture)],
+        ['Mode paiement',  d.codePaiement || '—'],
+        ['Délai (j.)',     d.nbJours || '—'],
+        ['Date échéance',  dateFmt(d.dateEcheance)],
+        ['Date paiement',  dateFmt(d.datePaiement)],
+        ['Date valeur',    dateFmt(d.dateValeur)],
+        ['Remarque',       d.remarque || '—'],
+    ];
+    document.getElementById('detail-log-corps').innerHTML =
+        '<div class="grid grid-cols-2 sm:grid-cols-3 gap-2">' +
+        rows.map(([lbl, val]) =>
+            '<div class="bg-base-200 rounded p-2">' +
+            '<div class="text-xs opacity-50 mb-1">' + lbl + '</div>' +
+            '<div class="text-sm font-medium">' + val + '</div></div>'
+        ).join('') + '</div>';
+
+    document.getElementById('edit-log-btn').onclick = function() {
+        document.getElementById('modal-detail-log').close();
+        _fillAndShowEditLog(d);
+    };
+
+    // Lignes du bon associé
+    var bonSection  = document.getElementById('detail-log-bon-section');
+    var bonLignes   = document.getElementById('detail-log-bon-lignes');
+    if (d.bonId) {
+        bonSection.classList.remove('hidden');
+        bonLignes.innerHTML = '<p class="opacity-50 text-sm">Chargement...</p>';
+        fetch('/api/logistique/bons/' + d.bonId + '/detail')
+            .then(function(r) { return r.json(); })
+            .then(function(bon) {
+                var lignes = bon.lignes || [];
+                document.getElementById('detail-log-bon-title').textContent = bon.numero || '—';
+                if (!lignes.length) {
+                    bonLignes.innerHTML = '<p class="opacity-50 text-sm">Aucune ligne</p>';
+                    return;
+                }
+                var total = 0;
+                var euroFmtDl = new Intl.NumberFormat('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2});
+                var esc = function(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+                var trs = lignes.map(function(l) {
+                    var t = (Number(l.quantite)||0) * (Number(l.prix_unitaire)||0);
+                    total += t;
+                    return '<tr>' +
+                        '<td class="font-mono text-xs font-semibold">' + esc(l.reference) + '</td>' +
+                        '<td class="text-sm">' + esc(l.designation || '—') + '</td>' +
+                        '<td class="text-right text-sm">' + (l.quantite || '—') + '</td>' +
+                        '<td class="text-right font-mono text-sm">' + (l.prix_unitaire ? euroFmtDl.format(l.prix_unitaire) : '—') + '</td>' +
+                        '<td class="text-right font-mono font-semibold text-sm">' + (t ? t.toLocaleString('fr-FR',{minimumFractionDigits:2}) + ' €' : '—') + '</td>' +
+                        '</tr>';
+                }).join('');
+                bonLignes.innerHTML =
+                    '<table class="table table-xs table-zebra w-full">' +
+                    '<thead><tr class="bg-base-200">' +
+                    '<th>Réf.</th><th>Désignation</th>' +
+                    '<th class="text-right">Quantité</th>' +
+                    '<th class="text-right">Prix unit. €</th>' +
+                    '<th class="text-right">Total €</th>' +
+                    '</tr></thead><tbody>' + trs + '</tbody></table>';
+            })
+            .catch(function() {
+                bonLignes.innerHTML = '<p class="text-error text-sm">Erreur de chargement</p>';
+            });
+    } else {
+        bonSection.classList.add('hidden');
+    }
+
+    document.getElementById('modal-detail-log').showModal();
+}
+
+function cancelEditLog() {
+    document.getElementById('modal-edit-log').close();
+    if (_detailLogEl) {
+        openLogDetail(_detailLogEl);
+    }
+}
+
+function _fillAndShowEditLog(d) {
     const f = document.getElementById('form-edit-log');
     f.action = '/api/logistique/' + d.id + '/edit';
-    const set = (name, val) => {
-        const el = f.querySelector('[name="' + name + '"]');
-        if (el) el.value = val || '';
-    };
-    set('societe',        d.societe);
-    set('annee',          d.annee);
-    set('date_d10',       d.dateD10);
-    set('date_arrivee',   d.dateArrivee);
-    set('fournisseur',    d.fournisseur);
-    set('produit',        d.produit);
-    set('emballage',      d.emballage);
-    set('quantite',       d.quantite);
-    set('tva',            d.tva);
-    set('montant_eur',    d.montantEur);
-    set('cours',          d.cours);
-    set('date_facture',   d.dateFacture);
-    set('code_paiement',  d.codePaiement);
-    set('nb_jours',       d.nbJours);
-    set('date_echeance',  d.dateEcheance);
-    set('date_paiement',  d.datePaiement);
-    set('date_valeur',    d.dateValeur);
-    set('remarque',       d.remarque);
+    const banner = f.querySelector('.ref-log-banner');
+    if (banner) {
+        if (d.refLog) { banner.querySelector('.ref-log-value').textContent = d.refLog; banner.classList.remove('hidden'); }
+        else { banner.classList.add('hidden'); }
+    }
+    const set = (name, val) => { const el = f.querySelector('[name="' + name + '"]'); if (el) el.value = val || ''; };
+    set('societe',       d.societe);
+    set('date_d10',      d.dateD10);
+    set('date_arrivee',  d.dateArrivee);
+    set('fournisseur',   d.fournisseur);
+    set('montant_eur',   d.montantEur);
+    set('cours',         d.cours);
+    set('date_facture',  d.dateFacture);
+    set('code_paiement', d.codePaiement);
+    set('nb_jours',      d.nbJours);
+    set('date_echeance', d.dateEcheance);
+    set('date_paiement', d.datePaiement);
+    set('date_valeur',   d.dateValeur);
+    set('remarque',      d.remarque);
     updateMontantDA('modal-edit-log');
+
+    // Verrouillage société + fournisseur si lié à un bon de commande
+    var montantEl     = f.querySelector('[name="montant_eur"]');
+    var isLinked = !!d.bonId;
+    if (montantEl)     { montantEl.toggleAttribute('readonly', isLinked); montantEl.classList.toggle('opacity-50', isLinked); montantEl.classList.toggle('bg-base-200', isLinked); }
+
     document.getElementById('modal-edit-log').showModal();
+}
+
+function openEditLog(el) {
+    // Appelé directement depuis le tableau (sans passer par le detail)
+    _detailLogEl = null;
+    _fillAndShowEditLog(el.dataset);
+}
+
+// ── Bon de commande viewer (depuis gestion) ────────────────────────────────
+function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+var euroFmtBv = new Intl.NumberFormat('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+function openBonViewer(bonId, event) {
+    if (event) event.stopPropagation();
+    var modal = document.getElementById('modal-bon-viewer');
+    document.getElementById('bv-numero').textContent = '…';
+    document.getElementById('bv-meta').textContent = '';
+    document.getElementById('bv-lignes').innerHTML = '<p class="opacity-50 text-sm">Chargement...</p>';
+    modal.showModal();
+    fetch('/api/logistique/bons/' + bonId + '/detail')
+        .then(function(r) { return r.json(); })
+        .then(function(bon) {
+            var dateFmt = function(s) { return s ? new Date(s + 'T12:00:00').toLocaleDateString('fr-FR') : '—'; };
+            document.getElementById('bv-numero').textContent = bon.numero || '—';
+            document.getElementById('bv-meta').textContent =
+                (bon.societe || '—') + ' · ' + (bon.fournisseur || '—') +
+                ' · ' + (bon.statut || '—') +
+                ' · ' + dateFmt(bon.date_commande);
+
+            var lignes = bon.lignes || [];
+            var container = document.getElementById('bv-lignes');
+            if (!lignes.length) {
+                container.innerHTML = '<p class="opacity-50 text-sm">Aucune ligne</p>';
+            } else {
+                var total = 0;
+                var rows = lignes.map(function(l) {
+                    var t = (Number(l.quantite)||0) * (Number(l.prix_unitaire)||0);
+                    total += t;
+                    return '<tr>' +
+                        '<td class="font-mono text-xs font-semibold">' + escHtml(l.reference) + '</td>' +
+                        '<td>' + escHtml(l.designation || '—') + '</td>' +
+                        '<td class="text-right">' + (l.quantite || '—') + '</td>' +
+                        '<td class="text-right font-mono">' + (l.prix_unitaire ? euroFmtBv.format(parseFloat(l.prix_unitaire)) : '—') + '</td>' +
+                        '<td class="text-right font-mono font-semibold">' + (t ? t.toLocaleString('fr-FR',{minimumFractionDigits:2}) + ' €' : '—') + '</td>' +
+                        '</tr>';
+                }).join('');
+                container.innerHTML =
+                    '<table class="table table-xs w-full mb-2">' +
+                    '<thead><tr class="bg-base-200"><th>Réf.</th><th>Désignation</th><th class="text-right">Quantité</th><th class="text-right">Prix unit. €</th><th class="text-right">Total €</th></tr></thead>' +
+                    '<tbody>' + rows + '</tbody></table>' +
+                    '<div class="flex justify-end">' +
+                    '<div class="bg-base-200 rounded-lg px-4 py-2 font-bold font-mono text-lg text-primary">Total : ' + euroFmtBv.format(total) + ' €</div>' +
+                    '</div>' +
+                    (bon.notes ? '<div class="mt-3 p-3 border-l-4 border-primary bg-base-100 rounded text-sm"><span class="text-xs font-semibold opacity-60 block mb-1">REMARQUE</span>' + escHtml(bon.notes) + '</div>' : '');
+            }
+        })
+        .catch(function() {
+            document.getElementById('bv-lignes').innerHTML = '<p class="text-error text-sm">Erreur de chargement</p>';
+        });
 }
 
 function updateMontantDA(modalId) {
