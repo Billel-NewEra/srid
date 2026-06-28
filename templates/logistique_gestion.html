@@ -339,8 +339,11 @@ function openBonViewer(bonId, event) {
     document.getElementById('bv-meta').textContent = '';
     document.getElementById('bv-lignes').innerHTML = '<p class="opacity-50 text-sm">Chargement...</p>';
     modal.showModal();
-    fetch('/api/logistique/bons/' + bonId + '/detail')
-        .then(function(r) { return r.json(); })
+    fetch('/api/logistique/bons/' + bonId + '/detail', {credentials: 'same-origin'})
+        .then(function(r) {
+            if (!r.ok) throw new Error('HTTP ' + r.status);
+            return r.json();
+        })
         .then(function(bon) {
             var dateFmt = function(s) { return s ? new Date(s + 'T12:00:00').toLocaleDateString('fr-FR') : '—'; };
             document.getElementById('bv-numero').textContent = bon.numero || '—';
