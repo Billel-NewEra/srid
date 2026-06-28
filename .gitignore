@@ -1,7 +1,6 @@
 __pycache__/
 *.pyc
 *.xlsx
-*.db
 srd.jpg
 srd2.jpg
 /icon.jpg
