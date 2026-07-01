@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud Slate — SRID COM (Light)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:          #f8fafc;
+      --surface:     #ffffff;
+      --surface2:    #f1f5f9;
+      --surface3:    #e2e8f0;
+      --border:      #e2e8f0;
+      --border-mid:  #cbd5e1;
+      --primary:     #0f766e;
+      --primary-dim: rgba(15,118,110,0.06);
+      --primary-hover:#115e59;
+      --success:     #16a34a;
+      --success-dim: rgba(22,163,74,0.07);
+      --warning:     #ea580c;
+      --warning-dim: rgba(234,88,12,0.07);
+      --danger:      #dc2626;
+      --danger-dim:  rgba(220,38,38,0.06);
+      --info:        #0284c7;
+      --info-dim:    rgba(2,132,199,0.07);
+      --text:        #0f172a;
+      --text-2:      #475569;
+      --text-3:      #94a3b8;
+      --sidebar-bg:  #0f172a;
+      --sidebar-w:   244px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 14px; }
+    body {
+      font-family: 'DM Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* ── SIDEBAR (slate dark, teal accents) ── */
+    .sidebar {
+      width: var(--sidebar-w);
+      min-height: 100vh;
+      background: var(--sidebar-bg);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      left: 0; top: 0; bottom: 0;
+      z-index: 50;
+    }
+    .sidebar-brand {
+      padding: 1.25rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .sidebar-brand .brand-icon {
+      width: 38px; height: 38px; border-radius: 10px;
+      background: linear-gradient(135deg, #0f766e, #14b8a6);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.85rem; color: #fff;
+      box-shadow: 0 2px 10px rgba(15,118,110,0.4);
+    }
+    .sidebar-brand h1 { font-size: 1.1rem; font-weight: 700; color: #f1f5f9; }
+    .sidebar-brand .subtitle { font-size: 0.6rem; color: #5eead4; text-transform: uppercase; letter-spacing: 0.1em; margin-top: 2px; }
+
+    .sidebar-nav { flex: 1; padding: 0.75rem 0.5rem; overflow-y: auto; }
+    .nav-section { margin-bottom: 1.25rem; }
+    .nav-section-label {
+      font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; color: #475569; padding: 0 0.6rem; margin-bottom: 0.4rem;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .nav-section-label .strip { width: 3px; height: 10px; border-radius: 2px; }
+    .strip-finance { background: #f59e0b; }
+    .strip-logistique { background: #14b8a6; }
+    .strip-admin { background: #64748b; }
+
+    .nav-link {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.5rem 0.75rem; border-radius: 8px;
+      font-size: 0.85rem; color: #94a3b8;
+      text-decoration: none; transition: all 0.15s;
+    }
+    .nav-link:hover { background: rgba(255,255,255,0.05); color: #cbd5e1; }
+    .nav-link.active {
+      background: rgba(15,118,110,0.15);
+      color: #5eead4; font-weight: 600;
+    }
+    .nav-link.active.finance { background: rgba(245,158,11,0.12); color: #fbbf24; }
+    .nav-link.active.logistique { background: rgba(20,184,166,0.12); color: #5eead4; }
+    .nav-icon { width: 1rem; text-align: center; font-size: 0.8rem; flex-shrink: 0; }
+
+    .sidebar-footer {
+      padding: 1rem; border-top: 1px solid rgba(255,255,255,0.06);
+      display: flex; align-items: center; gap: 0.6rem;
+    }
+    .sidebar-footer .user-avatar {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: linear-gradient(135deg, #0f766e, #14b8a6);
+      display: flex; align-items: center; justify-content: center;
+      color: #fff; font-size: 0.7rem; font-weight: 600;
+    }
+    .sidebar-footer .user-name { font-size: 0.8rem; color: #cbd5e1; font-weight: 500; }
+    .sidebar-footer .user-role { font-size: 0.65rem; color: #64748b; }
+
+    /* ── MAIN ── */
+    .main { margin-left: var(--sidebar-w); flex: 1; min-height: 100vh; display: flex; flex-direction: column; }
+
+    /* ── HEADER ── */
+    .header {
+      height: 54px; padding: 0 1.5rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 40;
+    }
+    .header-title { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+    .header-actions { display: flex; align-items: center; gap: 0.5rem; }
+    .header-btn {
+      width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text-2); font-size: 0.85rem;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.15s; position: relative;
+    }
+    .header-btn:hover { background: var(--surface2); color: var(--primary); border-color: var(--border-mid); }
+    .header-btn .notif-dot {
+      position: absolute; top: 6px; right: 6px; width: 7px; height: 7px;
+      background: var(--danger); border-radius: 50%; border: 1.5px solid var(--surface);
+    }
+
+    /* ── CONTENT ── */
+    .content { padding: 1.5rem; flex: 1; }
+
+    /* ── KPI CARDS ── */
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.5rem; }
+    .kpi {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; padding: 1.25rem 1.25rem 1rem;
+      display: flex; align-items: flex-start; gap: 1rem;
+      transition: all 0.2s;
+    }
+    .kpi:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.05); transform: translateY(-1px); }
+    .kpi-icon-wrap {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem; flex-shrink: 0;
+    }
+    .kpi.teal .kpi-icon-wrap { background: var(--primary-dim); color: var(--primary); }
+    .kpi.green .kpi-icon-wrap { background: var(--success-dim); color: var(--success); }
+    .kpi.orange .kpi-icon-wrap { background: var(--warning-dim); color: var(--warning); }
+    .kpi.red .kpi-icon-wrap { background: var(--danger-dim); color: var(--danger); }
+    .kpi-text { flex: 1; }
+    .kpi-label { font-size: 0.7rem; color: var(--text-3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; }
+    .kpi-value { font-size: 1.5rem; font-weight: 700; color: var(--text); margin-top: 0.2rem; letter-spacing: -0.02em; }
+    .kpi-sub { font-size: 0.75rem; color: var(--text-2); margin-top: 0.15rem; }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 14px; overflow: hidden;
+    }
+    .card-header {
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-header h3 { font-size: 0.9rem; font-weight: 600; color: var(--text); }
+    .card-body { padding: 1.25rem; }
+
+    /* ── TABLE ── */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    thead tr { background: var(--sidebar-bg); color: #e2e8f0; }
+    th { padding: 0.7rem 1rem; text-align: left; font-weight: 600; font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; }
+    td { padding: 0.65rem 1rem; border-bottom: 1px solid var(--border); color: var(--text); }
+    tbody tr { transition: background 0.1s; }
+    tbody tr:hover { background: rgba(15,118,110,0.04); }
+    .mono { font-family: 'JetBrains Mono', monospace; font-size: 0.8rem; }
+    .text-right { text-align: right; }
+    .text-muted { color: var(--text-3); }
+
+    /* ── BADGES ── */
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.35rem;
+      padding: 0.2rem 0.6rem; border-radius: 6px;
+      font-size: 0.7rem; font-weight: 600; white-space: nowrap;
+      border: 1px solid transparent;
+    }
+    .badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; }
+    .badge-success { background: var(--success-dim); color: #15803d; border-color: rgba(22,163,74,0.15); }
+    .badge-success::before { background: var(--success); }
+    .badge-warning { background: var(--warning-dim); color: #9a3412; border-color: rgba(234,88,12,0.12); }
+    .badge-warning::before { background: var(--warning); }
+    .badge-danger { background: var(--danger-dim); color: var(--danger); border-color: rgba(220,38,38,0.12); }
+    .badge-danger::before { background: var(--danger); }
+    .badge-info { background: var(--info-dim); color: #0369a1; border-color: rgba(2,132,199,0.12); }
+    .badge-info::before { background: var(--info); }
+    .badge-neutral { background: rgba(100,116,139,0.08); color: var(--text-2); border-color: rgba(100,116,139,0.12); }
+    .badge-neutral::before { background: #94a3b8; }
+
+    /* ── INPUTS ── */
+    .input {
+      height: 36px; padding: 0 0.75rem; border: 1.5px solid var(--border);
+      border-radius: 8px; font-size: 0.85rem; color: var(--text);
+      background: var(--surface); transition: all 0.2s; width: 100%;
+      font-family: inherit;
+    }
+    .input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-dim); outline: none; }
+    .input::placeholder { color: var(--text-3); }
+
+    /* ── BUTTONS ── */
+    .btn {
+      height: 36px; padding: 0 1rem; border-radius: 8px;
+      font-size: 0.85rem; font-weight: 600; border: none;
+      cursor: pointer; transition: all 0.15s;
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      font-family: inherit;
+    }
+    .btn-primary {
+      background: var(--primary); color: #fff;
+      box-shadow: 0 2px 8px rgba(15,118,110,0.2);
+    }
+    .btn-primary:hover { background: var(--primary-hover); box-shadow: 0 4px 14px rgba(15,118,110,0.3); transform: translateY(-1px); }
+    .btn-ghost { background: transparent; color: var(--text-2); }
+    .btn-ghost:hover { background: var(--surface2); color: var(--text); }
+    .btn-sm { height: 30px; padding: 0 0.6rem; font-size: 0.8rem; }
+
+    /* ── CHART ── */
+    .chart-placeholder {
+      height: 220px; border-radius: 10px;
+      background: var(--surface2);
+      border: 1px dashed var(--border);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-3); font-size: 0.85rem;
+    }
+
+    /* ── PAGINATION ── */
+    .pagination { display: flex; align-items: center; gap: 0.25rem; justify-content: center; margin-top: 1rem; }
+    .page-btn {
+      width: 32px; height: 32px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--surface); color: var(--text-2); font-size: 0.8rem;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .page-btn:hover { background: var(--surface2); }
+    .page-btn.active { background: var(--primary); color: #fff; border-color: var(--primary); }
+
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+
+    .footer {
+      padding: 0.75rem 1.5rem; border-top: 1px solid var(--border);
+      font-size: 0.75rem; color: var(--text-3); text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon">S</div>
+    <div><h1>SRID COM</h1><div class="subtitle">Gestion Financière</div></div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-section">
+      <div class="nav-section-label"><div class="strip strip-finance"></div> Finance</div>
+      <a class="nav-link active finance" href="#"><span class="nav-icon">📊</span> Dashboard</a>
+      <a class="nav-link" href="#"><span class="nav-icon">📝</span> Saisie</a>
+      <a class="nav-link" href="#"><span class="nav-icon">🔍</span> Consultation</a>
+      <a class="nav-link" href="#"><span class="nav-icon">📥</span> Import</a>
+      <a class="nav-link" href="#"><span class="nav-icon">📋</span> Référentiels</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-label"><div class="strip strip-logistique"></div> Logistique</div>
+      <a class="nav-link" href="#"><span class="nav-icon">📦</span> Gestion</a>
+      <a class="nav-link" href="#"><span class="nav-icon">📄</span> Bons</a>
+      <a class="nav-link" href="#"><span class="nav-icon">🏢</span> Référentiels</a>
+    </div>
+    <div class="nav-section">
+      <div class="nav-section-label"><div class="strip strip-admin"></div> Administration</div>
+      <a class="nav-link" href="#"><span class="nav-icon">👥</span> Utilisateurs</a>
+      <a class="nav-link" href="#"><span class="nav-icon">📜</span> Historique</a>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-avatar">MA</div>
+    <div><div class="user-name">Mehdi A.</div><div class="user-role">Administrateur</div></div>
+  </div>
+</aside>
+
+<div class="main">
+  <header class="header">
+    <span class="header-title">Dashboard</span>
+    <div class="header-actions">
+      <button class="header-btn">🔔<span class="notif-dot"></span></button>
+      <button class="header-btn">🌙</button>
+    </div>
+  </header>
+
+  <div class="content">
+    <div class="kpis">
+      <div class="kpi teal">
+        <div class="kpi-icon-wrap">💰</div>
+        <div class="kpi-text"><div class="kpi-label">Total encaissé</div><div class="kpi-value">12 450 000</div><div class="kpi-sub">DA · 2026</div></div>
+      </div>
+      <div class="kpi green">
+        <div class="kpi-icon-wrap">✅</div>
+        <div class="kpi-text"><div class="kpi-label">Opérations</div><div class="kpi-value">347</div><div class="kpi-sub">ce mois</div></div>
+      </div>
+      <div class="kpi orange">
+        <div class="kpi-icon-wrap">⏳</div>
+        <div class="kpi-text"><div class="kpi-label">En attente</div><div class="kpi-value">23</div><div class="kpi-sub">échéances à venir</div></div>
+      </div>
+      <div class="kpi red">
+        <div class="kpi-icon-wrap">⚠️</div>
+        <div class="kpi-text"><div class="kpi-label">Échu</div><div class="kpi-value">5</div><div class="kpi-sub">à traiter</div></div>
+      </div>
+    </div>
+
+    <div class="grid-2" style="margin-bottom:1.5rem">
+      <div class="card">
+        <div class="card-header"><h3>Évolution mensuelle</h3><button class="btn btn-ghost btn-sm">2026 ▾</button></div>
+        <div class="card-body"><div class="chart-placeholder">📈 Graphique mensuel</div></div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Répartition par société</h3></div>
+        <div class="card-body"><div class="chart-placeholder">🍩 Graphique sociétés</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <h3>Dernières opérations</h3>
+        <div style="display:flex;gap:0.5rem;align-items:center">
+          <input class="input" style="width:200px" placeholder="Rechercher...">
+          <select class="input" style="width:140px"><option>Tous statuts</option></select>
+          <button class="btn btn-primary btn-sm">+ Nouvelle</button>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Client</th><th>Type</th><th>Société</th><th class="text-right">Montant</th><th>Statut</th></tr></thead>
+          <tbody>
+            <tr><td class="text-muted">28/06/2026</td><td>SARL Phyto Plus</td><td>Chèque</td><td>SRID</td><td class="text-right mono">1 250 000,00</td><td><span class="badge badge-success">Encaissé</span></td></tr>
+            <tr><td class="text-muted">27/06/2026</td><td>ETS Benmoussa</td><td>Virement</td><td>Genetics</td><td class="text-right mono">3 780 500,00</td><td><span class="badge badge-info">En cours</span></td></tr>
+            <tr><td class="text-muted">26/06/2026</td><td>Agri-Semences Nord</td><td>Chèque</td><td>SRID</td><td class="text-right mono">890 000,00</td><td><span class="badge badge-warning">Échéance</span></td></tr>
+            <tr><td class="text-muted">25/06/2026</td><td>SARL Greenfields</td><td>Versement</td><td>SRID</td><td class="text-right mono">2 150 000,00</td><td><span class="badge badge-success">Encaissé</span></td></tr>
+            <tr><td class="text-muted">24/06/2026</td><td>Ferme El Baraka</td><td>Chèque</td><td>Genetics</td><td class="text-right mono">450 000,00</td><td><span class="badge badge-danger">Rejeté</span></td></tr>
+            <tr><td class="text-muted">23/06/2026</td><td>Bio Harvest SARL</td><td>Chèque</td><td>SRID</td><td class="text-right mono">1 875 000,00</td><td><span class="badge badge-neutral">Arrive à échéance</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="padding:1rem"><div class="pagination">
+        <button class="page-btn">‹</button>
+        <button class="page-btn active">1</button>
+        <button class="page-btn">2</button>
+        <button class="page-btn">3</button>
+        <button class="page-btn">›</button>
+      </div></div>
+    </div>
+  </div>
+  <div class="footer">© 2026 MobiBenz · SRID COM v2.0</div>
+</div>
+</body>
+</html>

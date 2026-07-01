@@ -4,7 +4,7 @@
 {% block content %}
 <div class="fade-in">
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-        <h1 class="text-2xl font-bold"><i class="fas fa-search text-primary mr-2"></i>Consultation</h1>
+        <h1 class="text-2xl font-bold page-title"><i class="fas fa-search text-primary mr-2"></i>Consultation</h1>
         <a id="export-link" href="{{ url_for('export_excel') }}" class="btn btn-sm btn-outline btn-success mt-2 sm:mt-0">
             <i class="fas fa-file-excel mr-1"></i> Exporter Excel
         </a>
@@ -139,7 +139,7 @@
     <dialog id="status-modal" class="modal">
         <div class="modal-box max-w-md">
             <h3 class="font-bold text-lg mb-2"><i class="fas fa-pen-to-square text-warning mr-2"></i>Changer le statut</h3>
-            <p class="text-sm opacity-70 mb-4">Sélectionnez un statut puis confirmez.</p>
+            <p class="text-sm modal-meta mb-4">Sélectionnez un statut puis confirmez.</p>
 
             <div id="status-options" class="grid grid-cols-2 gap-2 mb-4"></div>
 
@@ -178,12 +178,12 @@
     ];
 
     const statusChoices = [
-        { value: 'Encaissé', cls: 'bg-emerald-600 border-emerald-700 text-white' },
-        { value: 'Rejeté', cls: 'bg-red-600 border-red-700 text-white' },
-        { value: 'Échéance', cls: 'bg-amber-500 border-amber-600 text-white' },
-        { value: 'En cours', cls: 'bg-sky-600 border-sky-700 text-white' },
-        { value: 'Arrive à échéance', cls: 'bg-orange-500 border-orange-600 text-white' },
-        { value: 'Échu', cls: 'bg-violet-600 border-violet-700 text-white' }
+        { value: 'Encaissé', cls: 'badge-success' },
+        { value: 'Rejeté', cls: 'badge-error' },
+        { value: 'Échéance', cls: 'badge-warning' },
+        { value: 'En cours', cls: 'badge-primary' },
+        { value: 'Arrive à échéance', cls: 'badge-accent' },
+        { value: 'Échu', cls: 'badge-secondary' }
     ];
 
     let selectedStatus = '';
@@ -228,7 +228,7 @@
             }
             const button = document.createElement('button');
             button.type = 'button';
-            button.className = `badge badge-lg justify-center py-4 border ${item.cls} ${item.value === selectedStatus ? 'ring-2 ring-primary' : ''}`;
+            button.className = `badge badge-lg justify-center py-4 ${item.cls} ${item.value === selectedStatus ? 'ring-2 ring-primary' : ''}`;
             button.textContent = item.value;
             button.addEventListener('click', () => {
                 selectedStatus = item.value;

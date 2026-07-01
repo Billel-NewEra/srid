@@ -4,6 +4,27 @@
 {% block content %}
 <div class="fade-in">
     <style>
+        /* Dashboard palette aligned with Graphite Ink */
+        .societe-srid { color: var(--societe-srid); }
+        .societe-genetics { color: var(--societe-genetics); }
+        .dashboard-muted { color: var(--text-muted-theme); }
+        .dashboard-table td { font-weight: 500; color: hsl(var(--bc)); }
+        .dashboard-table td strong { font-weight: 700; }
+
+        .status-dot { width: 0.75rem; height: 0.75rem; border-radius: 9999px; }
+        .status-encaisse { color: var(--status-encaisse); }
+        .status-encaisse.status-dot { background: var(--status-encaisse); }
+        .status-rejete { color: var(--status-rejete); }
+        .status-rejete.status-dot { background: var(--status-rejete); }
+        .status-echeance { color: var(--status-echeance); }
+        .status-echeance.status-dot { background: var(--status-echeance); }
+        .status-encours { color: var(--status-encours); }
+        .status-encours.status-dot { background: var(--status-encours); }
+        .status-arriveecheance { color: var(--status-arrive); }
+        .status-arriveecheance.status-dot { background: var(--status-arrive); }
+        .status-echu { color: var(--status-echu); }
+        .status-echu.status-dot { background: var(--status-echu); }
+
         .year-dropdown {
             position: relative;
             min-width: 96px;
@@ -20,11 +41,11 @@
             width: 100%;
             max-height: 20rem;
             overflow-y: auto;
-            background-color: #0f172a;
-            color: #f8fafc;
-            border: 1px solid #334155;
+            background-color: var(--ui-surface);
+            color: var(--ui-text);
+            border: 1px solid var(--ui-border-strong);
             border-radius: 0.5rem;
-            box-shadow: 0 12px 28px rgba(0, 0, 0, 0.28);
+            box-shadow: var(--ui-shadow);
             opacity: 1;
             backdrop-filter: none;
             padding: 0.25rem;
@@ -42,26 +63,26 @@
         }
         .year-dropdown-item:hover,
         .year-dropdown-item.is-selected {
-            background-color: #1e293b;
+            background-color: var(--ui-primary-soft);
         }
         .year-dropdown-menu::-webkit-scrollbar {
             width: 8px;
         }
         .year-dropdown-menu::-webkit-scrollbar-track {
-            background: #0b1220;
+            background: var(--ui-surface-2);
             border-radius: 999px;
         }
         .year-dropdown-menu::-webkit-scrollbar-thumb {
-            background: #475569;
+            background: var(--ui-border-strong);
             border-radius: 999px;
         }
         .year-dropdown-menu::-webkit-scrollbar-thumb:hover {
-            background: #64748b;
+            background: var(--ui-text-muted);
         }
     </style>
     <!-- Titre -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-        <h1 class="text-2xl font-bold"><i class="fas fa-chart-line text-primary mr-2"></i>Dashboard</h1>
+        <h1 class="text-2xl font-bold page-title"><i class="fas fa-chart-line text-primary mr-2"></i>Dashboard</h1>
         <div class="badge badge-outline badge-lg mt-2 sm:mt-0">
             <i class="fas fa-calendar mr-1"></i> {{ today }}
         </div>
@@ -72,7 +93,7 @@
         <div class="card-body p-5">
             <h2 class="card-title text-sm mb-3"><i class="fas fa-layer-group mr-2 text-primary"></i>Vue d'ensemble</h2>
             <div class="overflow-x-auto">
-                <table class="table table-sm">
+                <table class="table table-sm dashboard-table">
                     <thead>
                         <tr>
                             <th></th>
@@ -81,16 +102,16 @@
                     </thead>
                     <tbody>
                         <tr class="font-bold border-b-2 border-primary/30">
-                            <td><i class="fas fa-layer-group text-emerald-500 mr-2"></i>Total</td>
-                            <td class="text-right text-emerald-400" data-count="{{ total_montant }}" data-decimal="true" data-suffix=" DA">0</td>
+                            <td><i class="fas fa-layer-group text-primary mr-2"></i>Total</td>
+                            <td class="text-right text-primary" data-count="{{ total_montant }}" data-decimal="true" data-suffix=" DA">0</td>
                         </tr>
                         <tr>
-                            <td><i class="fas fa-building text-blue-400 mr-2"></i>SRID</td>
-                            <td class="text-right text-blue-400" data-count="{{ montant_srid }}" data-decimal="true" data-suffix=" DA">0</td>
+                            <td><i class="fas fa-building societe-srid mr-2"></i>SRID</td>
+                            <td class="text-right societe-srid" data-count="{{ montant_srid }}" data-decimal="true" data-suffix=" DA">0</td>
                         </tr>
                         <tr>
-                            <td><i class="fas fa-dna text-pink-400 mr-2"></i>SRID Genetics</td>
-                            <td class="text-right text-pink-400" data-count="{{ montant_genetics }}" data-decimal="true" data-suffix=" DA">0</td>
+                            <td><i class="fas fa-dna societe-genetics mr-2"></i>SRID Genetics</td>
+                            <td class="text-right societe-genetics" data-count="{{ montant_genetics }}" data-decimal="true" data-suffix=" DA">0</td>
                         </tr>
                     </tbody>
                 </table>
@@ -101,29 +122,29 @@
     <!-- Indicateurs statuts avec ventilation par société -->
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {% set statut_colors = {
-            'Encaissé': 'emerald',
-            'Rejeté': 'red',
-            'Échéance': 'amber',
-            'En cours': 'sky',
-            'Arrive à échéance': 'orange',
-            'Échu': 'violet'
+            'Encaissé': 'status-encaisse',
+            'Rejeté': 'status-rejete',
+            'Échéance': 'status-echeance',
+            'En cours': 'status-encours',
+            'Arrive à échéance': 'status-arriveecheance',
+            'Échu': 'status-echu'
         } %}
         {% for statut, info in statuts_info.items() %}
         <div class="card bg-base-100 shadow-sm border border-base-300">
             <div class="card-body p-4">
                 <div class="flex items-center gap-2 mb-2">
-                    <div class="w-3 h-3 rounded-full bg-{{ statut_colors[statut] }}-500"></div>
+                    <div class="status-dot {{ statut_colors[statut] }}"></div>
                     <span class="font-bold text-sm">{{ statut }}s</span>
                 </div>
-                <p class="font-bold text-lg text-{{ statut_colors[statut] }}-400 mb-2">{{ info.montant|currency(0) }} DA</p>
+                <p class="font-bold text-lg {{ statut_colors[statut] }} mb-2">{{ info.montant|currency(0) }} DA</p>
                 <div class="space-y-1 text-xs border-t border-base-300 pt-2">
                     <div class="flex justify-between">
-                        <span class="text-blue-400">SRID</span>
-                        <span><span class="font-semibold text-blue-400">{{ info.srid_montant|currency(0) }} DA</span></span>
+                        <span class="societe-srid">SRID</span>
+                        <span><span class="font-semibold societe-srid">{{ info.srid_montant|currency(0) }} DA</span></span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-pink-400">Genetics</span>
-                        <span><span class="font-semibold text-pink-400">{{ info.genetics_montant|currency(0) }} DA</span></span>
+                        <span class="societe-genetics">Genetics</span>
+                        <span><span class="font-semibold societe-genetics">{{ info.genetics_montant|currency(0) }} DA</span></span>
                     </div>
                 </div>
             </div>
@@ -137,7 +158,7 @@
         <div class="card bg-base-100 shadow-sm">
             <div class="card-body p-4">
                 <div class="flex items-center gap-3 mb-3">
-                    <div class="badge badge-lg {% if type_op == 'Chèque' %}bg-blue-600 text-white border-blue-700{% elif type_op == 'Virement' %}bg-purple-600 text-white border-purple-700{% elif type_op == 'Versement' %}bg-orange-500 text-white border-orange-600{% elif type_op == 'Transfer' %}bg-teal-600 text-white border-teal-700{% else %}bg-slate-500 text-white border-slate-600{% endif %}">
+                    <div class="badge badge-lg {% if type_op == 'Chèque' %}badge-primary{% elif type_op == 'Virement' %}badge-secondary{% elif type_op == 'Versement' %}badge-warning{% elif type_op == 'Transfer' %}badge-accent{% else %}badge-neutral{% endif %}">
                         <i class="fas {% if type_op == 'Chèque' %}fa-money-check{% elif type_op == 'Virement' %}fa-exchange-alt{% elif type_op == 'Versement' %}fa-piggy-bank{% elif type_op == 'Transfer' %}fa-right-left{% else %}fa-shapes{% endif %}"></i>
                     </div>
                     <div>
@@ -150,12 +171,12 @@
                         <span class="font-bold">{{ info.total.montant|currency(0) }} DA</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-blue-400">SRID</span>
-                        <span class="font-semibold text-blue-400">{{ info.SRID.montant|currency(0) }} DA</span>
+                        <span class="societe-srid">SRID</span>
+                        <span class="font-semibold societe-srid">{{ info.SRID.montant|currency(0) }} DA</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-pink-400">Genetics</span>
-                        <span class="font-semibold text-pink-400">{{ info.Genetics.montant|currency(0) }} DA</span>
+                        <span class="societe-genetics">Genetics</span>
+                        <span class="font-semibold societe-genetics">{{ info.Genetics.montant|currency(0) }} DA</span>
                     </div>
                 </div>
             </div>
@@ -170,7 +191,7 @@
         <div class="card bg-base-100 shadow">
             <div class="card-body">
                 <div class="flex justify-between items-center mb-2">
-                    <h2 class="card-title text-sm"><i class="fas fa-chart-area mr-2 text-emerald-500"></i>Évolution des montants — N vs N-1</h2>
+                    <h2 class="card-title text-sm"><i class="fas fa-chart-area mr-2 text-primary"></i>Évolution des montants — N vs N-1</h2>
                     <select id="yearFilterMonthly" class="select select-xs select-bordered">
                         {% for y in available_years %}
                         <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
@@ -185,7 +206,7 @@
         <div class="card bg-base-100 shadow">
             <div class="card-body">
                 <div class="flex justify-between items-center mb-2">
-                    <h2 class="card-title text-sm"><i class="fas fa-chart-bar mr-2 text-violet-500"></i>Montants par statut — par mois</h2>
+                    <h2 class="card-title text-sm"><i class="fas fa-chart-bar mr-2 text-primary"></i>Montants par statut — par mois</h2>
                     <div class="flex gap-2">
                         <select id="statutViewFilter" class="select select-xs select-bordered">
                             <option value="total" selected>Total</option>
@@ -210,7 +231,7 @@
         <div class="card bg-base-100 shadow">
             <div class="card-body">
                 <div class="flex justify-between items-center mb-2">
-                    <h2 class="card-title text-sm"><i class="fas fa-building mr-2 text-sky-500"></i>Montants mensuels par société</h2>
+                    <h2 class="card-title text-sm"><i class="fas fa-building mr-2 text-primary"></i>Montants mensuels par société</h2>
                     <select id="yearFilterSocietes" class="select select-xs select-bordered">
                         {% for y in available_years %}
                         <option value="{{ y }}" {% if y == year %}selected{% endif %}>{{ y }}</option>
@@ -227,7 +248,7 @@
         <div class="card bg-base-100 shadow">
             <div class="card-body">
                 <div class="flex flex-wrap justify-between items-center gap-2 mb-4">
-                    <h2 class="card-title text-sm"><i class="fas fa-trophy mr-2 text-amber-500"></i>Top 5 clients</h2>
+                    <h2 class="card-title text-sm"><i class="fas fa-trophy mr-2 text-primary"></i>Top 5 clients</h2>
                     <div class="flex gap-2">
                         <select id="topYearFilter" class="select select-xs select-bordered">
                             {% for y in available_years %}
@@ -260,7 +281,7 @@
         </div>
         <div class="card bg-base-100 shadow">
             <div class="card-body">
-                <h2 class="card-title text-sm"><i class="fas fa-bolt mr-2 text-sky-500"></i>Activité journalière — 30 derniers jours (montants)</h2>
+                <h2 class="card-title text-sm"><i class="fas fa-bolt mr-2 text-primary"></i>Activité journalière — 30 derniers jours (montants)</h2>
                 <canvas id="activityChart" class="w-full" height="200"></canvas>
             </div>
         </div>
@@ -290,9 +311,10 @@
                             <td class="whitespace-nowrap text-xs opacity-70">{{ op.date_reception.strftime('%d/%m/%Y') if op.date_reception else '-' }}</td>
                             <td>
                                 <span class="badge badge-sm font-semibold whitespace-nowrap
-                                    {% if op.type_operation == 'Chèque' %}bg-blue-600 text-white border-blue-700
-                                    {% elif op.type_operation == 'Virement' %}bg-purple-600 text-white border-purple-700
-                                    {% else %}bg-orange-500 text-white border-orange-600{% endif %}">
+                                    {% if op.type_operation == 'Chèque' %}badge-primary
+                                    {% elif op.type_operation == 'Virement' %}badge-secondary
+                                    {% elif op.type_operation == 'Transfer' %}badge-accent
+                                    {% else %}badge-warning{% endif %}">
                                     {{ op.type_operation }}
                                 </span>
                             </td>
@@ -301,13 +323,13 @@
                             <td class="text-right font-mono font-semibold">{{ op.montant|currency }}</td>
                             <td>
                                 <span class="badge badge-sm font-semibold whitespace-nowrap
-                                    {% if op.statut == 'Encaissé' %}bg-emerald-600 text-white border-emerald-700
-                                    {% elif op.statut == 'Rejeté' %}bg-red-600 text-white border-red-700
-                                    {% elif op.statut == 'Échéance' %}bg-amber-500 text-white border-amber-600
-                                    {% elif op.statut == 'En cours' %}bg-sky-600 text-white border-sky-700
-                                    {% elif op.statut == 'Arrive à échéance' %}bg-orange-500 text-white border-orange-600
-                                    {% elif op.statut == 'Échu' %}bg-violet-600 text-white border-violet-700
-                                    {% else %}bg-gray-500 text-white border-gray-600{% endif %}">
+                                    {% if op.statut == 'Encaissé' %}badge-success
+                                    {% elif op.statut == 'Rejeté' %}badge-error
+                                    {% elif op.statut == 'Échéance' %}badge-warning
+                                    {% elif op.statut == 'En cours' %}badge-primary
+                                    {% elif op.statut == 'Arrive à échéance' %}badge-accent
+                                    {% elif op.statut == 'Échu' %}badge-secondary
+                                    {% else %}badge-neutral{% endif %}">
                                     {{ op.statut }}
                                 </span>
                             </td>
@@ -325,41 +347,62 @@
 
 {% block scripts %}
 <script>
-    const chartColors = {
-        emerald: 'rgb(16, 185, 129)',
-        amber: 'rgb(245, 158, 11)',
-        violet: 'rgb(139, 92, 246)',
-        sky: 'rgb(14, 165, 233)',
-        blue: 'rgb(59, 130, 246)',
-        blueAlpha: 'rgba(59, 130, 246, 0.15)',
-        pink: 'rgb(236, 72, 153)',
-        pinkAlpha: 'rgba(236, 72, 153, 0.15)',
-        red: 'rgb(239, 68, 68)',
-        gray: 'rgb(107, 114, 128)',
-    };
-    const gridColor = 'rgba(148, 163, 184, 0.1)';
+    function cssVar(name) {
+        return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    }
+
+    function hexToRgba(hex, alpha) {
+        const value = (hex || '').replace('#', '').trim();
+        if (value.length !== 6) return `rgba(148, 163, 184, ${alpha})`;
+        const r = parseInt(value.slice(0, 2), 16);
+        const g = parseInt(value.slice(2, 4), 16);
+        const b = parseInt(value.slice(4, 6), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    function getThemePalette() {
+        return {
+            encaisse: cssVar('--status-encaisse'),
+            rejete: cssVar('--status-rejete'),
+            echeance: cssVar('--status-echeance'),
+            encours: cssVar('--status-encours'),
+            arrive: cssVar('--status-arrive'),
+            echu: cssVar('--status-echu'),
+            srid: cssVar('--societe-srid'),
+            sridAlpha: cssVar('--societe-srid-alpha'),
+            genetics: cssVar('--societe-genetics'),
+            geneticsAlpha: cssVar('--societe-genetics-alpha'),
+            grid: cssVar('--chart-grid') || 'rgba(148,163,184,0.12)',
+        };
+    }
+
+    let chartColors = getThemePalette();
+    let gridColor = chartColors.grid;
     const months = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
     const fmtVal = v => v>=1e6?(v/1e6).toFixed(1)+'M':v>=1e3?(v/1e3).toFixed(0)+'K':v;
 
     // === 1. Évolution des montants N vs N-1 ===
     const compareCtx = document.getElementById('compareChart').getContext('2d');
-    const g1 = compareCtx.createLinearGradient(0, 0, 0, 300);
-    g1.addColorStop(0, 'rgba(16, 185, 129, 0.3)');
-    g1.addColorStop(1, 'rgba(16, 185, 129, 0.01)');
-    const g2 = compareCtx.createLinearGradient(0, 0, 0, 300);
-    g2.addColorStop(0, 'rgba(148, 163, 184, 0.2)');
-    g2.addColorStop(1, 'rgba(148, 163, 184, 0.01)');
+    function buildGradient(ctx, color) {
+        const g = ctx.createLinearGradient(0, 0, 0, 300);
+        g.addColorStop(0, hexToRgba(color, 0.28));
+        g.addColorStop(1, hexToRgba(color, 0.01));
+        return g;
+    }
+
+    let g1 = buildGradient(compareCtx, chartColors.encaisse);
+    let g2 = buildGradient(compareCtx, chartColors.echu);
 
     const compareChart = new Chart(compareCtx, {
         type: 'line',
         data: { labels: months, datasets: [{
             label: '{{ year }}', data: {{ monthly_data | tojson }},
-            backgroundColor: g1, borderColor: chartColors.emerald, borderWidth: 2.5,
-            fill: true, tension: 0.4, pointBackgroundColor: chartColors.emerald,
+            backgroundColor: g1, borderColor: chartColors.encaisse, borderWidth: 2.5,
+            fill: true, tension: 0.4, pointBackgroundColor: chartColors.encaisse,
             pointBorderColor: '#fff', pointBorderWidth: 2, pointRadius: 4, pointHoverRadius: 7,
         }, {
             label: '{{ previous_year }}', data: {{ monthly_data_prev | tojson }},
-            backgroundColor: g2, borderColor: 'rgba(148,163,184,0.6)', borderWidth: 1.5,
+            backgroundColor: g2, borderColor: chartColors.echu, borderWidth: 1.5,
             borderDash: [5,5], fill: true, tension: 0.4, pointRadius: 2, pointHoverRadius: 5,
         }] },
         options: { responsive: true, maintainAspectRatio: true,
@@ -387,12 +430,12 @@
     const statutMonthlyChart = new Chart(document.getElementById('statutMonthlyChart').getContext('2d'), {
         type: 'bar',
         data: { labels: months, datasets: [
-            { label: 'Encaissé', data: {{ monthly_statuts['Encaissé'] | tojson }}, backgroundColor: chartColors.emerald, borderRadius: 3 },
-            { label: 'Rejeté', data: {{ monthly_statuts['Rejeté'] | tojson }}, backgroundColor: chartColors.red, borderRadius: 3 },
-            { label: 'En cours', data: {{ monthly_statuts['En cours'] | tojson }}, backgroundColor: chartColors.sky, borderRadius: 3 },
-            { label: 'Échéance', data: {{ monthly_statuts['Échéance'] | tojson }}, backgroundColor: chartColors.amber, borderRadius: 3 },
-            { label: 'Arrive à échéance', data: {{ monthly_statuts['Arrive à échéance'] | tojson }}, backgroundColor: 'rgb(249, 115, 22)', borderRadius: 3 },
-            { label: 'Échu', data: {{ monthly_statuts['Échu'] | tojson }}, backgroundColor: chartColors.violet, borderRadius: 3 },
+            { label: 'Encaissé', data: {{ monthly_statuts['Encaissé'] | tojson }}, backgroundColor: chartColors.encaisse, borderRadius: 3 },
+            { label: 'Rejeté', data: {{ monthly_statuts['Rejeté'] | tojson }}, backgroundColor: chartColors.rejete, borderRadius: 3 },
+            { label: 'En cours', data: {{ monthly_statuts['En cours'] | tojson }}, backgroundColor: chartColors.encours, borderRadius: 3 },
+            { label: 'Échéance', data: {{ monthly_statuts['Échéance'] | tojson }}, backgroundColor: chartColors.echeance, borderRadius: 3 },
+            { label: 'Arrive à échéance', data: {{ monthly_statuts['Arrive à échéance'] | tojson }}, backgroundColor: chartColors.arrive, borderRadius: 3 },
+            { label: 'Échu', data: {{ monthly_statuts['Échu'] | tojson }}, backgroundColor: chartColors.echu, borderRadius: 3 },
         ] },
         options: { responsive: true, maintainAspectRatio: true,
             plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 10 } } },
@@ -424,8 +467,8 @@
     const societeChart = new Chart(document.getElementById('societeChart').getContext('2d'), {
         type: 'bar',
         data: { labels: months, datasets: [
-            { label: 'SRID', data: {{ monthly_srid | tojson }}, backgroundColor: chartColors.blueAlpha, borderColor: chartColors.blue, borderWidth: 1.5, borderRadius: 4 },
-            { label: 'Genetics', data: {{ monthly_genetics | tojson }}, backgroundColor: chartColors.pinkAlpha, borderColor: chartColors.pink, borderWidth: 1.5, borderRadius: 4 },
+            { label: 'SRID', data: {{ monthly_srid | tojson }}, backgroundColor: chartColors.sridAlpha, borderColor: chartColors.srid, borderWidth: 1.5, borderRadius: 4 },
+            { label: 'Genetics', data: {{ monthly_genetics | tojson }}, backgroundColor: chartColors.geneticsAlpha, borderColor: chartColors.genetics, borderWidth: 1.5, borderRadius: 4 },
         ] },
         options: { responsive: true, maintainAspectRatio: true,
             plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 15 } },
@@ -443,18 +486,58 @@
 
 
     // === 4. Activité 30 jours (montant, 3 courbes) ===
-    new Chart(document.getElementById('activityChart').getContext('2d'), {
+    const activityChart = new Chart(document.getElementById('activityChart').getContext('2d'), {
         type: 'line',
         data: { labels: {{ daily_labels | tojson }}, datasets: [
-            { label: 'Total', data: {{ daily_total | tojson }}, borderColor: chartColors.emerald, backgroundColor: 'rgba(16,185,129,0.1)', borderWidth: 2, fill: true, tension: 0.3, pointRadius: 1 },
-            { label: 'SRID', data: {{ daily_srid | tojson }}, borderColor: chartColors.blue, borderWidth: 1.5, tension: 0.3, pointRadius: 0 },
-            { label: 'Genetics', data: {{ daily_genetics | tojson }}, borderColor: chartColors.pink, borderWidth: 1.5, tension: 0.3, pointRadius: 0 },
+            { label: 'Total', data: {{ daily_total | tojson }}, borderColor: chartColors.encaisse, backgroundColor: hexToRgba(chartColors.encaisse, 0.1), borderWidth: 2, fill: true, tension: 0.3, pointRadius: 1 },
+            { label: 'SRID', data: {{ daily_srid | tojson }}, borderColor: chartColors.srid, borderWidth: 1.5, tension: 0.3, pointRadius: 0 },
+            { label: 'Genetics', data: {{ daily_genetics | tojson }}, borderColor: chartColors.genetics, borderWidth: 1.5, tension: 0.3, pointRadius: 0 },
         ] },
         options: { responsive: true, plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 10 } } },
             tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toLocaleString('fr-FR')} DA` } } },
             scales: { y: { beginAtZero: true, grid: { color: gridColor }, ticks: { callback: fmtVal } }, x: { grid: { display: false }, ticks: { maxTicksLimit: 10, maxRotation: 0 } } },
             interaction: { intersect: false, mode: 'index' } }
     });
+
+    function applyChartTheme() {
+        chartColors = getThemePalette();
+        gridColor = chartColors.grid;
+
+        g1 = buildGradient(compareCtx, chartColors.encaisse);
+        g2 = buildGradient(compareCtx, chartColors.echu);
+        compareChart.data.datasets[0].backgroundColor = g1;
+        compareChart.data.datasets[0].borderColor = chartColors.encaisse;
+        compareChart.data.datasets[0].pointBackgroundColor = chartColors.encaisse;
+        compareChart.data.datasets[1].backgroundColor = g2;
+        compareChart.data.datasets[1].borderColor = chartColors.echu;
+        compareChart.options.scales.y.grid.color = gridColor;
+
+        const statutColors = [chartColors.encaisse, chartColors.rejete, chartColors.encours, chartColors.echeance, chartColors.arrive, chartColors.echu];
+        statutMonthlyChart.data.datasets.forEach((ds, i) => { ds.backgroundColor = statutColors[i]; });
+        statutMonthlyChart.options.scales.y.grid.color = gridColor;
+
+        societeChart.data.datasets[0].backgroundColor = chartColors.sridAlpha;
+        societeChart.data.datasets[0].borderColor = chartColors.srid;
+        societeChart.data.datasets[1].backgroundColor = chartColors.geneticsAlpha;
+        societeChart.data.datasets[1].borderColor = chartColors.genetics;
+        societeChart.options.scales.y.grid.color = gridColor;
+
+        activityChart.data.datasets[0].borderColor = chartColors.encaisse;
+        activityChart.data.datasets[0].backgroundColor = hexToRgba(chartColors.encaisse, 0.1);
+        activityChart.data.datasets[1].borderColor = chartColors.srid;
+        activityChart.data.datasets[2].borderColor = chartColors.genetics;
+        activityChart.options.scales.y.grid.color = gridColor;
+
+        compareChart.update('none');
+        statutMonthlyChart.update('none');
+        societeChart.update('none');
+        activityChart.update('none');
+    }
+
+    window.addEventListener('theme-changed', () => {
+        requestAnimationFrame(() => applyChartTheme());
+    });
+    applyChartTheme();
 
     // === 5. Top 5 clients (fetch dynamique) ===
     async function refreshTopClients() {

@@ -1,23 +1,17 @@
 {% if notifications and notifications.total_alerts > 0 %}
-<div class="mb-3 rounded-xl border border-orange-500/30 bg-gradient-to-r from-orange-500/15 to-rose-500/10 p-3">
-    <div class="flex items-center gap-2">
-        <div class="w-8 h-8 rounded-full bg-orange-500/25 text-orange-300 flex items-center justify-center shrink-0">
-            <i class="fas fa-bell text-sm"></i>
-        </div>
-        <div class="min-w-0 flex-1">
-            <div class="text-sm font-semibold leading-tight">Alertes échéance</div>
-            <div class="text-xs opacity-75 mt-0.5">
+<div class="notif-strip">
+    <div class="notif-strip-title">Alertes échéance</div>
+    <div class="notif-strip-meta">
                 {% if notifications.overdue_count > 0 and notifications.upcoming_count > 0 %}
-                    <span class="text-rose-400">{{ notifications.overdue_count }} échu{{ 's' if notifications.overdue_count > 1 else '' }}</span>
-                    <span class="opacity-50"> • </span>
-                    <span class="text-cyan-400">{{ notifications.upcoming_count }} à venir (7j)</span>
+                    <span class="notif-strip-meta-late">{{ notifications.overdue_count }} échu{{ 's' if notifications.overdue_count > 1 else '' }}</span>
+                    <span class="meta-separator"> • </span>
+                    <span class="notif-strip-meta-soon">{{ notifications.upcoming_count }} à venir (7j)</span>
                 {% elif notifications.overdue_count > 0 %}
-                    <span class="text-rose-400">{{ notifications.overdue_count }} échu{{ 's' if notifications.overdue_count > 1 else '' }}</span>
+                    <span class="notif-strip-meta-late">{{ notifications.overdue_count }} échu{{ 's' if notifications.overdue_count > 1 else '' }}</span>
                 {% elif notifications.upcoming_count > 0 %}
-                    <span class="text-cyan-400">{{ notifications.upcoming_count }} à venir (7j)</span>
+                    <span class="notif-strip-meta-soon">{{ notifications.upcoming_count }} à venir (7j)</span>
                 {% endif %}
-            </div>
-        </div>
+    </div>
     </div>
 </div>
 {% endif %}
@@ -33,7 +27,7 @@
             {% for item in notifications.critical_entries %}
             {% set delta = (item.date_echeance - notifications.today).days %}
             {% set display_statut = item.statut | lower | capitalize %}
-            <div class="flex items-center justify-between gap-2 bg-base-100 rounded px-2 py-1.5 cursor-pointer hover:bg-base-300 transition-colors"
+              <div class="notif-item cursor-pointer"
                  onclick="if (typeof openLogDetail === 'function') openLogDetail(this)"
                  data-id="{{ item.id }}"
                  data-ref-log="{{ item.ref_log or '' }}"
@@ -52,23 +46,23 @@
                  data-date-valeur="{{ item.date_valeur.strftime('%Y-%m-%d') if item.date_valeur else '' }}"
                  data-remarque="{{ item.remarque or '' }}">
                 <div class="min-w-0">
-                    <div class="text-sm font-medium truncate">{{ item.fournisseur or '—' }}</div>
-                    <div class="text-xs opacity-80 mt-0.5">
-                        <span class="opacity-60">Bon :</span>
-                        <span class="font-mono">{{ item.ref_log or '—' }}</span>
-                        <span class="opacity-50"> • </span>
-                        <span class="opacity-60">Échéance :</span>
-                        <span class="text-slate-300 font-medium">{{ item.date_echeance.strftime('%d/%m/%Y') }}</span>
+                    <div class="notif-item-title truncate">{{ item.fournisseur or '—' }}</div>
+                    <div class="notif-item-date">
+                        <span class="meta-date-label">Bon :</span>
+                        <span class="font-mono font-semibold">{{ item.ref_log or '—' }}</span>
+                        <span class="meta-separator"> • </span>
+                        <span class="meta-date-label">Échéance :</span>
+                        <span class="meta-date-value">{{ item.date_echeance.strftime('%d/%m/%Y') }}</span>
                         {% if delta < 0 %}
-                            <span class="text-rose-400 font-bold">(retard {{ -delta }}j)</span>
+                            <span class="notif-delay notif-delay-late">(retard {{ -delta }}j)</span>
                         {% elif delta == 0 %}
-                            <span class="text-rose-300 font-bold">(aujourd'hui)</span>
+                            <span class="notif-delay notif-delay-late">(aujourd'hui)</span>
                         {% else %}
-                            <span class="text-cyan-400 font-bold">(J-{{ delta }})</span>
+                            <span class="notif-delay notif-delay-soon">(J-{{ delta }})</span>
                         {% endif %}
                     </div>
                 </div>
-                <span class="badge badge-sm font-semibold whitespace-nowrap shrink-0 {% if item.statut == 'ÉCHU' %}bg-violet-600 text-white border-violet-700{% elif item.statut == 'ARRIVE À ÉCHÉANCE' %}bg-orange-500 text-white border-orange-600{% elif item.statut == 'ÉCHÉANCE' %}bg-amber-500 text-white border-amber-600{% else %}bg-gray-500 text-white border-gray-600{% endif %}">
+                <span class="notif-badge whitespace-nowrap shrink-0 {% if item.statut == 'ÉCHU' %}notif-badge-secondary{% elif item.statut == 'ARRIVE À ÉCHÉANCE' %}notif-badge-accent{% elif item.statut == 'ÉCHÉANCE' %}notif-badge-warning{% elif item.statut == 'PAYÉ' %}notif-badge-success{% elif item.statut == 'PAIEMENT EN COURS' %}notif-badge-primary{% else %}notif-badge-neutral{% endif %}">
                     {{ display_statut }}
                 </span>
             </div>

@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Horizon Dual Demo - SRID COM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --surface: #ffffff;
+      --surface-2: #f8fafc;
+      --surface-3: #eef2f7;
+      --text: #0f172a;
+      --text-2: #334155;
+      --muted: #64748b;
+      --line: #e2e8f0;
+      --line-2: #cbd5e1;
+      --sidebar: #0f172a;
+      --sidebar-text: #cbd5e1;
+      --sidebar-active: #1e293b;
+      --primary: #4f46e5;
+      --primary-soft: rgba(79,70,229,0.14);
+      --genetics: #0f766e;
+      --genetics-soft: rgba(15,118,110,0.14);
+      --success: #16a34a;
+      --success-soft: rgba(22,163,74,0.14);
+      --warning: #ca8a04;
+      --warning-soft: rgba(202,138,4,0.14);
+      --danger: #dc2626;
+      --danger-soft: rgba(220,38,38,0.14);
+      --secondary: #7c3aed;
+      --secondary-soft: rgba(124,58,237,0.14);
+      --date-meta-label: #0369a1;
+      --date-meta-value: #be185d;
+      --modal-label: #0e7490;
+      --shadow: 0 16px 40px rgba(15,23,42,0.08);
+    }
+
+    body[data-theme="dark"] {
+      --bg: #0b1220;
+      --surface: #111827;
+      --surface-2: #0f172a;
+      --surface-3: #1e293b;
+      --text: #e2e8f0;
+      --text-2: #cbd5e1;
+      --muted: #94a3b8;
+      --line: #243244;
+      --line-2: #334155;
+      --sidebar: #070b14;
+      --sidebar-text: #a5b4c8;
+      --sidebar-active: #1b2a40;
+      --primary: #818cf8;
+      --primary-soft: rgba(129,140,248,0.24);
+      --genetics: #2dd4bf;
+      --genetics-soft: rgba(45,212,191,0.22);
+      --success: #4ade80;
+      --success-soft: rgba(74,222,128,0.22);
+      --warning: #fbbf24;
+      --warning-soft: rgba(251,191,36,0.22);
+      --danger: #f87171;
+      --danger-soft: rgba(248,113,113,0.22);
+      --secondary: #c4b5fd;
+      --secondary-soft: rgba(196,181,253,0.22);
+      --date-meta-label: #38bdf8;
+      --date-meta-value: #f472b6;
+      --modal-label: #67e8f9;
+      --shadow: 0 16px 40px rgba(0,0,0,0.4);
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body {
+      font-family: Inter, system-ui, sans-serif;
+      background: radial-gradient(1200px 500px at 20% -10%, var(--primary-soft), transparent), var(--bg);
+      color: var(--text);
+    }
+
+    .app { display: grid; grid-template-columns: 250px 1fr; min-height: 100vh; }
+    .sidebar {
+      background: var(--sidebar);
+      color: var(--sidebar-text);
+      border-right: 1px solid #1f2937;
+      padding: 1rem 0.75rem;
+    }
+    .brand {
+      display: flex; align-items: center; gap: 0.65rem;
+      padding: 0.5rem 0.65rem 1rem;
+      border-bottom: 1px solid #273447;
+      margin-bottom: 0.75rem;
+    }
+    .brand-mark {
+      width: 34px; height: 34px; border-radius: 10px; background: var(--primary);
+      display: grid; place-items: center; color: white; font-weight: 800; font-size: 0.72rem;
+    }
+    .brand h1 { margin: 0; font: 800 1.02rem Manrope, sans-serif; color: #f1f5f9; }
+    .brand p { margin: 0; font-size: 0.66rem; color: #64748b; }
+
+    .group-label {
+      font-size: 0.64rem; font-weight: 700; letter-spacing: 0.08em;
+      text-transform: uppercase; color: #64748b; padding: 0.8rem 0.65rem 0.35rem;
+    }
+    .nav a {
+      display: flex; align-items: center; gap: 0.6rem;
+      color: var(--sidebar-text); text-decoration: none;
+      padding: 0.52rem 0.65rem; border-radius: 9px; font-size: 0.84rem;
+    }
+    .nav a:hover { background: #152338; color: #f1f5f9; }
+    .nav a.active { background: var(--sidebar-active); color: #f8fafc; font-weight: 600; }
+
+    .main { min-width: 0; }
+    .topbar {
+      height: 58px; background: var(--surface); border-bottom: 1px solid var(--line);
+      display: flex; align-items: center; justify-content: space-between; padding: 0 1.2rem;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .crumb { font-size: 0.85rem; color: var(--text-2); font-weight: 600; }
+    .actions { display: flex; align-items: center; gap: 0.55rem; }
+    .icon-btn {
+      width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 9px;
+      background: var(--surface); color: var(--text-2); cursor: pointer;
+    }
+    .icon-btn:hover { background: var(--surface-2); }
+
+    .content { padding: 1.2rem; max-width: 1360px; }
+    .header-row { display: flex; justify-content: space-between; align-items: end; margin-bottom: 1rem; }
+    .header-row h2 { margin: 0; font: 800 1.45rem Manrope, sans-serif; }
+    .header-row p { margin: 0.22rem 0 0; color: var(--muted); font-size: 0.85rem; }
+
+    .btn-primary {
+      border: 0; border-radius: 9px; padding: 0.62rem 0.95rem; font-weight: 700;
+      background: var(--primary); color: white; cursor: pointer;
+    }
+
+    .kpis { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 0.85rem; margin-bottom: 1rem; }
+    .kpi {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 0.95rem;
+      box-shadow: var(--shadow);
+    }
+    .kpi .label { font-size: 0.73rem; color: var(--muted); font-weight: 600; text-transform: uppercase; }
+    .kpi .value { font-size: 1.4rem; font-weight: 800; margin: 0.22rem 0; }
+    .kpi .sub { font-size: 0.76rem; color: var(--text-2); }
+
+    .grid { display: grid; grid-template-columns: 2fr 1fr; gap: 0.9rem; margin-bottom: 0.9rem; }
+    .card {
+      background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--shadow);
+    }
+    .card-head {
+      padding: 0.85rem 1rem; border-bottom: 1px solid var(--line);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .card-head h3 { margin: 0; font-size: 0.9rem; }
+    .card-head p { margin: 0.18rem 0 0; font-size: 0.75rem; color: var(--muted); }
+
+    .notif-body { padding: 0.8rem 1rem; }
+    .notif-strip {
+      border: 1px solid color-mix(in srgb, var(--warning) 35%, transparent);
+      background: color-mix(in srgb, var(--warning) 12%, transparent);
+      border-radius: 10px; padding: 0.65rem 0.75rem; margin-bottom: 0.75rem;
+      font-size: 0.8rem;
+    }
+    .notif-strip .late { color: var(--danger); font-weight: 700; }
+    .notif-strip .soon { color: var(--warning); font-weight: 700; }
+
+    .notif-item {
+      display: flex; justify-content: space-between; align-items: center; gap: 0.6rem;
+      background: var(--surface-2); border: 1px solid var(--line); border-radius: 9px;
+      padding: 0.62rem; margin-bottom: 0.45rem;
+    }
+    .notif-item .date { font-size: 0.76rem; }
+    .notif-item .date-label { color: var(--date-meta-label); font-weight: 700; }
+    .notif-item .date-value { color: var(--date-meta-value); font-weight: 800; }
+    .notif-item .delay { font-size: 0.74rem; font-weight: 700; }
+    .delay.late { color: var(--danger); }
+    .delay.soon { color: var(--warning); }
+
+    .badge {
+      border-radius: 9999px; padding: 0.22rem 0.62rem; font-size: 0.7rem;
+      font-weight: 700; border: 0;
+    }
+    .b-primary { background: var(--primary-soft); color: var(--primary); }
+    .b-secondary { background: var(--secondary-soft); color: var(--secondary); }
+    .b-accent { background: var(--genetics-soft); color: var(--genetics); }
+    .b-success { background: var(--success-soft); color: var(--success); }
+    .b-warning { background: var(--warning-soft); color: var(--warning); }
+    .b-error { background: var(--danger-soft); color: var(--danger); }
+
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: color-mix(in srgb, var(--text) 95%, transparent); color: #f8fafc; }
+    th { font-size: 0.69rem; text-transform: uppercase; letter-spacing: 0.06em; text-align: left; padding: 0.6rem 0.85rem; }
+    td { padding: 0.62rem 0.85rem; border-bottom: 1px solid var(--line); font-size: 0.83rem; font-weight: 500; }
+    tbody tr:hover { background: var(--surface-2); }
+
+    .soc-srid { color: var(--primary); font-weight: 700; }
+    .soc-genetics { color: var(--genetics); font-weight: 700; }
+
+    .tabs { display: flex; gap: 0.45rem; margin-bottom: 0.9rem; }
+    .tab {
+      border: 1px solid var(--line); border-radius: 9999px; padding: 0.35rem 0.7rem;
+      font-size: 0.76rem; font-weight: 700; background: var(--surface); color: var(--text-2);
+      cursor: pointer;
+    }
+    .tab.active { border-color: var(--primary); color: var(--primary); background: var(--primary-soft); }
+
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(15,23,42,0.55);
+      display: none; align-items: center; justify-content: center; padding: 1rem;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      width: min(760px, 100%); background: var(--surface); border: 1px solid var(--line-2);
+      border-radius: 14px; box-shadow: 0 30px 80px rgba(0,0,0,0.45);
+    }
+    .modal-head { padding: 0.9rem 1rem; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: center; }
+    .modal-grid { padding: 1rem; display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 0.65rem; }
+    .field { background: var(--surface-2); border: 1px solid var(--line); border-radius: 10px; padding: 0.55rem 0.65rem; }
+    .field .k { font-size: 0.66rem; color: var(--modal-label); text-transform: uppercase; font-weight: 700; letter-spacing: 0.03em; }
+    .field .v { margin-top: 0.2rem; font-size: 0.84rem; font-weight: 700; color: var(--text); }
+
+    @media (max-width: 1050px) {
+      .app { grid-template-columns: 1fr; }
+      .sidebar { display: none; }
+      .grid { grid-template-columns: 1fr; }
+      .kpis { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .modal-grid { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body data-theme="light">
+  <div class="app">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">SC</div>
+        <div>
+          <h1>SRID COM</h1>
+          <p>Horizon Theme</p>
+        </div>
+      </div>
+      <div class="nav">
+        <div class="group-label">Finance</div>
+        <a class="active" href="#">📊 Dashboard</a>
+        <a href="#">🔍 Consultation</a>
+        <a href="#">📥 Import</a>
+        <div class="group-label">Logistique</div>
+        <a href="#">📄 Bons de commande</a>
+        <a href="#">🚚 Gestion des commandes</a>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="topbar">
+        <div class="crumb">Finance / Dashboard</div>
+        <div class="actions">
+          <button class="icon-btn">🔔</button>
+          <button class="icon-btn" id="themeBtn">☀</button>
+        </div>
+      </div>
+
+      <div class="content">
+        <div class="tabs">
+          <button class="tab active">Dashboard</button>
+          <button class="tab">Consultation</button>
+          <button class="tab">Logistique</button>
+        </div>
+
+        <div class="header-row">
+          <div>
+            <h2>Démo Complète Thème</h2>
+            <p>Notifications, statuts, tableau, modal et switch light/dark</p>
+          </div>
+          <button class="btn-primary" id="openModalBtn">Voir modal détail</button>
+        </div>
+
+        <section class="kpis">
+          <article class="kpi"><div class="label">Total encaissé</div><div class="value">12 450 000</div><div class="sub">DA ce mois</div></article>
+          <article class="kpi"><div class="label">SRID</div><div class="value soc-srid">8 120 000</div><div class="sub">Indigo</div></article>
+          <article class="kpi"><div class="label">Genetics</div><div class="value soc-genetics">4 330 000</div><div class="sub">Teal</div></article>
+          <article class="kpi"><div class="label">En attente</div><div class="value">23</div><div class="sub">À traiter</div></article>
+        </section>
+
+        <section class="grid">
+          <article class="card">
+            <div class="card-head">
+              <div>
+                <h3>Dernières opérations</h3>
+                <p>Lisibilité complète light/dark</p>
+              </div>
+            </div>
+            <div style="overflow:auto">
+              <table>
+                <thead>
+                  <tr><th>Date</th><th>Société</th><th>Client</th><th>Type</th><th>Statut</th><th style="text-align:right">Montant</th></tr>
+                </thead>
+                <tbody>
+                  <tr><td>29/06/2026</td><td class="soc-srid">SRID</td><td>Phyto Plus</td><td><span class="badge b-primary">Chèque</span></td><td><span class="badge b-success">Encaissé</span></td><td style="text-align:right">1 250 000</td></tr>
+                  <tr><td>28/06/2026</td><td class="soc-genetics">GENETICS</td><td>Bio Semences</td><td><span class="badge b-secondary">Virement</span></td><td><span class="badge b-primary">En cours</span></td><td style="text-align:right">890 000</td></tr>
+                  <tr><td>27/06/2026</td><td class="soc-srid">SRID</td><td>Agri Nord</td><td><span class="badge b-warning">Versement</span></td><td><span class="badge b-warning">Échéance</span></td><td style="text-align:right">560 000</td></tr>
+                  <tr><td>25/06/2026</td><td class="soc-genetics">GENETICS</td><td>El Baraka</td><td><span class="badge b-accent">Transfer</span></td><td><span class="badge b-error">Rejeté</span></td><td style="text-align:right">450 000</td></tr>
+                  <tr><td>24/06/2026</td><td class="soc-srid">SRID</td><td>Greenfields</td><td><span class="badge b-primary">Chèque</span></td><td><span class="badge b-secondary">Échu</span></td><td style="text-align:right">1 050 000</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </article>
+
+          <aside class="card">
+            <div class="card-head"><h3>Notifications</h3></div>
+            <div class="notif-body">
+              <div class="notif-strip">
+                <span class="late">3 échus</span>
+                <span style="opacity:.5"> • </span>
+                <span class="soon">5 à venir (7j)</span>
+              </div>
+              <div class="notif-item">
+                <div>
+                  <div style="font-weight:700;font-size:.82rem">SARL Greenfields</div>
+                  <div class="date"><span class="date-label">Échéance:</span> <span class="date-value">24/06/2026</span></div>
+                  <div class="delay late">retard 5j</div>
+                </div>
+                <span class="badge b-secondary">Échu</span>
+              </div>
+              <div class="notif-item">
+                <div>
+                  <div style="font-weight:700;font-size:.82rem">Bio Semences</div>
+                  <div class="date"><span class="date-label">Échéance:</span> <span class="date-value">02/07/2026</span></div>
+                  <div class="delay soon">J-3</div>
+                </div>
+                <span class="badge b-accent">Arrive à échéance</span>
+              </div>
+            </div>
+          </aside>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <div class="modal-head">
+        <strong>Détail opération • BC-2026-047</strong>
+        <button class="icon-btn" id="closeModalBtn">✕</button>
+      </div>
+      <div class="modal-grid">
+        <div class="field"><div class="k">Client</div><div class="v">SARL Greenfields</div></div>
+        <div class="field"><div class="k">Société</div><div class="v soc-srid">SRID</div></div>
+        <div class="field"><div class="k">Statut</div><div class="v"><span class="badge b-secondary">Échu</span></div></div>
+        <div class="field"><div class="k">Montant</div><div class="v">1 050 000 DA</div></div>
+        <div class="field"><div class="k">Date échéance</div><div class="v">24/06/2026</div></div>
+        <div class="field"><div class="k">Type</div><div class="v"><span class="badge b-primary">Chèque</span></div></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const body = document.body;
+    const themeBtn = document.getElementById('themeBtn');
+    const backdrop = document.getElementById('modalBackdrop');
+    document.getElementById('openModalBtn').addEventListener('click', () => backdrop.classList.add('open'));
+    document.getElementById('closeModalBtn').addEventListener('click', () => backdrop.classList.remove('open'));
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) backdrop.classList.remove('open'); });
+
+    themeBtn.addEventListener('click', () => {
+      const isLight = body.getAttribute('data-theme') !== 'dark';
+      body.setAttribute('data-theme', isLight ? 'dark' : 'light');
+      themeBtn.textContent = isLight ? '🌙' : '☀';
+    });
+  </script>
+</body>
+</html>

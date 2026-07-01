@@ -88,6 +88,33 @@
     }
     .card-aurora:hover { box-shadow: 0 20px 60px rgba(139,92,246,0.3); }
 
+    /* ── Light themes ── */
+    .card-arctic .card-preview {
+      background: #f0f2f5;
+      box-shadow: 0 20px 60px rgba(37,99,235,0.1);
+    }
+    .card-arctic:hover { box-shadow: 0 20px 60px rgba(37,99,235,0.25); }
+    .card-ivory .card-preview {
+      background: #f5f3f0;
+      box-shadow: 0 20px 60px rgba(67,56,202,0.1);
+    }
+    .card-ivory:hover { box-shadow: 0 20px 60px rgba(67,56,202,0.25); }
+    .card-cloud .card-preview {
+      background: #f8fafc;
+      box-shadow: 0 20px 60px rgba(15,118,110,0.1);
+    }
+    .card-cloud:hover { box-shadow: 0 20px 60px rgba(15,118,110,0.25); }
+    .card-forest .card-preview {
+      background: #f4f7f5;
+      box-shadow: 0 20px 60px rgba(21,107,87,0.1);
+    }
+    .card-forest:hover { box-shadow: 0 20px 60px rgba(21,107,87,0.25); }
+    .card-graphite .card-preview {
+      background: #fafafa;
+      box-shadow: 0 20px 60px rgba(79,70,229,0.1);
+    }
+    .card-graphite:hover { box-shadow: 0 20px 60px rgba(79,70,229,0.25); }
+
     /* Mini UI mockup inside preview */
     .mockup {
       position: absolute;
@@ -138,6 +165,51 @@
     .card-aurora .mockup-cell { background: #1a1a2e; }
     .card-aurora .mockup-cell.accent { background: #8b5cf6; }
 
+    /* Arctic Steel mockup colors */
+    .card-arctic .mockup { background: #fff; }
+    .card-arctic .mockup-sidebar { background: #1e293b; }
+    .card-arctic .mockup-dot { background: #334155; }
+    .card-arctic .mockup-dot.active { background: #2563eb; box-shadow: 0 0 8px rgba(37,99,235,0.5); }
+    .card-arctic .mockup-bar { background: #e2e8f0; }
+    .card-arctic .mockup-cell { background: #e2e8f0; }
+    .card-arctic .mockup-cell.accent { background: #2563eb; }
+
+    /* Ivory Indigo mockup colors */
+    .card-ivory .mockup { background: #fff; }
+    .card-ivory .mockup-sidebar { background: #312e81; }
+    .card-ivory .mockup-dot { background: #4338ca; }
+    .card-ivory .mockup-dot.active { background: #818cf8; box-shadow: 0 0 8px rgba(129,140,248,0.5); }
+    .card-ivory .mockup-bar { background: #e5e0d8; }
+    .card-ivory .mockup-cell { background: #e5e0d8; }
+    .card-ivory .mockup-cell.accent { background: #4338ca; }
+
+    /* Cloud Slate mockup colors */
+    .card-cloud .mockup { background: #fff; }
+    .card-cloud .mockup-sidebar { background: #0f172a; }
+    .card-cloud .mockup-dot { background: #1e293b; }
+    .card-cloud .mockup-dot.active { background: #14b8a6; box-shadow: 0 0 8px rgba(20,184,166,0.5); }
+    .card-cloud .mockup-bar { background: #e2e8f0; }
+    .card-cloud .mockup-cell { background: #e2e8f0; }
+    .card-cloud .mockup-cell.accent { background: #0f766e; }
+
+    /* Forest Green mockup colors */
+    .card-forest .mockup { background: #fff; }
+    .card-forest .mockup-sidebar { background: #102c27; }
+    .card-forest .mockup-dot { background: #1c423a; }
+    .card-forest .mockup-dot.active { background: #f7a46e; box-shadow: 0 0 8px rgba(247,164,110,0.5); }
+    .card-forest .mockup-bar { background: #e7ece9; }
+    .card-forest .mockup-cell { background: #e7ece9; }
+    .card-forest .mockup-cell.accent { background: #156b57; }
+
+    /* Graphite Ink mockup colors */
+    .card-graphite .mockup { background: #fff; }
+    .card-graphite .mockup-sidebar { background: #0a0a0a; }
+    .card-graphite .mockup-dot { background: #262626; }
+    .card-graphite .mockup-dot.active { background: #4f46e5; box-shadow: 0 0 8px rgba(79,70,229,0.5); }
+    .card-graphite .mockup-bar { background: #e5e5e5; }
+    .card-graphite .mockup-cell { background: #e5e5e5; }
+    .card-graphite .mockup-cell.accent { background: #171717; }
+
     .card-body {
       background: #0f0f14;
       padding: 1.25rem 1.5rem;
@@ -152,6 +224,11 @@
     .card-carbon .card-title { color: #93c5fd; }
     .card-copper .card-title { color: #fcd34d; }
     .card-aurora .card-title { color: #c4b5fd; }
+    .card-arctic .card-title { color: #2563eb; }
+    .card-ivory .card-title { color: #4338ca; }
+    .card-cloud .card-title { color: #0f766e; }
+    .card-forest .card-title { color: #156b57; }
+    .card-graphite .card-title { color: #0a0a0a; }
     .card-desc {
       font-size: 0.8rem;
       color: #64748b;
@@ -170,6 +247,37 @@
     .card-carbon .badge { background: rgba(59,130,246,0.15); color: #60a5fa; }
     .card-copper .badge { background: rgba(217,119,6,0.15); color: #fbbf24; }
     .card-aurora .badge { background: rgba(139,92,246,0.15); color: #a78bfa; }
+    .card-arctic .badge { background: rgba(37,99,235,0.1); color: #2563eb; }
+    .card-ivory .badge { background: rgba(67,56,202,0.1); color: #4338ca; }
+    .card-cloud .badge { background: rgba(15,118,110,0.1); color: #0f766e; }
+    .card-forest .badge { background: rgba(21,107,87,0.1); color: #156b57; }
+    .card-graphite .badge { background: rgba(79,70,229,0.1); color: #4f46e5; }
+
+    /* Light card body */
+    .card-arctic .card-body,
+    .card-ivory .card-body,
+    .card-cloud .card-body {
+      background: #f8fafc;
+      border-top: 1px solid #e2e8f0;
+    }
+    .card-arctic .card-desc,
+    .card-ivory .card-desc,
+    .card-cloud .card-desc { color: #64748b; }
+    .card-forest .card-body { background: #f4f7f5; border-top: 1px solid #e7ece9; }
+    .card-forest .card-desc { color: #71807c; }
+    .card-graphite .card-body { background: #fafafa; border-top: 1px solid #e5e5e5; }
+    .card-graphite .card-desc { color: #525252; }
+
+    .section-label {
+      width: 100%; max-width: 1000px;
+      font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: #475569; margin-top: 1rem;
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .section-label::after {
+      content: ''; flex: 1; height: 1px; background: rgba(255,255,255,0.06);
+    }
 
     footer {
       font-size: 0.75rem;
@@ -184,6 +292,8 @@
     <h1>Aperçus de thèmes</h1>
     <p>Cliquez sur un thème pour voir la démo complète avec sidebar, tableau, badges et notifications.</p>
   </header>
+
+  <div class="section-label">🌙 Thèmes sombres</div>
 
   <div class="grid">
     <!-- Carbon Blue -->
@@ -276,6 +386,196 @@
         <div class="card-title">Aurora Violet</div>
         <div class="card-desc">Profondeur nocturne avec accents violet-cyan en dégradé. Moderne, vivant, mémorable.</div>
         <div class="badge">Vibrant · Moderne</div>
+      </div>
+    </a>
+  </div>
+
+  <div class="section-label">☀️ Thèmes clairs</div>
+
+  <div class="grid">
+    <!-- Arctic Steel -->
+    <a href="arctic-steel.html" class="card card-arctic">
+      <div class="card-preview">
+        <div class="mockup">
+          <div class="mockup-sidebar">
+            <div class="mockup-dot active"></div>
+            <div class="mockup-dot"></div>
+            <div class="mockup-dot"></div>
+            <div class="mockup-dot"></div>
+          </div>
+          <div class="mockup-main">
+            <div class="mockup-bar" style="height:10px; width:60%;"></div>
+            <div style="display:flex; gap:4px; margin-top:4px;">
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+            </div>
+            <div class="mockup-bar" style="height:6px; width:100%; margin-top:4px;"></div>
+            <div class="mockup-row"><div class="mockup-cell"></div><div class="mockup-cell accent"></div><div class="mockup-cell"></div></div>
+            <div class="mockup-row"><div class="mockup-cell accent"></div><div class="mockup-cell"></div><div class="mockup-cell"></div></div>
+            <div class="mockup-row"><div class="mockup-cell"></div><div class="mockup-cell"></div><div class="mockup-cell accent"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-title">Arctic Steel</div>
+        <div class="card-desc">Clean et professionnel. Gris-bleu clair, sidebar slate foncée, accents bleu vif. Police Inter.</div>
+        <div class="badge">Pro · Clean</div>
+      </div>
+    </a>
+
+    <!-- Ivory Indigo -->
+    <a href="ivory-indigo.html" class="card card-ivory">
+      <div class="card-preview">
+        <div class="mockup">
+          <div class="mockup-sidebar">
+            <div class="mockup-dot active"></div>
+            <div class="mockup-dot"></div>
+            <div class="mockup-dot"></div>
+            <div class="mockup-dot"></div>
+          </div>
+          <div class="mockup-main">
+            <div class="mockup-bar" style="height:10px; width:60%;"></div>
+            <div style="display:flex; gap:4px; margin-top:4px;">
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+            </div>
+            <div class="mockup-bar" style="height:6px; width:100%; margin-top:4px;"></div>
+            <div class="mockup-row"><div class="mockup-cell"></div><div class="mockup-cell accent"></div><div class="mockup-cell"></div></div>
+            <div class="mockup-row"><div class="mockup-cell accent"></div><div class="mockup-cell"></div><div class="mockup-cell"></div></div>
+            <div class="mockup-row"><div class="mockup-cell"></div><div class="mockup-cell"></div><div class="mockup-cell accent"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-title">Ivory Indigo</div>
+        <div class="card-desc">Chaleureux et élégant. Fond ivoire, sidebar gradient indigo-violet. Police Plus Jakarta Sans.</div>
+        <div class="badge">Élégant · Chaleureux</div>
+      </div>
+    </a>
+
+    <!-- Cloud Slate -->
+    <a href="cloud-slate.html" class="card card-cloud">
+      <div class="card-preview">
+        <div class="mockup">
+          <div class="mockup-sidebar">
+            <div class="mockup-dot active"></div>
+            <div class="mockup-dot"></div>
+            <div class="mockup-dot"></div>
+            <div class="mockup-dot"></div>
+          </div>
+          <div class="mockup-main">
+            <div class="mockup-bar" style="height:10px; width:60%;"></div>
+            <div style="display:flex; gap:4px; margin-top:4px;">
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+            </div>
+            <div class="mockup-bar" style="height:6px; width:100%; margin-top:4px;"></div>
+            <div class="mockup-row"><div class="mockup-cell"></div><div class="mockup-cell accent"></div><div class="mockup-cell"></div></div>
+            <div class="mockup-row"><div class="mockup-cell accent"></div><div class="mockup-cell"></div><div class="mockup-cell"></div></div>
+            <div class="mockup-row"><div class="mockup-cell"></div><div class="mockup-cell"></div><div class="mockup-cell accent"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-title">Cloud Slate</div>
+        <div class="card-desc">Moderne et sobre. Blanc pur, sidebar très foncée, accents teal. KPIs horizontaux. Police DM Sans.</div>
+        <div class="badge">Sobre · Moderne</div>
+      </div>
+    </a>
+
+    <!-- Forest Green -->
+    <a href="forest-green.html" class="card card-forest">
+      <div class="card-preview">
+        <div class="mockup">
+          <div class="mockup-sidebar">
+            <div class="mockup-dot active"></div>
+            <div class="mockup-dot"></div>
+            <div class="mockup-dot"></div>
+            <div class="mockup-dot"></div>
+          </div>
+          <div class="mockup-main">
+            <div class="mockup-bar" style="height:10px; width:60%;"></div>
+            <div style="display:flex; gap:4px; margin-top:4px;">
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+            </div>
+            <div class="mockup-bar" style="height:6px; width:100%; margin-top:4px;"></div>
+            <div class="mockup-row"><div class="mockup-cell"></div><div class="mockup-cell accent"></div><div class="mockup-cell"></div></div>
+            <div class="mockup-row"><div class="mockup-cell accent"></div><div class="mockup-cell"></div><div class="mockup-cell"></div></div>
+            <div class="mockup-row"><div class="mockup-cell"></div><div class="mockup-cell"></div><div class="mockup-cell accent"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-title">Forest Green</div>
+        <div class="card-desc">Inspiré de bon-md. Sidebar vert forêt, fond ivoire-vert, accents émeraude et orange chaud. Polices DM Sans + Manrope.</div>
+        <div class="badge">★ bon-md · Naturel</div>
+      </div>
+    </a>
+
+    <!-- Graphite Ink -->
+    <a href="graphite-ink.html" class="card card-graphite">
+      <div class="card-preview">
+        <div class="mockup">
+          <div class="mockup-sidebar">
+            <div class="mockup-dot active"></div>
+            <div class="mockup-dot"></div>
+            <div class="mockup-dot"></div>
+            <div class="mockup-dot"></div>
+          </div>
+          <div class="mockup-main">
+            <div class="mockup-bar" style="height:10px; width:60%;"></div>
+            <div style="display:flex; gap:4px; margin-top:4px;">
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+            </div>
+            <div class="mockup-bar" style="height:6px; width:100%; margin-top:4px;"></div>
+            <div class="mockup-row"><div class="mockup-cell"></div><div class="mockup-cell accent"></div><div class="mockup-cell"></div></div>
+            <div class="mockup-row"><div class="mockup-cell accent"></div><div class="mockup-cell"></div><div class="mockup-cell"></div></div>
+            <div class="mockup-row"><div class="mockup-cell"></div><div class="mockup-cell"></div><div class="mockup-cell accent"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-title">Graphite Ink</div>
+        <div class="card-desc">Ultra lisible. Sidebar noir pur, badges solides sur fond blanc, texte dark partout. Inspiré Linear/Vercel. Zéro texte pâle.</div>
+        <div class="badge">★ Ultra Lisible · Moderne</div>
+      </div>
+    </a>
+
+    <!-- Horizon Dual Demo -->
+    <a href="horizon-dual-demo.html" class="card card-graphite">
+      <div class="card-preview">
+        <div class="mockup">
+          <div class="mockup-sidebar">
+            <div class="mockup-dot active"></div>
+            <div class="mockup-dot"></div>
+            <div class="mockup-dot"></div>
+            <div class="mockup-dot"></div>
+          </div>
+          <div class="mockup-main">
+            <div class="mockup-bar" style="height:10px; width:60%;"></div>
+            <div style="display:flex; gap:4px; margin-top:4px;">
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+              <div class="mockup-bar" style="height:28px; flex:1;"></div>
+            </div>
+            <div class="mockup-bar" style="height:6px; width:100%; margin-top:4px;"></div>
+            <div class="mockup-row"><div class="mockup-cell"></div><div class="mockup-cell accent"></div><div class="mockup-cell"></div></div>
+            <div class="mockup-row"><div class="mockup-cell accent"></div><div class="mockup-cell"></div><div class="mockup-cell"></div></div>
+            <div class="mockup-row"><div class="mockup-cell"></div><div class="mockup-cell"></div><div class="mockup-cell accent"></div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div class="card-title">Horizon Dual (Demo)</div>
+        <div class="card-desc">Démo complète: shell app, dashboard, notifications, tableau, modal détail et switch light/dark. Version de validation avant intégration.</div>
+        <div class="badge">★ Démo Complète · Validation</div>
       </div>
     </a>
   </div>

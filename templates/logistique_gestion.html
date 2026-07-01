@@ -7,10 +7,10 @@
     <!-- En-tête -->
     <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
         <div>
-            <h1 class="text-2xl font-bold">
+            <h1 class="text-2xl font-bold page-title">
                 <i class="fas fa-truck text-teal-400 mr-2"></i>Gestion des commandes
             </h1>
-            <p class="text-sm opacity-60 mt-1">Suivi logistique des importations — {{ total }} entrée{{ 's' if total != 1 else '' }}</p>
+            <p class="text-sm page-subtitle mt-1">Suivi logistique des importations — {{ total }} entrée{{ 's' if total != 1 else '' }}</p>
         </div>
         {% if can_write %}
         {# Bouton Nouvelle entrée supprimé : les entrées sont créées automatiquement depuis les bons de commande #}
@@ -31,7 +31,7 @@
         {% set kpi_config = [
             ('ARRIVÉ',            'fas fa-ship',               'text-teal-400',   kpis.get('ARRIVÉ', 0)),
             ('ÉCHÉANCE',          'fas fa-clock',              'text-yellow-400', kpis.get('ÉCHÉANCE', 0)),
-            ('PAIEMENT EN COURS', 'fas fa-spinner',            'text-blue-400',   kpis.get('PAIEMENT EN COURS', 0)),
+            ('PAIEMENT EN COURS', 'fas fa-spinner',            'text-primary',    kpis.get('PAIEMENT EN COURS', 0)),
             ('ÉCHU',              'fas fa-exclamation-triangle','text-red-400',   kpis.get('ÉCHU', 0)),
             ('PAYÉ',              'fas fa-check-circle',       'text-green-400',  kpis.get('PAYÉ', 0)),
         ] %}
@@ -41,7 +41,7 @@
             <div class="card-body p-4 text-center">
                 <i class="{{ icon }} text-2xl {{ color }} mb-1"></i>
                 <div class="text-2xl font-bold">{{ count }}</div>
-                <div class="text-xs opacity-60 leading-tight">{{ label | lower | capitalize }}</div>
+                <div class="text-xs section-heading leading-tight">{{ label | lower | capitalize }}</div>
             </div>
         </a>
         {% endfor %}
@@ -137,7 +137,7 @@
 <dialog id="modal-bon-viewer" class="modal">
     <div class="modal-box max-w-3xl w-full">
         <h3 class="font-bold text-lg mb-1" id="bv-numero">—</h3>
-        <p class="text-xs opacity-60 mb-4" id="bv-meta"></p>
+        <p class="text-xs modal-meta mb-4" id="bv-meta"></p>
         <div id="bv-lignes" class="overflow-x-auto mb-4">
             <p class="opacity-50 text-sm">Chargement...</p>
         </div>
@@ -153,11 +153,11 @@
 <dialog id="modal-detail-log" class="modal">
     <div class="modal-box max-w-3xl w-full">
         <h3 class="font-bold text-lg mb-1" id="detail-log-titre">—</h3>
-        <p class="text-xs opacity-60 mb-4" id="detail-log-meta"></p>
+        <p class="text-xs modal-meta mb-4" id="detail-log-meta"></p>
         <div id="detail-log-corps" class="mb-4"></div>
         <!-- Lignes du bon associé (affichées si bonId présent) -->
         <div id="detail-log-bon-section" class="hidden">
-            <div class="divider text-xs opacity-50 my-2"><i class="fas fa-file-alt mr-1"></i><span id="detail-log-bon-title"></span></div>
+            <div class="divider text-xs modal-meta my-2"><i class="fas fa-file-alt mr-1"></i><span id="detail-log-bon-title"></span></div>
             <div id="detail-log-bon-lignes" class="overflow-x-auto">
                 <p class="opacity-50 text-sm">Chargement...</p>
             </div>
@@ -225,7 +225,7 @@ function openLogDetail(el) {
         '<div class="grid grid-cols-2 sm:grid-cols-3 gap-2">' +
         rows.map(([lbl, val]) =>
             '<div class="bg-base-200 rounded p-2">' +
-            '<div class="text-xs opacity-50 mb-1">' + lbl + '</div>' +
+            '<div class="text-xs modal-label uppercase mb-1">' + lbl + '</div>' +
             '<div class="text-sm font-medium">' + val + '</div></div>'
         ).join('') + '</div>';
 

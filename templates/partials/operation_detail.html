@@ -10,89 +10,89 @@
         <div class="flex-1 min-w-0 space-y-3">
             <div class="grid grid-cols-2 gap-2">
         <div class="bg-base-200 rounded-lg p-3">
-            <p class="text-xs opacity-60 uppercase">Type</p>
+            <p class="text-xs modal-label uppercase">Type</p>
             <p class="font-semibold">{{ operation.type_operation }}</p>
         </div>
         {% if operation.type_operation == 'Chèque' and operation.type_detail %}
         <div class="bg-base-200 rounded-lg p-3">
-            <p class="text-xs opacity-60 uppercase">Type chèque</p>
+            <p class="text-xs modal-label uppercase">Type chèque</p>
             <p class="font-semibold">{{ operation.type_detail }}</p>
         </div>
         {% endif %}
         <div class="bg-base-200 rounded-lg p-3">
-            <p class="text-xs opacity-60 uppercase">Société</p>
+            <p class="text-xs modal-label uppercase">Société</p>
             <p class="font-semibold">{{ operation.societe }}</p>
         </div>
         <div class="bg-base-200 rounded-lg p-3">
-            <p class="text-xs opacity-60 uppercase">{{ 'Date dépôt/virement' if operation.type_operation == 'Chèque' else 'Date' }}</p>
+            <p class="text-xs modal-label uppercase">{{ 'Date dépôt/virement' if operation.type_operation == 'Chèque' else 'Date' }}</p>
             <p class="font-semibold">{{ operation.date_operation.strftime('%d/%m/%Y') if operation.date_operation else '-' }}</p>
         </div>
         <div class="bg-base-200 rounded-lg p-3">
-            <p class="text-xs opacity-60 uppercase">Date réception</p>
+            <p class="text-xs modal-label uppercase">Date réception</p>
             <p class="font-semibold">{{ operation.date_reception.strftime('%d/%m/%Y') if operation.date_reception else '-' }}</p>
         </div>
         <div class="bg-base-200 rounded-lg p-3">
-            <p class="text-xs opacity-60 uppercase">Montant</p>
+            <p class="text-xs modal-label uppercase">Montant</p>
             <p class="font-semibold text-lg text-emerald-400">{{ operation.montant|currency }}</p>
         </div>
         <div class="bg-base-200 rounded-lg p-3">
-            <p class="text-xs opacity-60 uppercase">Client</p>
+            <p class="text-xs modal-label uppercase">Client</p>
             <p class="font-semibold">{{ operation.client }}</p>
         </div>
         <div class="bg-base-200 rounded-lg p-3">
-            <p class="text-xs opacity-60 uppercase">Banque</p>
+            <p class="text-xs modal-label uppercase">Banque</p>
             <p class="font-semibold">{{ operation.banque or '-' }}</p>
         </div>
         <div class="bg-base-200 rounded-lg p-3">
-            <p class="text-xs opacity-60 uppercase">N° Pièce</p>
+            <p class="text-xs modal-label uppercase">N° Pièce</p>
             <p class="font-semibold">{{ operation.numero_piece or '-' }}</p>
         </div>
         <div class="bg-base-200 rounded-lg p-3">
-            <p class="text-xs opacity-60 uppercase">Statut</p>
+            <p class="text-xs modal-label uppercase">Statut</p>
             <span class="badge font-semibold
-                {% if operation.statut == 'Encaissé' %}bg-emerald-600 text-white border-emerald-700
-                {% elif operation.statut == 'Rejeté' %}bg-red-600 text-white border-red-700
-                {% elif operation.statut == 'Échéance' %}bg-amber-500 text-white border-amber-600
-                {% elif operation.statut == 'En cours' %}bg-sky-600 text-white border-sky-700
-                {% elif operation.statut == 'Arrive à échéance' %}bg-orange-500 text-white border-orange-600
-                {% elif operation.statut == 'Échu' %}bg-violet-600 text-white border-violet-700
-                {% else %}bg-gray-500 text-white border-gray-600{% endif %}">
+                {% if operation.statut == 'Encaissé' %}badge-success
+                {% elif operation.statut == 'Rejeté' %}badge-error
+                {% elif operation.statut == 'Échéance' %}badge-warning
+                {% elif operation.statut == 'En cours' %}badge-primary
+                {% elif operation.statut == 'Arrive à échéance' %}badge-accent
+                {% elif operation.statut == 'Échu' %}badge-secondary
+                {% else %}badge-neutral{% endif %}">
                 {{ operation.statut }}
             </span>
         </div>
         {% if operation.remettant %}
         <div class="bg-base-200 rounded-lg p-3">
-            <p class="text-xs opacity-60 uppercase">Remettant</p>
+            <p class="text-xs modal-label uppercase">Remettant</p>
             <p class="font-semibold">{{ operation.remettant }}</p>
         </div>
         {% endif %}
         {% if operation.entree %}
         <div class="bg-base-200 rounded-lg p-3">
-            <p class="text-xs opacity-60 uppercase">Entrée (reçu par)</p>
+            <p class="text-xs modal-label uppercase">Entrée (reçu par)</p>
             <p class="font-semibold">{{ operation.entree }}</p>
         </div>
         {% endif %}
         {% if operation.sortie %}
         <div class="bg-base-200 rounded-lg p-3">
-            <p class="text-xs opacity-60 uppercase">Sortie (remis par)</p>
+            <p class="text-xs modal-label uppercase">Sortie (remis par)</p>
             <p class="font-semibold">{{ operation.sortie }}</p>
         </div>
         {% endif %}
         {% if operation.date_encaissement %}
         <div class="bg-base-200 rounded-lg p-3">
-            <p class="text-xs opacity-60 uppercase">Date échéance</p>
+            <p class="text-xs modal-label uppercase">Date échéance</p>
             <p class="font-semibold">{{ operation.date_encaissement.strftime('%d/%m/%Y') }}</p>
         </div>
         {% endif %}
         {% if operation.date_sortie %}
         <div class="bg-base-200 rounded-lg p-3">
-            <p class="text-xs opacity-60 uppercase">Date sortie</p>
+            <p class="text-xs modal-label uppercase">Date sortie</p>
             <p class="font-semibold">{{ operation.date_sortie.strftime('%d/%m/%Y') }}</p>
         </div>
         {% endif %}
         {% if operation.famille %}
         <div class="bg-base-200 rounded-lg p-3">
-            <p class="text-xs opacity-60 uppercase">Famille</p>
+            <p class="text-xs modal-label uppercase">Famille</p>
             <p class="font-semibold">{{ operation.famille }}</p>
         </div>
         {% endif %}
@@ -100,7 +100,7 @@
 
             {% if operation.remarque %}
             <div class="bg-base-200 rounded-lg p-3">
-                <p class="text-xs opacity-60 uppercase">Remarque</p>
+                <p class="text-xs modal-label uppercase">Remarque</p>
                 <p class="mt-1">{{ operation.remarque }}</p>
             </div>
             {% endif %}
@@ -110,7 +110,7 @@
         <div class="lg:w-72 shrink-0 space-y-3">
             {% if audits %}
             <div class="bg-base-200 rounded-lg p-3">
-                <p class="text-xs font-semibold opacity-60 uppercase mb-2"><i class="fas fa-history mr-1"></i>Historique</p>
+                <p class="text-xs font-semibold modal-label uppercase mb-2"><i class="fas fa-history mr-1"></i>Historique</p>
                 <div class="space-y-2 max-h-80 overflow-y-auto pr-1">
                     {% for audit in audits %}
                     <div class="bg-base-100 rounded px-2 py-1.5">
@@ -119,12 +119,12 @@
                                 {% if audit.action == 'création' %}badge-success
                                 {% elif audit.action == 'modification' %}badge-warning
                                 {% else %}badge-error{% endif %}">{{ audit.action }}</span>
-                            <span class="text-xs opacity-60">{{ audit.date_action.strftime('%d/%m %H:%M') }}</span>
+                            <span class="text-xs modal-meta">{{ audit.date_action.strftime('%d/%m %H:%M') }}</span>
                         </div>
                         <div class="text-xs mt-0.5">
                             <span class="font-medium">{{ audit.utilisateur }}</span>
                             {% if audit.details %}
-                            <p class="opacity-60 truncate" title="{{ audit.details }}">{{ audit.details }}</p>
+                            <p class="modal-meta truncate" title="{{ audit.details }}">{{ audit.details }}</p>
                             {% endif %}
                         </div>
                     </div>
@@ -133,7 +133,7 @@
             </div>
             {% endif %}
 
-            <div class="bg-base-200 rounded-lg p-3 text-xs opacity-60 space-y-1">
+            <div class="bg-base-200 rounded-lg p-3 text-xs modal-meta space-y-1">
                 <p><i class="fas fa-user mr-1"></i>Saisi par : {{ operation.cree_par or 'Non spécifié' }}</p>
                 <p><i class="fas fa-clock mr-1"></i>Créé le : {{ operation.date_creation.strftime('%d/%m/%Y %H:%M') if operation.date_creation else '-' }}</p>
             </div>

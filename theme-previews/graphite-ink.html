@@ -1,0 +1,580 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Graphite Ink — SRID COM (Light · Ultra Lisible)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg:          #fafafa;
+      --surface:     #ffffff;
+      --surface2:    #f5f5f5;
+      --border:      #e5e5e5;
+      --border-bold: #d4d4d4;
+      --ink:         #0a0a0a;
+      --ink-2:       #262626;
+      --ink-3:       #525252;
+      --accent:      #4f46e5;
+      --accent-hover:#4338ca;
+      --accent-dim:  rgba(79,70,229,0.06);
+      --success:     #15803d;
+      --success-bg:  #15803d;
+      --warning:     #a16207;
+      --warning-bg:  #ca8a04;
+      --danger:      #b91c1c;
+      --danger-bg:   #dc2626;
+      --info:        #1d4ed8;
+      --info-bg:     #2563eb;
+      --neutral:     #404040;
+      --neutral-bg:  #525252;
+      --sidebar-bg:  #0a0a0a;
+      --sidebar-w:   240px;
+      --radius:      8px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      display: flex;
+      font-size: 14px;
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ═══════════════════════════════════════════
+       SIDEBAR — True black, minimal, iconic
+       ═══════════════════════════════════════════ */
+    .sidebar {
+      width: var(--sidebar-w);
+      min-height: 100vh;
+      background: var(--sidebar-bg);
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      left: 0; top: 0; bottom: 0;
+      z-index: 50;
+    }
+    .sidebar-brand {
+      padding: 1.5rem 1.25rem 1.25rem;
+      border-bottom: 1px solid #1f1f1f;
+      display: flex; align-items: center; gap: 0.75rem;
+    }
+    .brand-icon {
+      width: 34px; height: 34px; border-radius: var(--radius);
+      background: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 800; font-size: 0.75rem; color: #fff;
+      letter-spacing: -0.02em;
+    }
+    .sidebar-brand h1 {
+      font-size: 1rem; font-weight: 700; color: #fafafa;
+      letter-spacing: -0.03em;
+    }
+    .sidebar-brand .sub {
+      font-size: 0.65rem; color: #737373; font-weight: 500;
+      letter-spacing: 0.02em;
+    }
+
+    .sidebar-nav { flex: 1; padding: 1rem 0.65rem; display: flex; flex-direction: column; gap: 0.2rem; }
+    .nav-group { margin-bottom: 1.25rem; }
+    .nav-group-label {
+      font-size: 0.6rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 0.1em; color: #525252; padding: 0 0.65rem; margin-bottom: 0.4rem;
+    }
+    .nav-link {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.55rem 0.65rem; border-radius: 6px;
+      font-size: 0.82rem; font-weight: 500; color: #a3a3a3;
+      text-decoration: none; transition: all 0.1s;
+    }
+    .nav-link:hover { background: #1a1a1a; color: #e5e5e5; }
+    .nav-link.active {
+      background: #1f1f1f; color: #fff; font-weight: 600;
+    }
+    .nav-icon { width: 1.1rem; text-align: center; font-size: 0.85rem; opacity: 0.8; }
+    .nav-badge {
+      margin-left: auto; min-width: 20px; text-align: center;
+      background: var(--accent); color: #fff;
+      border-radius: 10px; padding: 1px 6px;
+      font-size: 0.65rem; font-weight: 700;
+    }
+
+    .sidebar-footer {
+      padding: 1rem 0.65rem; border-top: 1px solid #1f1f1f;
+    }
+    .user-card {
+      display: flex; align-items: center; gap: 0.6rem; padding: 0.5rem 0.65rem;
+      border-radius: 6px; cursor: pointer;
+    }
+    .user-card:hover { background: #1a1a1a; }
+    .user-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), #7c3aed);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 0.7rem; color: #fff;
+    }
+    .user-card .name { font-size: 0.8rem; font-weight: 600; color: #e5e5e5; }
+    .user-card .role { font-size: 0.65rem; color: #737373; }
+
+    /* ═══════════════════════════════════════════
+       MAIN AREA
+       ═══════════════════════════════════════════ */
+    .main {
+      margin-left: var(--sidebar-w); flex: 1; min-height: 100vh;
+      display: flex; flex-direction: column;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      height: 52px; padding: 0 2rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 40;
+    }
+    .topbar-left { display: flex; align-items: center; gap: 0.75rem; }
+    .topbar-title { font-size: 0.85rem; font-weight: 600; color: var(--ink); }
+    .topbar-sep { color: var(--border-bold); }
+    .topbar-crumb { font-size: 0.8rem; color: var(--ink-3); font-weight: 500; }
+    .topbar-actions { display: flex; align-items: center; gap: 0.5rem; }
+    .topbar-btn {
+      width: 34px; height: 34px; border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--surface); color: var(--ink-2);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 0.85rem; position: relative;
+    }
+    .topbar-btn:hover { background: var(--surface2); border-color: var(--border-bold); }
+    .topbar-btn .dot {
+      position: absolute; top: 5px; right: 5px; width: 7px; height: 7px;
+      background: var(--danger-bg); border-radius: 50%; border: 2px solid var(--surface);
+    }
+    .topbar .user-avatar { width: 30px; height: 30px; font-size: 0.65rem; }
+
+    /* ── Content ── */
+    .content { padding: 2rem; flex: 1; max-width: 1400px; }
+
+    /* ── Page Header ── */
+    .page-header { margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: flex-end; }
+    .page-header h1 {
+      font-size: 1.5rem; font-weight: 800; color: var(--ink);
+      letter-spacing: -0.03em; margin-bottom: 0.25rem;
+    }
+    .page-header p { font-size: 0.85rem; color: var(--ink-3); font-weight: 500; }
+
+    /* ── Buttons ── */
+    .btn {
+      height: 36px; padding: 0 1rem; border-radius: 6px;
+      font-size: 0.82rem; font-weight: 600; border: none;
+      cursor: pointer; transition: all 0.1s;
+      display: inline-flex; align-items: center; gap: 0.4rem;
+    }
+    .btn-primary {
+      background: var(--ink); color: #fff;
+    }
+    .btn-primary:hover { background: #262626; }
+    .btn-secondary {
+      background: var(--surface); color: var(--ink);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover { background: var(--surface2); border-color: var(--border-bold); }
+    .btn-accent { background: var(--accent); color: #fff; }
+    .btn-accent:hover { background: var(--accent-hover); }
+
+    /* ═══════════════════════════════════════════
+       KPI CARDS — Bold values, high contrast
+       ═══════════════════════════════════════════ */
+    .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 1.75rem; }
+    .kpi {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.25rem 1.25rem 1rem;
+      position: relative;
+    }
+    .kpi::after {
+      content: ''; position: absolute; bottom: 0; left: 1rem; right: 1rem;
+      height: 3px; border-radius: 3px 3px 0 0;
+    }
+    .kpi.c-accent::after { background: var(--accent); }
+    .kpi.c-green::after { background: var(--success-bg); }
+    .kpi.c-amber::after { background: var(--warning-bg); }
+    .kpi.c-red::after { background: var(--danger-bg); }
+    .kpi-label {
+      font-size: 0.75rem; font-weight: 600; color: var(--ink-3);
+      margin-bottom: 0.5rem; text-transform: uppercase; letter-spacing: 0.03em;
+    }
+    .kpi-value {
+      font-size: 1.75rem; font-weight: 800; color: var(--ink);
+      letter-spacing: -0.03em; line-height: 1.1;
+    }
+    .kpi-sub { font-size: 0.75rem; color: var(--ink-3); margin-top: 0.35rem; font-weight: 500; }
+
+    /* ═══════════════════════════════════════════
+       CARDS & PANELS
+       ═══════════════════════════════════════════ */
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); overflow: hidden;
+    }
+    .card-head {
+      padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .card-head h3 { font-size: 0.9rem; font-weight: 700; color: var(--ink); letter-spacing: -0.01em; }
+
+    .grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+
+    /* ═══════════════════════════════════════════
+       TABLE — Dark headers, bold text everywhere
+       ═══════════════════════════════════════════ */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: #171717; color: #fafafa; }
+    th {
+      padding: 0.65rem 1.15rem; text-align: left;
+      font-size: 0.7rem; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.06em;
+    }
+    td {
+      padding: 0.75rem 1.15rem; border-bottom: 1px solid var(--border);
+      font-size: 0.85rem; font-weight: 500; color: var(--ink);
+    }
+    tbody tr { transition: background 0.08s; }
+    tbody tr:hover { background: var(--accent-dim); }
+    td strong { font-weight: 700; color: var(--ink); }
+    td .sub { font-size: 0.75rem; color: var(--ink-3); font-weight: 500; margin-top: 1px; }
+
+    /* ═══════════════════════════════════════════
+       BADGES — Pill style, dot + colored text
+       Lisible sans ressembler à des boutons
+       ═══════════════════════════════════════════ */
+    .badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      padding: 0.25rem 0.65rem; border-radius: 9999px;
+      font-size: 0.7rem; font-weight: 700; white-space: nowrap;
+    }
+    .badge::before {
+      content: ''; width: 6px; height: 6px; border-radius: 50%;
+    }
+    .badge-success { background: rgba(21,128,61,0.08); color: #166534; }
+    .badge-success::before { background: #16a34a; }
+    .badge-warning { background: rgba(161,98,7,0.08); color: #854d0e; }
+    .badge-warning::before { background: #ca8a04; }
+    .badge-danger { background: rgba(185,28,28,0.08); color: #991b1b; }
+    .badge-danger::before { background: #dc2626; }
+    .badge-info { background: rgba(29,78,216,0.08); color: #1e40af; }
+    .badge-info::before { background: #2563eb; }
+    .badge-neutral { background: rgba(64,64,64,0.08); color: #374151; }
+    .badge-neutral::before { background: #6b7280; }
+
+    /* ═══════════════════════════════════════════
+       SEARCH & FILTERS
+       ═══════════════════════════════════════════ */
+    .toolbar {
+      padding: 0.85rem 1.25rem; display: flex; align-items: center;
+      justify-content: space-between; gap: 0.75rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .search-input {
+      height: 34px; padding: 0 0.75rem; border: 1.5px solid var(--border);
+      border-radius: 6px; font-size: 0.82rem; color: var(--ink);
+      background: var(--surface); width: 260px; font-family: inherit; font-weight: 500;
+    }
+    .search-input:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 3px var(--accent-dim); }
+    .search-input::placeholder { color: #a3a3a3; font-weight: 400; }
+    .filter-select {
+      height: 34px; padding: 0 0.65rem; border: 1.5px solid var(--border);
+      border-radius: 6px; font-size: 0.82rem; color: var(--ink);
+      background: var(--surface); font-family: inherit; font-weight: 500;
+    }
+
+    /* ═══════════════════════════════════════════
+       CHART PLACEHOLDER
+       ═══════════════════════════════════════════ */
+    .chart-area {
+      height: 200px; margin: 1.25rem;
+      border-radius: 6px; background: var(--surface2);
+      border: 1px dashed var(--border);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--ink-3); font-size: 0.85rem; font-weight: 500;
+    }
+
+    /* ═══════════════════════════════════════════
+       ACTIVITY / SIDE PANEL
+       ═══════════════════════════════════════════ */
+    .activity-list { padding: 1rem 1.25rem; }
+    .activity-item {
+      display: flex; gap: 0.75rem; padding: 0.75rem 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .activity-item:last-child { border-bottom: 0; }
+    .activity-dot {
+      width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink: 0;
+    }
+    .activity-dot.green { background: var(--success-bg); }
+    .activity-dot.blue { background: var(--info-bg); }
+    .activity-dot.amber { background: var(--warning-bg); }
+    .activity-text { font-size: 0.82rem; color: var(--ink-2); font-weight: 500; line-height: 1.5; }
+    .activity-time { font-size: 0.7rem; color: var(--ink-3); font-weight: 500; margin-top: 2px; }
+
+    /* ═══════════════════════════════════════════
+       PAGINATION
+       ═══════════════════════════════════════════ */
+    .pagination {
+      padding: 0.85rem 1.25rem; display: flex; align-items: center;
+      justify-content: space-between; border-top: 1px solid var(--border);
+    }
+    .pagination-info { font-size: 0.8rem; color: var(--ink-3); font-weight: 500; }
+    .pagination-btns { display: flex; gap: 0.25rem; }
+    .page-btn {
+      width: 30px; height: 30px; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--surface);
+      color: var(--ink-2); font-size: 0.8rem; font-weight: 600;
+      display: flex; align-items: center; justify-content: center; cursor: pointer;
+    }
+    .page-btn:hover { background: var(--surface2); }
+    .page-btn.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+
+    /* ═══════════════════════════════════════════
+       TOAST
+       ═══════════════════════════════════════════ */
+    .toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      background: var(--ink); color: #fff; padding: 0.75rem 1rem;
+      border-radius: 6px; display: flex; align-items: center; gap: 0.5rem;
+      font-size: 0.82rem; font-weight: 600;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .toast .icon { color: #4ade80; }
+
+    /* ═══════════════════════════════════════════
+       FOOTER
+       ═══════════════════════════════════════════ */
+    .footer {
+      padding: 0.75rem 2rem; border-top: 1px solid var(--border);
+      font-size: 0.75rem; color: var(--ink-3); font-weight: 500;
+      background: var(--surface);
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══ SIDEBAR ═══ -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="brand-icon">SC</div>
+    <div><h1>SRID COM</h1><div class="sub">Gestion financière</div></div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-group">
+      <div class="nav-group-label">Finance</div>
+      <a class="nav-link active" href="#"><span class="nav-icon">📊</span> Dashboard</a>
+      <a class="nav-link" href="#"><span class="nav-icon">📝</span> Saisie</a>
+      <a class="nav-link" href="#"><span class="nav-icon">🔍</span> Consultation</a>
+      <a class="nav-link" href="#"><span class="nav-icon">📥</span> Import</a>
+      <a class="nav-link" href="#"><span class="nav-icon">📋</span> Référentiels</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Logistique</div>
+      <a class="nav-link" href="#"><span class="nav-icon">📦</span> Gestion <span class="nav-badge">8</span></a>
+      <a class="nav-link" href="#"><span class="nav-icon">📄</span> Bons de commande</a>
+      <a class="nav-link" href="#"><span class="nav-icon">🏢</span> Référentiels</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Admin</div>
+      <a class="nav-link" href="#"><span class="nav-icon">👥</span> Utilisateurs</a>
+      <a class="nav-link" href="#"><span class="nav-icon">📜</span> Audit</a>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="user-card">
+      <div class="user-avatar">FT</div>
+      <div><div class="name">Fatiha & Thanina</div><div class="role">Administrateur</div></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══ MAIN ═══ -->
+<div class="main">
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="topbar-title">Finance</span>
+      <span class="topbar-sep">/</span>
+      <span class="topbar-crumb">Dashboard</span>
+    </div>
+    <div class="topbar-actions">
+      <button class="topbar-btn">🔔<span class="dot"></span></button>
+      <button class="topbar-btn">⚙</button>
+      <div class="user-avatar">FT</div>
+    </div>
+  </header>
+
+  <div class="content">
+    <!-- Page header -->
+    <div class="page-header">
+      <div>
+        <h1>Dashboard</h1>
+        <p>Vue d'ensemble de l'activité financière — Juin 2026</p>
+      </div>
+      <button class="btn btn-primary">+ Nouvelle opération</button>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpis">
+      <div class="kpi c-accent">
+        <div class="kpi-label">Total encaissé</div>
+        <div class="kpi-value">12 450 000</div>
+        <div class="kpi-sub">DA · Ce mois</div>
+      </div>
+      <div class="kpi c-green">
+        <div class="kpi-label">Opérations</div>
+        <div class="kpi-value">347</div>
+        <div class="kpi-sub">Traitées ce mois</div>
+      </div>
+      <div class="kpi c-amber">
+        <div class="kpi-label">En attente</div>
+        <div class="kpi-value">23</div>
+        <div class="kpi-sub">Échéances à venir</div>
+      </div>
+      <div class="kpi c-red">
+        <div class="kpi-label">Échu / Rejeté</div>
+        <div class="kpi-value">5</div>
+        <div class="kpi-sub">À traiter urgemment</div>
+      </div>
+    </div>
+
+    <!-- Charts row -->
+    <div class="grid-2" style="margin-bottom:1.5rem">
+      <div class="card">
+        <div class="card-head"><h3>Évolution mensuelle</h3><button class="btn btn-secondary" style="height:30px;font-size:0.75rem">2026 ▾</button></div>
+        <div class="chart-area">📈 Graphique barres mensuelles</div>
+      </div>
+      <div class="card">
+        <div class="card-head"><h3>Activité récente</h3></div>
+        <div class="activity-list">
+          <div class="activity-item">
+            <div class="activity-dot green"></div>
+            <div><div class="activity-text"><strong>BC-2026-047</strong> marqué comme reçu</div><div class="activity-time">Il y a 12 min</div></div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-dot blue"></div>
+            <div><div class="activity-text">Import de 14 opérations validé</div><div class="activity-time">Il y a 1h</div></div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-dot amber"></div>
+            <div><div class="activity-text"><strong>3 chèques</strong> arrivent à échéance demain</div><div class="activity-time">Il y a 2h</div></div>
+          </div>
+          <div class="activity-item">
+            <div class="activity-dot green"></div>
+            <div><div class="activity-text">Nouveau fournisseur <strong>AGROVET ROUIBA</strong> ajouté</div><div class="activity-time">Hier, 16:30</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="card">
+      <div class="card-head">
+        <h3>Dernières opérations</h3>
+        <button class="btn btn-secondary" style="height:30px;font-size:0.75rem">Exporter</button>
+      </div>
+      <div class="toolbar">
+        <div style="display:flex;gap:0.5rem">
+          <input class="search-input" placeholder="Rechercher client, fournisseur…">
+          <select class="filter-select"><option>Tous les statuts</option><option>Encaissé</option><option>En cours</option><option>Échu</option><option>Rejeté</option></select>
+          <select class="filter-select"><option>SRID</option><option>SRID GENETICS</option><option>Toutes</option></select>
+        </div>
+        <button class="btn btn-accent" style="height:32px;font-size:0.78rem">+ Ajouter</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Client / Fournisseur</th>
+              <th>Type</th>
+              <th>Société</th>
+              <th style="text-align:right">Montant (DA)</th>
+              <th>Statut</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>28/06/2026</strong></td>
+              <td>SARL Phyto Plus</td>
+              <td>Chèque</td>
+              <td>SRID</td>
+              <td style="text-align:right"><strong>1 250 000,00</strong></td>
+              <td><span class="badge badge-success">Encaissé</span></td>
+            </tr>
+            <tr>
+              <td><strong>27/06/2026</strong></td>
+              <td>ETS Benmoussa</td>
+              <td>Virement</td>
+              <td>SRID GENETICS</td>
+              <td style="text-align:right"><strong>3 780 500,00</strong></td>
+              <td><span class="badge badge-info">En cours</span></td>
+            </tr>
+            <tr>
+              <td><strong>26/06/2026</strong></td>
+              <td>Agri-Semences Nord</td>
+              <td>Chèque</td>
+              <td>SRID</td>
+              <td style="text-align:right"><strong>890 000,00</strong></td>
+              <td><span class="badge badge-warning">Échéance</span></td>
+            </tr>
+            <tr>
+              <td><strong>25/06/2026</strong></td>
+              <td>SARL Greenfields</td>
+              <td>Versement</td>
+              <td>SRID</td>
+              <td style="text-align:right"><strong>2 150 000,00</strong></td>
+              <td><span class="badge badge-success">Encaissé</span></td>
+            </tr>
+            <tr>
+              <td><strong>24/06/2026</strong></td>
+              <td>Ferme El Baraka</td>
+              <td>Chèque</td>
+              <td>SRID GENETICS</td>
+              <td style="text-align:right"><strong>450 000,00</strong></td>
+              <td><span class="badge badge-danger">Rejeté</span></td>
+            </tr>
+            <tr>
+              <td><strong>23/06/2026</strong></td>
+              <td>Bio Harvest SARL</td>
+              <td>Chèque</td>
+              <td>SRID</td>
+              <td style="text-align:right"><strong>1 875 000,00</strong></td>
+              <td><span class="badge badge-neutral">En attente</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="pagination">
+        <span class="pagination-info">Affichage 1–6 sur 347</span>
+        <div class="pagination-btns">
+          <button class="page-btn">‹</button>
+          <button class="page-btn active">1</button>
+          <button class="page-btn">2</button>
+          <button class="page-btn">3</button>
+          <button class="page-btn">›</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">© 2026 MobiBenz · SRID COM v2.0 — Tous les textes sont en contraste WCAG AAA</div>
+</div>
+
+<!-- Toast -->
+<div class="toast">
+  <span class="icon">✓</span> Opération enregistrée avec succès
+</div>
+
+</body>
+</html>

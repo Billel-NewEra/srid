@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr" data-theme="luxury">
+<html lang="fr" data-theme="corporate">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -16,305 +16,583 @@
     <script src="https://unpkg.com/htmx.org@2.0.4"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Manrope:wght@700;800&display=swap" rel="stylesheet">
     <style>
-        /* Thème sombre - valeur sélectionnée/tapée en blanc, texte par défaut reste doré */
-        [data-theme="luxury"] .input,
-        [data-theme="luxury"] .textarea {
-            color: hsl(0 0% 90%);
-        }
-        [data-theme="luxury"] .input::placeholder,
-        [data-theme="luxury"] .textarea::placeholder {
-            color: hsl(0 0% 40%);
-        }
-        /* Select : la valeur par défaut (placeholder) reste dorée, la valeur choisie en blanc */
-        [data-theme="luxury"] .select option:not(:first-child) {
-            color: hsl(0 0% 90%);
-        }
-        [data-theme="luxury"] .select.selected {
-            color: hsl(0 0% 95%);
-        }
-
-        /* Thème clair - Bleu profond + accents vifs */
-        [data-theme="corporate"] {
-            --p: 225 85% 48%;
-            --pf: 225 85% 40%;
-            --pc: 0 0% 100%;
-            --s: 262 70% 55%;
-            --sf: 262 70% 47%;
-            --sc: 0 0% 100%;
-            --a: 170 75% 40%;
-            --af: 170 75% 32%;
-            --ac: 0 0% 100%;
-            --n: 220 25% 14%;
-            --nf: 220 25% 10%;
-            --nc: 0 0% 98%;
-            --b1: 220 30% 98%;
-            --b2: 225 25% 94%;
-            --b3: 225 20% 89%;
-            --bc: 220 30% 12%;
-            --in: 200 85% 52%;
-            --su: 160 75% 40%;
-            --wa: 38 92% 50%;
-            --er: 0 72% 52%;
-            --rounded-box: 1rem;
-            --rounded-btn: 0.6rem;
-            --btn-text-case: none;
+        :root,
+        html[data-theme="corporate"] {
+            --societe-srid: #4f46e5;
+            --societe-srid-alpha: rgba(79, 70, 229, 0.15);
+            --societe-genetics: #0f766e;
+            --societe-genetics-alpha: rgba(15, 118, 110, 0.16);
+            --status-encaisse: #16a34a;
+            --status-rejete: #dc2626;
+            --status-echeance: #ca8a04;
+            --status-encours: #4f46e5;
+            --status-arrive: #ea580c;
+            --status-echu: #475569;
+            --chart-grid: rgba(148, 163, 184, 0.1);
+            --meta-date-label: #0369a1;
+            --meta-date-value: #be185d;
+            --modal-label: #0e7490;
+            --ui-bg: #f4f7fb;
+            --ui-surface: #ffffff;
+            --ui-surface-2: #f8fafc;
+            --ui-border: #e2e8f0;
+            --ui-border-strong: #cbd5e1;
+            --ui-text: #0f172a;
+            --ui-text-soft: #334155;
+            --ui-text-muted: #64748b;
+            --ui-primary: #4f46e5;
+            --ui-primary-soft: rgba(79, 70, 229, 0.14);
+            --ui-secondary: #7c3aed;
+            --ui-secondary-soft: rgba(124, 58, 237, 0.14);
+            --ui-focus: rgba(79, 70, 229, 0.25);
+            --ui-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+            --ui-shadow-soft: 0 8px 20px rgba(15, 23, 42, 0.06);
+            --ui-overlay: rgba(15, 23, 42, 0.42);
+            --ui-table-head: #111827;
+            --ui-table-head-text: #f8fafc;
+            --ui-sidebar-bg: #0f172a;
+            --ui-sidebar-border: #1e293b;
+            --ui-sidebar-text: #cbd5e1;
+            --ui-sidebar-muted: #64748b;
+            --ui-sidebar-hover: #152338;
+            --ui-sidebar-active: #1e293b;
         }
 
-        /* === MODE CLAIR : Style global === */
-        [data-theme="corporate"] body {
-            background: linear-gradient(160deg, hsl(220 35% 97%) 0%, hsl(235 25% 95%) 50%, hsl(210 30% 96%) 100%);
-        }
-        [data-theme="corporate"] .navbar {
-            background: linear-gradient(135deg, hsl(220 40% 18%), hsl(230 35% 22%));
-            backdrop-filter: blur(12px);
-            border-bottom: none;
-            box-shadow: 0 4px 20px hsl(220 40% 15% / 0.3);
-            color: white;
-        }
-        [data-theme="corporate"] .navbar a,
-        [data-theme="corporate"] .navbar .btn-ghost {
-            color: hsl(210 20% 85%);
-        }
-        [data-theme="corporate"] .navbar a:hover,
-        [data-theme="corporate"] .navbar .btn-ghost:hover {
-            color: white;
-            background: hsl(225 40% 30%);
-        }
-
-        /* Cards */
-        [data-theme="corporate"] .card {
-            background: white;
-            border: 1px solid hsl(220 25% 90%);
-            box-shadow: 0 4px 20px hsl(220 40% 60% / 0.1), 0 1px 6px hsl(220 40% 60% / 0.06);
-        }
-
-        /* Inputs */
-        [data-theme="corporate"] .input-bordered,
-        [data-theme="corporate"] .select-bordered,
-        [data-theme="corporate"] .textarea-bordered {
-            border: 2px solid hsl(220 25% 88%);
-            background: white;
-            transition: all 0.25s ease;
-        }
-        [data-theme="corporate"] .input-bordered:focus,
-        [data-theme="corporate"] .select-bordered:focus,
-        [data-theme="corporate"] .textarea-bordered:focus {
-            border-color: hsl(225 85% 50%);
-            background: white;
-            box-shadow: 0 0 0 4px hsl(225 85% 50% / 0.12), 0 2px 8px hsl(225 85% 50% / 0.08);
+        html[data-theme="luxury"] {
+            --societe-srid: #93c5fd;
+            --societe-srid-alpha: rgba(147, 197, 253, 0.2);
+            --societe-genetics: #2dd4bf;
+            --societe-genetics-alpha: rgba(45, 212, 191, 0.2);
+            --status-encaisse: #34d399;
+            --status-rejete: #f87171;
+            --status-echeance: #fbbf24;
+            --status-encours: #60a5fa;
+            --status-arrive: #fb923c;
+            --status-echu: #c4b5fd;
+            --chart-grid: rgba(148, 163, 184, 0.22);
+            --meta-date-label: #67e8f9;
+            --meta-date-value: #f9a8d4;
+            --modal-label: #7dd3fc;
+            --ui-bg: #0b1220;
+            --ui-surface: #111827;
+            --ui-surface-2: #0f172a;
+            --ui-border: #243244;
+            --ui-border-strong: #334155;
+            --ui-text: #e2e8f0;
+            --ui-text-soft: #cbd5e1;
+            --ui-text-muted: #94a3b8;
+            --ui-primary: #818cf8;
+            --ui-primary-soft: rgba(129, 140, 248, 0.24);
+            --ui-secondary: #c4b5fd;
+            --ui-secondary-soft: rgba(196, 181, 253, 0.22);
+            --ui-focus: rgba(129, 140, 248, 0.35);
+            --ui-shadow: 0 20px 44px rgba(0, 0, 0, 0.42);
+            --ui-shadow-soft: 0 10px 24px rgba(0, 0, 0, 0.34);
+            --ui-overlay: rgba(2, 8, 20, 0.68);
+            --ui-table-head: #1b2535;
+            --ui-table-head-text: #ecf3ff;
+            --ui-sidebar-bg: #070b14;
+            --ui-sidebar-border: #182237;
+            --ui-sidebar-text: #a5b4c8;
+            --ui-sidebar-muted: #5f738f;
+            --ui-sidebar-hover: #142036;
+            --ui-sidebar-active: #1b2a40;
         }
 
-        /* Boutons */
-        [data-theme="luxury"] .btn-primary {
-            background: linear-gradient(135deg, hsl(47 80% 50%), hsl(40 75% 45%));
-            color: hsl(240 10% 10%);
-            border: none;
-            box-shadow: 0 4px 14px hsl(47 80% 50% / 0.3);
-            transition: all 0.2s ease;
-        }
-        [data-theme="luxury"] .btn-primary:hover {
-            transform: translateY(-1px);
-            background: linear-gradient(135deg, hsl(47 100% 58%), hsl(40 85% 52%));
-            box-shadow: 0 6px 20px hsl(47 80% 50% / 0.4);
-        }
-        [data-theme="corporate"] .btn-primary {
-            background: linear-gradient(135deg, hsl(225 85% 50%), hsl(240 70% 48%));
-            border: none;
-            color: white;
-            box-shadow: 0 4px 14px hsl(225 85% 50% / 0.35);
-            transition: all 0.2s ease;
-        }
-        [data-theme="corporate"] .btn-primary:hover {
-            transform: translateY(-1px);
-            background: linear-gradient(135deg, hsl(225 90% 55%), hsl(240 75% 53%));
-            box-shadow: 0 6px 20px hsl(225 85% 50% / 0.45);
-        }
-        [data-theme="corporate"] .btn-ghost {
-            transition: all 0.2s ease;
-        }
-        [data-theme="corporate"] .btn-ghost:hover {
-            background: hsl(225 30% 94%);
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: Inter, system-ui, -apple-system, sans-serif;
+            background: radial-gradient(1200px 420px at 15% -6%, var(--ui-primary-soft), transparent), var(--ui-bg) !important;
+            color: var(--ui-text) !important;
         }
 
-        /* Dropdown menu - fond opaque dans les deux thèmes */
-        [data-theme="corporate"] .dropdown-content {
-            background: white !important;
-            border-color: hsl(220 20% 80%) !important;
-        }
-        [data-theme="luxury"] .dropdown-content {
-            background: hsl(240 10% 14%) !important;
-            border-color: hsl(0 0% 30%) !important;
+        h1, h2, h3, .card-title {
+            color: var(--ui-text) !important;
+            font-family: Manrope, Inter, system-ui, sans-serif;
+            letter-spacing: -0.01em;
         }
 
-        /* Menu navbar hover en mode clair */
-        [data-theme="corporate"] .navbar .menu li a {
-            transition: all 0.2s ease;
-            outline: none;
-            color: hsl(210 20% 85%);
+        .navbar {
+            background: color-mix(in srgb, var(--ui-surface) 94%, transparent) !important;
+            color: var(--ui-text) !important;
+            border-bottom: 1px solid var(--ui-border) !important;
+            box-shadow: var(--ui-shadow-soft) !important;
+            backdrop-filter: blur(10px);
         }
-        [data-theme="corporate"] .navbar .menu li a:hover {
-            background: hsl(225 40% 28%);
-            color: white;
+
+        .navbar .btn-ghost,
+        .navbar a {
+            color: var(--ui-text-soft) !important;
         }
-        [data-theme="corporate"] .navbar .menu li a:focus,
-        [data-theme="corporate"] .navbar .menu li a:focus-visible {
-            outline: none;
-            box-shadow: none;
+
+        .navbar .btn-ghost:hover,
+        .navbar a:hover {
+            background: var(--ui-primary-soft) !important;
+            color: var(--ui-text) !important;
         }
-        [data-theme="corporate"] .navbar .menu li a.bg-primary\/10 {
-            background: hsl(225 50% 30%);
-            color: white;
+
+        .app-sidebar {
+            background: var(--ui-sidebar-bg) !important;
+            color: var(--ui-sidebar-text) !important;
+            border-right: 1px solid var(--ui-sidebar-border) !important;
+        }
+
+        .app-shell {
+            min-height: 100vh;
+        }
+
+        .sidebar-toggle {
+            position: absolute;
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .app-main {
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+        }
+
+        .app-sidebar-wrap {
+            position: fixed;
+            inset: 0 auto 0 0;
+            width: 16rem;
+            transform: translateX(-100%);
+            transition: transform 0.2s ease;
+            z-index: 50;
+        }
+
+        .app-sidebar {
+            width: 16rem;
+            min-height: 100%;
+            position: relative;
+            z-index: 2;
+        }
+
+        .mobile-sidebar-backdrop {
+            position: fixed;
+            inset: 0;
+            background: var(--ui-overlay);
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+            backdrop-filter: blur(2px);
+        }
+
+        .sidebar-toggle:checked ~ .app-sidebar-wrap {
+            transform: translateX(0);
+        }
+
+        .sidebar-toggle:checked ~ .app-sidebar-wrap .mobile-sidebar-backdrop {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        @media (min-width: 1024px) {
+            .app-shell {
+                display: grid;
+                grid-template-columns: 16rem minmax(0, 1fr);
+            }
+
+            .app-sidebar-wrap {
+                position: sticky;
+                top: 0;
+                transform: none;
+                height: 100vh;
+                z-index: 30;
+            }
+
+            .mobile-sidebar-backdrop {
+                display: none;
+            }
+        }
+
+        .app-sidebar .sidebar-header {
+            border-bottom: 1px solid var(--ui-sidebar-border) !important;
+        }
+
+        .nav-section-label {
+            color: var(--ui-sidebar-muted) !important;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0 0.375rem;
+        }
+
+        .app-sidebar .nav-link {
+            color: var(--ui-sidebar-text) !important;
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
+            padding: 0.45rem 0.75rem;
+            border-radius: 10px;
+            font-size: 0.875rem;
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+
+        .app-sidebar .nav-link:hover {
+            background: var(--ui-sidebar-hover) !important;
+            color: #f1f6ff !important;
+        }
+
+        .app-sidebar .nav-link.active,
+        .app-sidebar .nav-link.nav-link-finance.active,
+        .app-sidebar .nav-link.nav-link-logistique.active,
+        .app-sidebar .nav-link.nav-link-admin.active {
+            background: var(--ui-sidebar-active) !important;
+            color: #ffffff !important;
             font-weight: 600;
-        }
-        /* Dropdown en mode clair - texte foncé */
-        [data-theme="corporate"] .dropdown-content a {
-            color: hsl(220 20% 25%) !important;
-        }
-        [data-theme="corporate"] .dropdown-content a.text-red-500 {
-            color: rgb(239 68 68) !important;
-        }
-        [data-theme="corporate"] .dropdown-content .menu-title span {
-            color: hsl(220 20% 35%) !important;
-        }
-        /* Dropdown en mode sombre - texte clair */
-        [data-theme="luxury"] .dropdown-content a {
-            color: hsl(0 0% 90%) !important;
-        }
-        [data-theme="luxury"] .dropdown-content a.text-red-500 {
-            color: rgb(239 68 68) !important;
-        }
-        [data-theme="luxury"] .dropdown-content .menu-title span {
-            color: hsl(47 60% 60%) !important;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08);
         }
 
-        /* Supprimer outline noir sur tous les éléments interactifs en clair */
-        [data-theme="corporate"] a:focus,
-        [data-theme="corporate"] button:focus,
-        [data-theme="corporate"] .btn:focus,
-        [data-theme="corporate"] select:focus,
-        [data-theme="corporate"] input:focus,
-        [data-theme="corporate"] textarea:focus {
-            outline: none;
+        .app-sidebar .nav-link.disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+            pointer-events: none;
         }
 
-        /* Stats/KPIs */
-        [data-theme="corporate"] .stat {
-            background: white;
-            border: 1px solid hsl(220 25% 90%);
-            box-shadow: 0 2px 10px hsl(220 40% 60% / 0.08);
+        .app-sidebar .nav-icon {
+            width: 1rem;
+            text-align: center;
+            flex-shrink: 0;
+            font-size: 0.8125rem;
         }
 
-        /* Table */
-        [data-theme="corporate"] .table :where(thead) :where(tr) {
-            background: hsl(220 30% 15%);
-            color: white;
-        }
-        [data-theme="corporate"] .table :where(tbody tr):hover {
-            background: hsl(225 30% 96%);
+        .module-strip {
+            width: 3px;
+            height: 12px;
+            border-radius: 2px;
+            flex-shrink: 0;
         }
 
-        /* Icône recherche - adaptatif au thème */
-        [data-theme="luxury"] .input-group .bg-primary {
-            background: hsl(47 80% 52%) !important;
-            color: hsl(0 0% 10%) !important;
+        .module-strip-finance,
+        .module-strip-logistique,
+        .module-strip-admin {
+            background: var(--ui-primary) !important;
         }
 
-        /* Badges - types d'opérations plus distinctifs */
-        [data-theme="corporate"] .badge {
+        .card,
+        .stat,
+        .modal-box,
+        .dropdown-content {
+            background: var(--ui-surface) !important;
+            color: var(--ui-text) !important;
+            border: 1px solid var(--ui-border) !important;
+            box-shadow: var(--ui-shadow) !important;
+        }
+
+        .card.bg-base-200,
+        .bg-base-200 {
+            background: var(--ui-surface-2) !important;
+            border-color: var(--ui-border) !important;
+        }
+
+        .input,
+        .select,
+        .textarea,
+        .file-input {
+            background: var(--ui-surface) !important;
+            color: var(--ui-text) !important;
+            border: 1px solid var(--ui-border-strong) !important;
+        }
+
+        .input::placeholder,
+        .textarea::placeholder {
+            color: var(--ui-text-muted) !important;
+            opacity: 0.9;
+        }
+
+        .input:focus,
+        .select:focus,
+        .textarea:focus,
+        .btn:focus-visible,
+        .menu a:focus-visible,
+        .dropdown [tabindex]:focus-visible {
+            outline: 0 !important;
+            border-color: var(--ui-primary) !important;
+            box-shadow: 0 0 0 3px var(--ui-focus) !important;
+        }
+
+        .select option:not(:first-child) {
+            color: var(--ui-text);
+        }
+
+        .select.selected {
+            color: var(--ui-text);
+        }
+
+        .btn-primary {
+            background: var(--ui-primary) !important;
+            color: #fff !important;
+            border-color: transparent !important;
+            box-shadow: 0 8px 18px color-mix(in srgb, var(--ui-primary) 35%, transparent) !important;
+        }
+
+        .btn-primary:hover {
+            filter: brightness(0.95);
+            transform: translateY(-1px);
+        }
+
+        .btn,
+        .btn-outline,
+        .btn-ghost {
+            border-color: var(--ui-border-strong) !important;
+        }
+
+        .btn-outline:hover,
+        .btn-ghost:hover {
+            background: var(--ui-primary-soft) !important;
+            color: var(--ui-text) !important;
+        }
+
+        .file-input::file-selector-button {
+            background: var(--ui-primary);
+            color: #fff;
+            border: 0;
+        }
+
+        .file-input::file-selector-button:hover {
+            filter: brightness(0.95);
+        }
+
+        .table :where(thead) :where(tr) {
+            background: var(--ui-table-head) !important;
+            color: var(--ui-table-head-text) !important;
+        }
+
+        .table :where(thead th) {
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 0.69rem;
+            font-weight: 800;
+        }
+
+        .table :where(tbody td) {
+            color: var(--ui-text);
+            font-size: 0.85rem;
+            font-weight: 500;
+        }
+
+        .table :where(tbody td strong) {
+            font-weight: 700;
+            color: var(--ui-text);
+        }
+
+        .table :where(tbody tr):hover {
+            background: var(--ui-primary-soft) !important;
+        }
+
+        .badge {
             border-radius: 9999px;
-        }
-        [data-theme="corporate"] .badge-primary {
-            background: hsl(225 80% 50%);
-            border-color: hsl(225 80% 50%);
-            color: white;
-        }
-        [data-theme="corporate"] .badge-secondary {
-            background: hsl(262 65% 52%);
-            border-color: hsl(262 65% 52%);
-            color: white;
-        }
-        [data-theme="corporate"] .badge-accent {
-            background: hsl(170 70% 38%);
-            border-color: hsl(170 70% 38%);
-            color: white;
-        }
-        [data-theme="corporate"] .badge-success {
-            background: hsl(155 70% 38%);
-            border-color: hsl(155 70% 38%);
-            color: white;
-        }
-        [data-theme="corporate"] .badge-warning {
-            background: hsl(38 90% 48%);
-            border-color: hsl(38 90% 48%);
-            color: white;
-        }
-        [data-theme="corporate"] .badge-error {
-            background: hsl(0 70% 50%);
-            border-color: hsl(0 70% 50%);
-            color: white;
+            border-color: transparent !important;
+            font-size: 0.7rem;
+            font-weight: 700;
+            gap: 0;
         }
 
-        /* Dividers */
-        [data-theme="corporate"] .divider::before,
-        [data-theme="corporate"] .divider::after {
-            background: linear-gradient(90deg, transparent, hsl(220 25% 85%), transparent);
+        .badge-primary  { background: color-mix(in srgb, var(--status-encours) 18%, transparent) !important; color: var(--status-encours) !important; }
+        .badge-secondary{ background: color-mix(in srgb, var(--status-echu) 20%, transparent) !important; color: var(--status-echu) !important; }
+        .badge-accent   { background: color-mix(in srgb, var(--status-arrive) 18%, transparent) !important; color: var(--status-arrive) !important; }
+        .badge-success  { background: color-mix(in srgb, var(--status-encaisse) 18%, transparent) !important; color: var(--status-encaisse) !important; }
+        .badge-warning  { background: color-mix(in srgb, var(--status-echeance) 18%, transparent) !important; color: var(--status-echeance) !important; }
+        .badge-error    { background: color-mix(in srgb, var(--status-rejete) 18%, transparent) !important; color: var(--status-rejete) !important; }
+        .badge-neutral  { background: color-mix(in srgb, var(--ui-text-soft) 16%, transparent) !important; color: var(--ui-text-soft) !important; }
+
+        .modal { background: transparent; }
+
+        .modal::backdrop,
+        .modal-backdrop {
+            background: var(--ui-overlay) !important;
+            backdrop-filter: blur(2px);
         }
 
-        /* Footer */
-        [data-theme="corporate"] footer {
-            background: hsl(220 30% 15%);
-            color: hsl(210 20% 80%);
-            border-top: none;
+        .modal-box .table :where(thead) :where(tr) {
+            background: var(--ui-table-head) !important;
+            color: var(--ui-table-head-text) !important;
         }
 
-        /* Labels - titres en couleur distincte du contenu */
-        [data-theme="corporate"] .label-text {
-            color: hsl(220 30% 30%);
+        .meta-date-label {
+            color: var(--meta-date-label) !important;
+            font-weight: 700;
+        }
+
+        .meta-date-value {
+            color: var(--meta-date-value) !important;
+            font-weight: 800;
+        }
+
+        .meta-separator {
+            color: var(--ui-text-muted) !important;
+            opacity: 0.65;
+        }
+
+        .modal-label {
+            color: var(--modal-label) !important;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+        }
+
+        .modal-meta {
+            color: var(--ui-text-muted) !important;
+        }
+
+        .notif-strip {
+            border: 1px solid color-mix(in srgb, var(--status-echeance) 35%, transparent) !important;
+            background: color-mix(in srgb, var(--status-echeance) 12%, transparent) !important;
+            border-radius: 10px;
+            padding: 0.65rem 0.75rem;
+            margin-bottom: 0.75rem;
+            font-size: 0.8rem;
+        }
+
+        .notif-strip-title {
+            color: var(--ui-text) !important;
+            font-size: 0.82rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .notif-strip-meta {
+            font-size: 0.76rem;
+            margin-top: 0.25rem;
+            color: var(--ui-text-soft) !important;
+        }
+
+        .notif-strip-meta-late {
+            color: var(--status-rejete) !important;
+            font-weight: 700;
+        }
+
+        .notif-strip-meta-soon {
+            color: var(--status-echeance) !important;
+            font-weight: 700;
+        }
+
+        .notif-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.6rem;
+            background: var(--ui-surface) !important;
+            border: 1px solid var(--ui-border) !important;
+            border-radius: 9px;
+            padding: 0.62rem;
+            margin-bottom: 0.45rem;
+            transition: background-color 0.15s ease;
+        }
+
+        .notif-item:hover {
+            background: var(--ui-surface-2) !important;
+        }
+
+        .notif-item-title {
+            color: var(--ui-text) !important;
+            font-size: 0.84rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .notif-item-date {
+            margin-top: 0.2rem;
+            font-size: 0.76rem;
+            color: var(--ui-text-soft) !important;
+        }
+
+        .notif-delay {
+            font-size: 0.74rem;
+            font-weight: 700;
+        }
+
+        .notif-delay-late {
+            color: var(--status-rejete) !important;
+        }
+
+        .notif-delay-soon {
+            color: var(--status-echeance) !important;
+        }
+
+        .notif-badge {
+            border-radius: 9999px;
+            padding: 0.22rem 0.62rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            border: 0 !important;
+            line-height: 1.1;
+        }
+
+        .notif-badge-primary {
+            background: var(--ui-primary-soft) !important;
+            color: var(--ui-primary) !important;
+        }
+
+        .notif-badge-secondary {
+            background: var(--ui-secondary-soft) !important;
+            color: var(--ui-secondary) !important;
+        }
+
+        .notif-badge-accent {
+            background: var(--societe-genetics-alpha) !important;
+            color: var(--societe-genetics) !important;
+        }
+
+        .notif-badge-success {
+            background: color-mix(in srgb, var(--status-encaisse) 18%, transparent) !important;
+            color: var(--status-encaisse) !important;
+        }
+
+        .notif-badge-warning {
+            background: color-mix(in srgb, var(--status-echeance) 18%, transparent) !important;
+            color: var(--status-echeance) !important;
+        }
+
+        .notif-badge-error {
+            background: color-mix(in srgb, var(--status-rejete) 18%, transparent) !important;
+            color: var(--status-rejete) !important;
+        }
+
+        .notif-badge-neutral {
+            background: color-mix(in srgb, var(--ui-text-soft) 16%, transparent) !important;
+            color: var(--ui-text-soft) !important;
+        }
+
+        .page-title {
+            color: var(--ui-text) !important;
+            font-weight: 800;
+        }
+
+        .page-subtitle {
+            color: color-mix(in srgb, var(--ui-primary) 78%, var(--ui-text)) !important;
             font-weight: 600;
         }
-        [data-theme="corporate"] .divider {
-            color: hsl(225 50% 45%);
-        }
-        [data-theme="corporate"] h1, [data-theme="corporate"] h2, [data-theme="corporate"] h3 {
-            color: hsl(220 35% 18%);
-        }
-        /* Contenu des champs en mode clair */
-        [data-theme="corporate"] .input,
-        [data-theme="corporate"] .textarea {
-            color: hsl(220 20% 20%);
-        }
-        [data-theme="corporate"] .select {
-            color: hsl(225 60% 45%);
-        }
-        [data-theme="corporate"] .select.selected {
-            color: hsl(220 20% 20%);
-        }
-        [data-theme="corporate"] .stat-title {
-            color: hsl(225 40% 45%);
+
+        .section-heading,
+        .divider.opacity-70 {
+            color: color-mix(in srgb, var(--ui-primary) 64%, var(--ui-text)) !important;
+            opacity: 1 !important;
+            font-weight: 700;
         }
 
-        /* File input - cohérent avec btn-primary */
-        [data-theme="corporate"] .file-input::file-selector-button {
-            background: hsl(225 85% 48%);
-            color: white;
-            border: none;
-        }
-        [data-theme="corporate"] .file-input::file-selector-button:hover {
-            background: hsl(225 90% 42%);
-            color: white;
-        }
-        [data-theme="luxury"] .file-input::file-selector-button {
-            background: hsl(47 80% 50%);
-            color: hsl(240 10% 10%);
-            border: none;
-        }
-        [data-theme="luxury"] .file-input::file-selector-button:hover {
-            background: hsl(47 100% 60%);
-            color: hsl(240 10% 10%);
+        .divider::before,
+        .divider::after {
+            background: var(--ui-border) !important;
         }
 
-        /* Modal - DaisyUI natif (overrides supprimés) */
+        footer {
+            background: color-mix(in srgb, var(--ui-surface) 95%, transparent) !important;
+            border-top: 1px solid var(--ui-border) !important;
+            color: var(--ui-text-muted) !important;
+        }
 
         .fade-in { animation: fadeIn 0.15s ease-in; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -325,79 +603,6 @@
         .toast-item { animation: slideIn 0.3s ease-out, fadeOut 0.3s ease-in 4.7s forwards; }
         @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
         @keyframes fadeOut { to { opacity: 0; transform: translateY(-10px); } }
-
-        /* ═══════════════════ SIDEBAR ═══════════════════ */
-        .app-sidebar {
-            background: hsl(222 47% 9%);
-            color: hsl(215 20% 70%);
-            border-right: 1px solid hsl(222 40% 16%);
-        }
-        .app-sidebar .sidebar-header {
-            border-bottom: 1px solid hsl(222 40% 16%);
-        }
-        .nav-section-label {
-            font-size: 10px;
-            font-weight: 700;
-            letter-spacing: 0.1em;
-            text-transform: uppercase;
-            color: hsl(215 20% 38%);
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0 0.375rem;
-        }
-        .app-sidebar .nav-link {
-            display: flex;
-            align-items: center;
-            gap: 0.625rem;
-            padding: 0.45rem 0.75rem;
-            border-radius: 0.5rem;
-            font-size: 0.875rem;
-            color: hsl(215 20% 65%);
-            transition: all 0.15s ease;
-            text-decoration: none;
-        }
-        .app-sidebar .nav-link:hover {
-            background: hsl(222 40% 16%);
-            color: hsl(215 20% 93%);
-        }
-        .app-sidebar .nav-link.active {
-            background: hsl(225 55% 22%);
-            color: hsl(215 80% 92%);
-            font-weight: 600;
-        }
-        .app-sidebar .nav-link.nav-link-finance.active {
-            background: hsl(38 55% 15%);
-            color: hsl(47 100% 72%);
-        }
-        .app-sidebar .nav-link.nav-link-logistique.active {
-            background: hsl(170 50% 12%);
-            color: hsl(170 80% 68%);
-        }
-        .app-sidebar .nav-link.nav-link-admin.active {
-            background: hsl(220 25% 20%);
-            color: hsl(215 50% 82%);
-        }
-        .app-sidebar .nav-link.disabled {
-            opacity: 0.35;
-            cursor: not-allowed;
-            pointer-events: none;
-        }
-        .app-sidebar .nav-icon {
-            width: 1rem;
-            text-align: center;
-            flex-shrink: 0;
-            font-size: 0.8125rem;
-        }
-        .module-strip {
-            width: 3px;
-            height: 12px;
-            border-radius: 2px;
-            flex-shrink: 0;
-        }
-        .module-strip-finance  { background: hsl(47 80% 52%); }
-        .module-strip-logistique { background: hsl(170 70% 42%); }
-        .module-strip-admin    { background: hsl(220 20% 50%); }
     </style>
 </head>
 <body class="min-h-screen bg-base-200">
@@ -416,93 +621,21 @@
         {% endwith %}
     </div>
 
-    <!-- Drawer layout (sidebar gauche + contenu droite) -->
-    <div class="drawer lg:drawer-open">
-        <input id="sidebar-toggle" type="checkbox" class="drawer-toggle">
-
-        <!-- ═══════════════════ CONTENU PRINCIPAL ═══════════════════ -->
-        <div class="drawer-content flex flex-col min-h-screen">
-
-            <!-- Header top -->
-            <header class="navbar bg-base-100 border-b border-base-300 shadow-sm sticky top-0 z-30 px-3 gap-2 min-h-[56px]">
-                <div class="navbar-start">
-                    <!-- Toggle sidebar (mobile uniquement) -->
-                    <label for="sidebar-toggle" class="btn btn-ghost btn-sm btn-circle lg:hidden">
-                        <i class="fas fa-bars text-lg"></i>
-                    </label>
-                    <!-- Logo mobile -->
-                    <a href="{{ url_for('dashboard') }}" class="btn btn-ghost gap-2 font-bold lg:hidden ml-1">
-                        <img src="{{ url_for('static', filename='icon.jpg') }}" alt="SRID COM" class="h-7 rounded object-contain">
-                        <span class="text-sm">SRID COM</span>
-                    </a>
-                </div>
-                <div class="navbar-end gap-1">
-                    <!-- Badge alertes global -->
-                          <a href="{{ url_for('consultation') }}"
-                       id="global-alert-badge"
-                       class="btn btn-ghost btn-sm btn-circle relative"
-                              onclick="return handleGlobalAlertClick(event, this)"
-                       hx-get="{{ url_for('api_notifications_badge') }}"
-                       hx-trigger="load, every 60s, refreshGlobalAlert from:body"
-                       hx-swap="innerHTML"
-                       title="Alertes">
-                        <i class="fas fa-bell text-lg"></i>
-                    </a>
-                    <!-- Toggle thème -->
-                    <label class="swap swap-rotate btn btn-ghost btn-sm btn-circle">
-                        <input type="checkbox" id="theme-toggle" onchange="toggleTheme()">
-                        <i class="fas fa-sun swap-off text-amber-400"></i>
-                        <i class="fas fa-moon swap-on text-violet-400"></i>
-                    </label>
-                    <!-- User menu -->
-                    {% if is_logged_in %}
-                    <div class="dropdown dropdown-end">
-                        <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-2">
-                            <div class="avatar placeholder">
-                                <div class="bg-emerald-600 text-white rounded-full w-7">
-                                    <span class="text-xs">{{ current_user[0] | upper if current_user else 'U' }}</span>
-                                </div>
-                            </div>
-                            <span class="hidden sm:inline text-sm">{{ current_user }}</span>
-                            <span class="badge badge-sm badge-outline px-2 py-1 hidden md:inline-flex items-center leading-none">{{ current_role }}</span>
-                        </div>
-                        <ul tabindex="0" class="dropdown-content z-[1] menu p-2 rounded-box w-48 mt-2 text-base-content bg-base-100 border-2 border-base-300" style="box-shadow: 0 10px 40px rgba(0,0,0,0.25);">
-                            <li class="menu-title">
-                                <span class="text-xs font-semibold">{{ current_user }}</span>
-                                <span class="text-[10px] opacity-60">{{ current_role }}</span>
-                            </li>
-                            <li><a href="{{ url_for('logout') }}" class="text-red-500 hover:bg-red-500/10 hover:text-red-400 font-medium"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></li>
-                        </ul>
-                    </div>
-                    {% endif %}
-                </div>
-            </header>
-
-            <!-- Contenu de la page -->
-            <main class="flex-1 px-4 py-6 w-full">
-                {% block content %}{% endblock %}
-            </main>
-
-            <!-- Footer -->
-            <footer class="footer footer-center p-4 text-base-content mt-4">
-                <aside>
-                    <p class="text-sm opacity-60"><i class="fas fa-building-columns mr-1"></i> SRID COM — Gestion des opérations financières</p>
-                    <p class="text-xs opacity-40 mt-1">© {{ now().year if now is defined else 2026 }} <a href="https://mobibenz.dz/fr" target="_blank" rel="noopener" class="link link-hover">MobiBenz</a> — Tous droits réservés</p>
-                </aside>
-            </footer>
-        </div>
+    <!-- Layout app (sidebar gauche + contenu droite) -->
+    <div class="app-shell">
+        <input id="sidebar-toggle" type="checkbox" class="sidebar-toggle">
 
         <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
-        <div class="drawer-side z-40">
-            <label for="sidebar-toggle" aria-label="close sidebar" class="drawer-overlay"></label>
-            <aside class="app-sidebar w-64 min-h-full flex flex-col">
+        <div class="app-sidebar-wrap">
+            <label for="sidebar-toggle" aria-label="close sidebar" class="mobile-sidebar-backdrop"></label>
+            <aside class="app-sidebar min-h-full flex flex-col">
 
                 <!-- Brand -->
                 <div class="sidebar-header flex items-center gap-3 py-4 px-5">
                     <img src="{{ url_for('static', filename='icon.jpg') }}" alt="SRID COM" class="h-9 w-9 rounded-lg object-contain shrink-0">
                     <div class="min-w-0">
                         <div class="font-bold text-white leading-tight">SRID COM</div>
-                        <div class="text-xs leading-tight" style="color: hsl(215 20% 38%)">Gestion Financière</div>
+                        <div class="text-xs leading-tight" style="color: var(--ui-sidebar-muted)">Gestion Financière</div>
                     </div>
                 </div>
 
@@ -598,11 +731,83 @@
                 </nav>
 
                 <!-- Sidebar footer -->
-                <div class="px-5 py-3" style="border-top: 1px solid hsl(222 40% 16%)">
-                    <p class="text-xs" style="color: hsl(215 20% 28%)">SRID COM v2.0</p>
+                <div class="px-5 py-3" style="border-top: 1px solid var(--ui-sidebar-border)">
+                    <p class="text-xs" style="color: var(--ui-sidebar-muted)">SRID COM v2.0</p>
                 </div>
 
             </aside>
+        </div>
+
+        <!-- ═══════════════════ CONTENU PRINCIPAL ═══════════════════ -->
+        <div class="app-main">
+
+            <!-- Header top -->
+            <header class="navbar bg-base-100 border-b border-base-300 shadow-sm sticky top-0 z-30 px-3 gap-2 min-h-[56px]">
+                <div class="navbar-start">
+                    <!-- Toggle sidebar (mobile uniquement) -->
+                    <label for="sidebar-toggle" class="btn btn-ghost btn-sm btn-circle lg:hidden">
+                        <i class="fas fa-bars text-lg"></i>
+                    </label>
+                    <!-- Logo mobile -->
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-ghost gap-2 font-bold lg:hidden ml-1">
+                        <img src="{{ url_for('static', filename='icon.jpg') }}" alt="SRID COM" class="h-7 rounded object-contain">
+                        <span class="text-sm">SRID COM</span>
+                    </a>
+                </div>
+                <div class="navbar-end gap-1">
+                    <!-- Badge alertes global -->
+                          <a href="{{ url_for('consultation') }}"
+                       id="global-alert-badge"
+                       class="btn btn-ghost btn-sm btn-circle relative"
+                              onclick="return handleGlobalAlertClick(event, this)"
+                       hx-get="{{ url_for('api_notifications_badge') }}"
+                       hx-trigger="load, every 60s, refreshGlobalAlert from:body"
+                       hx-swap="innerHTML"
+                       title="Alertes">
+                        <i class="fas fa-bell text-lg"></i>
+                    </a>
+                    <!-- Toggle thème -->
+                    <label class="swap swap-rotate btn btn-ghost btn-sm btn-circle">
+                        <input type="checkbox" id="theme-toggle" onchange="toggleTheme()">
+                        <i class="fas fa-sun swap-off text-amber-400"></i>
+                        <i class="fas fa-moon swap-on text-primary"></i>
+                    </label>
+                    <!-- User menu -->
+                    {% if is_logged_in %}
+                    <div class="dropdown dropdown-end">
+                        <div tabindex="0" role="button" class="btn btn-ghost btn-sm gap-2">
+                            <div class="avatar placeholder">
+                                <div class="bg-emerald-600 text-white rounded-full w-7">
+                                    <span class="text-xs">{{ current_user[0] | upper if current_user else 'U' }}</span>
+                                </div>
+                            </div>
+                            <span class="hidden sm:inline text-sm">{{ current_user }}</span>
+                            <span class="badge badge-sm badge-outline px-2 py-1 hidden md:inline-flex items-center leading-none">{{ current_role }}</span>
+                        </div>
+                        <ul tabindex="0" class="dropdown-content z-[1] menu p-2 rounded-box w-48 mt-2 text-base-content bg-base-100 border-2 border-base-300" style="box-shadow: 0 10px 40px rgba(0,0,0,0.25);">
+                            <li class="menu-title">
+                                <span class="text-xs font-semibold">{{ current_user }}</span>
+                                <span class="text-[10px] opacity-60">{{ current_role }}</span>
+                            </li>
+                            <li><a href="{{ url_for('logout') }}" class="text-red-500 hover:bg-red-500/10 hover:text-red-400 font-medium"><i class="fas fa-sign-out-alt"></i> Déconnexion</a></li>
+                        </ul>
+                    </div>
+                    {% endif %}
+                </div>
+            </header>
+
+            <!-- Contenu de la page -->
+            <main class="flex-1 px-4 py-6 w-full">
+                {% block content %}{% endblock %}
+            </main>
+
+            <!-- Footer -->
+            <footer class="footer footer-center p-4 text-base-content mt-4">
+                <aside>
+                    <p class="text-sm opacity-60"><i class="fas fa-building-columns mr-1"></i> SRID COM — Gestion des opérations financières</p>
+                    <p class="text-xs opacity-40 mt-1">© {{ now().year if now is defined else 2026 }} <a href="https://mobibenz.dz/fr" target="_blank" rel="noopener" class="link link-hover">MobiBenz</a> — Tous droits réservés</p>
+                </aside>
+            </footer>
         </div>
     </div>
 
@@ -614,6 +819,7 @@
             const next = current === 'luxury' ? 'corporate' : 'luxury';
             html.setAttribute('data-theme', next);
             localStorage.setItem('theme', next);
+            window.dispatchEvent(new CustomEvent('theme-changed', { detail: { theme: next } }));
         }
         // Charger le thème sauvegardé
         (function() {
@@ -622,10 +828,24 @@
                 document.documentElement.setAttribute('data-theme', saved);
                 if (saved === 'corporate') {
                     document.getElementById('theme-toggle').checked = true;
-                } else if (!saved) {
-                    document.documentElement.setAttribute('data-theme', 'luxury');
                 }
+            } else {
+                document.documentElement.setAttribute('data-theme', 'corporate');
+                document.getElementById('theme-toggle').checked = true;
             }
+        })();
+
+        // En mobile, ferme la sidebar après clic sur un lien de navigation.
+        (function() {
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            if (!sidebarToggle) return;
+            document.addEventListener('click', function(event) {
+                const navLink = event.target.closest('.app-sidebar .nav-link');
+                if (!navLink) return;
+                if (window.innerWidth < 1024) {
+                    sidebarToggle.checked = false;
+                }
+            });
         })();
 
         // Auto-remove toasts

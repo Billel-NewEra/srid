@@ -13,21 +13,21 @@
 <!-- Tableau -->
 <div class="space-y-3 lg:hidden">
     {% for op in operations %}
-    <div class="card bg-base-100 border border-base-300 shadow-sm cursor-pointer {% if op.statut == 'Arrive à échéance' %}!bg-cyan-500/20{% elif op.statut == 'Échu' %}!bg-rose-500/20{% endif %}"
+    <div class="card bg-base-100 border border-base-300 shadow-sm cursor-pointer {% if op.statut == 'Arrive à échéance' %}!bg-amber-500/15{% elif op.statut == 'Échu' %}!bg-red-500/15{% endif %}"
          hx-get="{{ url_for('api_operation_detail', op_id=op.id) }}"
          hx-target="#modal-content" hx-swap="innerHTML">
         <div class="card-body p-3">
             <div class="flex items-start justify-between gap-2">
                 <div class="min-w-0">
-                    <div class="font-semibold break-words {% if op.statut == 'Arrive à échéance' %}border-l-4 border-cyan-400 pl-2{% elif op.statut == 'Échu' %}border-l-4 border-rose-400 pl-2{% endif %}">{{ op.client }}</div>
+                    <div class="font-semibold break-words {% if op.statut == 'Arrive à échéance' %}border-l-4 border-amber-400 pl-2{% elif op.statut == 'Échu' %}border-l-4 border-red-400 pl-2{% endif %}">{{ op.client }}</div>
                     <div class="text-xs opacity-70 mt-1">{{ op.societe }}{% if op.banque %} • {{ op.banque }}{% endif %}</div>
                 </div>
                 <span class="badge badge-sm font-semibold whitespace-nowrap
-                    {% if op.type_operation == 'Chèque' %}bg-blue-600 text-white border-blue-700
-                    {% elif op.type_operation == 'Virement' %}bg-purple-600 text-white border-purple-700
-                    {% elif op.type_operation == 'Versement' %}bg-orange-500 text-white border-orange-600
-                    {% elif op.type_operation == 'Transfer' %}bg-teal-600 text-white border-teal-700
-                    {% else %}bg-slate-500 text-white border-slate-600{% endif %}">{{ op.type_operation }}</span>
+                    {% if op.type_operation == 'Chèque' %}badge-primary
+                    {% elif op.type_operation == 'Virement' %}badge-secondary
+                    {% elif op.type_operation == 'Versement' %}badge-warning
+                    {% elif op.type_operation == 'Transfer' %}badge-accent
+                    {% else %}badge-neutral{% endif %}">{{ op.type_operation }}</span>
             </div>
 
             <div class="grid grid-cols-2 gap-x-3 gap-y-2 text-xs sm:text-sm">
@@ -44,9 +44,9 @@
                     <div>
                         {% if op.type_operation == 'Chèque' and op.type_detail == 'À échéance' and op.date_encaissement %}
                             {% if op.statut == 'Arrive à échéance' %}
-                                <span class="text-cyan-400 font-semibold">{{ op.date_encaissement.strftime('%d/%m/%Y') }}</span>
+                                <span class="text-warning font-semibold">{{ op.date_encaissement.strftime('%d/%m/%Y') }}</span>
                             {% elif op.statut == 'Échu' %}
-                                <span class="text-rose-400 font-semibold">{{ op.date_encaissement.strftime('%d/%m/%Y') }}</span>
+                                <span class="text-error font-semibold">{{ op.date_encaissement.strftime('%d/%m/%Y') }}</span>
                             {% else %}
                                 {{ op.date_encaissement.strftime('%d/%m/%Y') }}
                             {% endif %}
@@ -69,13 +69,13 @@
 
             <div class="flex items-center justify-between gap-2 pt-2">
                 <span class="badge badge-sm font-semibold whitespace-nowrap {% if is_admin %}cursor-pointer hover:brightness-110{% endif %}
-                    {% if op.statut == 'Encaissé' %}bg-emerald-600 text-white border-emerald-700
-                    {% elif op.statut == 'Rejeté' %}bg-red-600 text-white border-red-700
-                    {% elif op.statut == 'Échéance' %}bg-amber-500 text-white border-amber-600
-                    {% elif op.statut == 'En cours' %}bg-sky-600 text-white border-sky-700
-                    {% elif op.statut == 'Arrive à échéance' %}bg-orange-500 text-white border-orange-600
-                    {% elif op.statut == 'Échu' %}bg-violet-600 text-white border-violet-700
-                    {% else %}bg-gray-500 text-white border-gray-600{% endif %}"
+                    {% if op.statut == 'Encaissé' %}badge-success
+                    {% elif op.statut == 'Rejeté' %}badge-error
+                    {% elif op.statut == 'Échéance' %}badge-warning
+                    {% elif op.statut == 'En cours' %}badge-primary
+                    {% elif op.statut == 'Arrive à échéance' %}badge-accent
+                    {% elif op.statut == 'Échu' %}badge-secondary
+                    {% else %}badge-neutral{% endif %}"
                     {% if is_admin %}
                     data-tip="Changer statut"
                     data-status-edit
@@ -133,20 +133,20 @@
     <tbody>
         {% for op in operations %}
         <tr class="cursor-pointer
-            {% if op.statut == 'Arrive à échéance' %}!bg-cyan-500/20 hover:!bg-cyan-500/35
-            {% elif op.statut == 'Échu' %}!bg-rose-500/20 hover:!bg-rose-500/35
+            {% if op.statut == 'Arrive à échéance' %}!bg-amber-500/15 hover:!bg-amber-500/25
+            {% elif op.statut == 'Échu' %}!bg-red-500/15 hover:!bg-red-500/25
             {% else %}hover:bg-base-200{% endif %}"
             hx-get="{{ url_for('api_operation_detail', op_id=op.id) }}"
             hx-target="#modal-content" hx-swap="innerHTML">
-            <td class="text-sm {% if op.statut == 'Arrive à échéance' %}border-l-4 border-cyan-400{% elif op.statut == 'Échu' %}border-l-4 border-rose-400{% endif %}">{{ op.societe }}</td>
+            <td class="text-sm {% if op.statut == 'Arrive à échéance' %}border-l-4 border-amber-400{% elif op.statut == 'Échu' %}border-l-4 border-red-400{% endif %}">{{ op.societe }}</td>
             <td class="max-w-52 truncate">{{ op.client }}</td>
             <td>
                 <span class="badge badge-sm font-semibold whitespace-nowrap
-                    {% if op.type_operation == 'Chèque' %}bg-blue-600 text-white border-blue-700
-                    {% elif op.type_operation == 'Virement' %}bg-purple-600 text-white border-purple-700
-                    {% elif op.type_operation == 'Versement' %}bg-orange-500 text-white border-orange-600
-                    {% elif op.type_operation == 'Transfer' %}bg-teal-600 text-white border-teal-700
-                    {% else %}bg-slate-500 text-white border-slate-600{% endif %}">
+                    {% if op.type_operation == 'Chèque' %}badge-primary
+                    {% elif op.type_operation == 'Virement' %}badge-secondary
+                    {% elif op.type_operation == 'Versement' %}badge-warning
+                    {% elif op.type_operation == 'Transfer' %}badge-accent
+                    {% else %}badge-neutral{% endif %}">
                     {{ op.type_operation }}
                 </span>
             </td>
@@ -158,9 +158,9 @@
             <td class="whitespace-nowrap text-xs opacity-70">
                 {% if op.type_operation == 'Chèque' and op.type_detail == 'À échéance' and op.date_encaissement %}
                     {% if op.statut == 'Arrive à échéance' %}
-                        <span class="text-cyan-400 font-semibold"><i class="fas fa-clock mr-1"></i>{{ op.date_encaissement.strftime('%d/%m/%Y') }}</span>
+                        <span class="text-warning font-semibold"><i class="fas fa-clock mr-1"></i>{{ op.date_encaissement.strftime('%d/%m/%Y') }}</span>
                     {% elif op.statut == 'Échu' %}
-                        <span class="text-rose-400 font-semibold"><i class="fas fa-exclamation-circle mr-1"></i>{{ op.date_encaissement.strftime('%d/%m/%Y') }}</span>
+                        <span class="text-error font-semibold"><i class="fas fa-exclamation-circle mr-1"></i>{{ op.date_encaissement.strftime('%d/%m/%Y') }}</span>
                     {% else %}
                         {{ op.date_encaissement.strftime('%d/%m/%Y') }}
                     {% endif %}
@@ -169,13 +169,13 @@
             <td>
                 <div class="flex items-center gap-1">
                 <span class="badge badge-sm font-semibold whitespace-nowrap {% if is_admin %}cursor-pointer hover:brightness-110{% endif %}
-                    {% if op.statut == 'Encaissé' %}bg-emerald-600 text-white border-emerald-700
-                    {% elif op.statut == 'Rejeté' %}bg-red-600 text-white border-red-700
-                    {% elif op.statut == 'Échéance' %}bg-amber-500 text-white border-amber-600
-                    {% elif op.statut == 'En cours' %}bg-sky-600 text-white border-sky-700
-                    {% elif op.statut == 'Arrive à échéance' %}bg-orange-500 text-white border-orange-600
-                    {% elif op.statut == 'Échu' %}bg-violet-600 text-white border-violet-700
-                    {% else %}bg-gray-500 text-white border-gray-600{% endif %}"
+                    {% if op.statut == 'Encaissé' %}badge-success
+                    {% elif op.statut == 'Rejeté' %}badge-error
+                    {% elif op.statut == 'Échéance' %}badge-warning
+                    {% elif op.statut == 'En cours' %}badge-primary
+                    {% elif op.statut == 'Arrive à échéance' %}badge-accent
+                    {% elif op.statut == 'Échu' %}badge-secondary
+                    {% else %}badge-neutral{% endif %}"
                     {% if is_admin %}
                     data-tip="Changer statut"
                     data-status-edit
