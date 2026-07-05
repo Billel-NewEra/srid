@@ -120,19 +120,19 @@
 {% else %}<i class="fas fa-sort ml-1 opacity-30"></i>{% endif %}
 {% endmacro %}
 
-<table class="table table-sm w-full min-w-[860px] table-fixed" id="operations-table">
+<table class="table table-sm w-full min-w-[1150px]" id="operations-table">
     <thead>
         <tr class="bg-base-200">
-            <th class="w-[15%] cursor-pointer select-none" onclick="sortOpsTable('client')">Client{{ sort_icon('client', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="w-[8%]">Type</th>
-            <th class="w-[10%] cursor-pointer select-none" onclick="sortOpsTable('banque')">Banque{{ sort_icon('banque', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="w-[9%]">N° Pièce</th>
-            <th class="w-[10%] cursor-pointer select-none" onclick="sortOpsTable('montant')">Montant{{ sort_icon('montant', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="w-[11%] cursor-pointer select-none" onclick="sortOpsTable('date_operation')">Date dép/vir{{ sort_icon('date_operation', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="w-[9%] cursor-pointer select-none" onclick="sortOpsTable('date_reception')">Date réc{{ sort_icon('date_reception', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="w-[12%] cursor-pointer select-none" onclick="sortOpsTable('date_encaissement')">Date échéance{{ sort_icon('date_encaissement', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="w-[10%] cursor-pointer select-none" onclick="sortOpsTable('statut')">Statut{{ sort_icon('statut', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            {% if can_write or can_delete %}<th class="w-[6%] text-center">Actions</th>{% endif %}
+            <th class="cursor-pointer select-none" onclick="sortOpsTable('client')">Client{{ sort_icon('client', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th>Type</th>
+            <th class="cursor-pointer select-none" onclick="sortOpsTable('banque')">Banque{{ sort_icon('banque', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th>N° Pièce</th>
+            <th class="cursor-pointer select-none" onclick="sortOpsTable('montant')">Montant{{ sort_icon('montant', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortOpsTable('date_operation')">Date dép/vir{{ sort_icon('date_operation', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortOpsTable('date_reception')">Date réc{{ sort_icon('date_reception', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortOpsTable('date_encaissement')">Date échéance{{ sort_icon('date_encaissement', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortOpsTable('statut')">Statut{{ sort_icon('statut', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            {% if can_write or can_delete %}<th class="text-center">Actions</th>{% endif %}
         </tr>
     </thead>
     <tbody>
@@ -162,7 +162,7 @@
             </td>
             <td>
                 <div class="flex items-center gap-1">
-                <span class="badge badge-sm font-semibold whitespace-nowrap {% if is_admin %}cursor-pointer hover:brightness-110{% endif %}
+                <span class="badge badge-sm font-semibold text-[0.6rem] leading-tight whitespace-nowrap {% if is_admin %}cursor-pointer hover:brightness-110{% endif %}
                     {% if op.statut == 'Encaissé' %}badge-success
                     {% elif op.statut == 'Rejeté' %}badge-error
                     {% elif op.statut == 'Échéance' %}badge-warning
@@ -177,7 +177,7 @@
                     data-current-status="{{ op.statut }}"
                     data-post-url="{{ url_for('api_update_operation_status', op_id=op.id) }}"
                     {% endif %}>
-                    {{ "En cours d'encaissement" if op.statut == 'En cours' else op.statut }}
+                    {% if op.statut == 'En cours' %}En cours d'encaissement{% else %}{{ op.statut }}{% endif %}
                 </span>
                 </div>
             </td>
