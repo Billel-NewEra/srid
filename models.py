@@ -149,18 +149,6 @@ class CommandeLogistique(db.Model):
     @property
     def statut(self):
         """Machine à états pour le suivi logistique (ordre de priorité strict)."""
-        today = date.today()
-        if self.date_valeur:
-            return 'PAYÉ'
-        if self.date_paiement:
-            return 'PAIEMENT EN COURS'
-        if self.date_echeance:
-            if self.date_echeance < today:
-                return 'ÉCHU'
-            days_left = (self.date_echeance - today).days
-            if days_left <= 7:
-                return 'ARRIVE À ÉCHÉANCE'
-            return 'ÉCHÉANCE'
         if self.date_arrivee_depot:
             return 'DAD'
         if self.date_d10:
@@ -171,6 +159,35 @@ class CommandeLogistique(db.Model):
             return 'ETD'
         return 'ARRIVAGE'
 
+
+class FraisLogistique(db.Model):
+    __tablename__ = 'frais_logistique'
+
+    id                = db.Column(db.Integer, primary_key=True)
+    bon_id            = db.Column(db.Integer, db.ForeignKey('bons_commande.id'), index=True)
+    ref_log           = db.Column(db.String(20))
+    societe           = db.Column(db.String(50), nullable=False, index=True)
+    annee             = db.Column(db.String(4))
+    fournisseur       = db.Column(db.String(200))
+    produit           = db.Column(db.String(200))
+    emballage         = db.Column(db.String(100))
+    quantite          = db.Column(db.Float)
+    tva               = db.Column(db.Float)
+    montant_eur       = db.Column(db.Float)
+    cours             = db.Column(db.Float)
+    remarque          = db.Column(db.Text)
+    champ1            = db.Column(db.String(200))
+    champ2            = db.Column(db.String(200))
+    champ3            = db.Column(db.String(200))
+    cree_par          = db.Column(db.String(100))
+    date_creation     = db.Column(db.DateTime, default=datetime.utcnow)
+    date_modification = db.Column(db.DateTime, onupdate=datetime.utcnow)
+
+    @property
+    def montant_da(self):
+        if self.montant_eur and self.cours:
+            return round(self.montant_eur * self.cours, 2)
+        return None
 
 
 class BonCommande(db.Model):

@@ -120,53 +120,41 @@
 {% else %}<i class="fas fa-sort ml-1 opacity-30"></i>{% endif %}
 {% endmacro %}
 
-<table class="table table-sm table-zebra w-full min-w-[860px]" id="operations-table">
+<table class="table table-sm w-full min-w-[860px] table-fixed" id="operations-table">
     <thead>
         <tr class="bg-base-200">
-            <th class="cursor-pointer select-none" onclick="sortOpsTable('societe')">Société{{ sort_icon('societe', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="cursor-pointer select-none" onclick="sortOpsTable('client')">Client{{ sort_icon('client', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th>Type</th>
-            <th class="cursor-pointer select-none" onclick="sortOpsTable('banque')">Banque{{ sort_icon('banque', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th>N° Pièce</th>
-            <th class="text-right cursor-pointer select-none" onclick="sortOpsTable('montant')">Montant{{ sort_icon('montant', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="cursor-pointer select-none" onclick="sortOpsTable('date_operation')">Date dép/vir{{ sort_icon('date_operation', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="cursor-pointer select-none" onclick="sortOpsTable('date_reception')">Date réc{{ sort_icon('date_reception', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="cursor-pointer select-none" onclick="sortOpsTable('date_encaissement')">Date échéance{{ sort_icon('date_encaissement', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="cursor-pointer select-none" onclick="sortOpsTable('statut')">Statut{{ sort_icon('statut', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            {% if can_write or can_delete %}<th class="text-center">Actions</th>{% endif %}
+            <th class="w-[15%] cursor-pointer select-none" onclick="sortOpsTable('client')">Client{{ sort_icon('client', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="w-[8%]">Type</th>
+            <th class="w-[10%] cursor-pointer select-none" onclick="sortOpsTable('banque')">Banque{{ sort_icon('banque', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="w-[9%]">N° Pièce</th>
+            <th class="w-[10%] cursor-pointer select-none" onclick="sortOpsTable('montant')">Montant{{ sort_icon('montant', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="w-[11%] cursor-pointer select-none" onclick="sortOpsTable('date_operation')">Date dép/vir{{ sort_icon('date_operation', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="w-[9%] cursor-pointer select-none" onclick="sortOpsTable('date_reception')">Date réc{{ sort_icon('date_reception', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="w-[12%] cursor-pointer select-none" onclick="sortOpsTable('date_encaissement')">Date échéance{{ sort_icon('date_encaissement', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="w-[10%] cursor-pointer select-none" onclick="sortOpsTable('statut')">Statut{{ sort_icon('statut', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            {% if can_write or can_delete %}<th class="w-[6%] text-center">Actions</th>{% endif %}
         </tr>
     </thead>
     <tbody>
         {% for op in operations %}
         <tr class="cursor-pointer
-            {% if op.statut == 'Arrive à échéance' %}!bg-amber-500/15 hover:!bg-amber-500/25
-            {% elif op.statut == 'Échu' %}!bg-red-500/15 hover:!bg-red-500/25
-            {% else %}hover:bg-base-200{% endif %}"
+            {% if op.statut == 'Encaissé' %}{% else %}hover:bg-base-200{% endif %}"
+            {% if op.statut == 'Encaissé' %}style="background-color: rgba(34,197,94,0.13) !important;"{% endif %}
             hx-get="{{ url_for('api_operation_detail', op_id=op.id) }}"
             hx-target="#modal-content" hx-swap="innerHTML">
-            <td class="text-sm {% if op.statut == 'Arrive à échéance' %}border-l-4 border-amber-400{% elif op.statut == 'Échu' %}border-l-4 border-red-400{% endif %}">{{ op.societe }}</td>
-            <td class="max-w-52 truncate">{{ op.client }}</td>
-            <td>
-                <span class="badge badge-sm font-semibold whitespace-nowrap
-                    {% if op.type_operation == 'Chèque' %}badge-primary
-                    {% elif op.type_operation == 'Virement' %}badge-secondary
-                    {% elif op.type_operation == 'Versement' %}badge-warning
-                    {% elif op.type_operation == 'Transfer' %}badge-accent
-                    {% else %}badge-neutral{% endif %}">
-                    {{ op.type_operation }}
-                </span>
-            </td>
-            <td class="text-sm">{{ op.banque or '-' }}</td>
-            <td class="text-sm">{{ op.numero_piece or '-' }}</td>
-            <td class="text-right font-mono font-semibold">{{ op.montant|currency }}</td>
+            <td class="truncate">{{ op.client }}</td>
+            <td class="text-sm truncate">{{ op.type_operation }}</td>
+            <td class="text-sm truncate">{{ op.banque or '-' }}</td>
+            <td class="text-sm truncate">{{ op.numero_piece or '-' }}</td>
+            <td class="whitespace-nowrap font-semibold">{{ op.montant|currency }}</td>
             <td class="whitespace-nowrap">{{ op.date_operation.strftime('%d/%m/%Y') if op.date_operation else '-' }}</td>
             <td class="whitespace-nowrap text-xs opacity-70">{{ op.date_reception.strftime('%d/%m/%Y') if op.type_operation == 'Chèque' and op.date_reception else '-' }}</td>
-            <td class="whitespace-nowrap text-xs opacity-70">
+            <td class="whitespace-nowrap text-xs {% if op.statut not in ['Arrive à échéance', 'Échu'] %}opacity-70{% endif %}">
                 {% if op.type_operation == 'Chèque' and op.type_detail == 'À échéance' and op.date_encaissement %}
                     {% if op.statut == 'Arrive à échéance' %}
-                        <span class="text-warning font-semibold"><i class="fas fa-clock mr-1"></i>{{ op.date_encaissement.strftime('%d/%m/%Y') }}</span>
+                        <span class="text-amber-700 font-semibold"><i class="fas fa-triangle-exclamation text-amber-500 mr-1"></i>{{ op.date_encaissement.strftime('%d/%m/%Y') }}</span>
                     {% elif op.statut == 'Échu' %}
-                        <span class="text-error font-semibold"><i class="fas fa-exclamation-circle mr-1"></i>{{ op.date_encaissement.strftime('%d/%m/%Y') }}</span>
+                        <span class="text-red-700 font-bold"><i class="fas fa-circle-exclamation text-red-600 mr-1"></i>{{ op.date_encaissement.strftime('%d/%m/%Y') }}</span>
                     {% else %}
                         {{ op.date_encaissement.strftime('%d/%m/%Y') }}
                     {% endif %}

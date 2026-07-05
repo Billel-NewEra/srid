@@ -1,0 +1,115 @@
+<div class="flex justify-between items-center mb-3 text-sm opacity-70" data-current-frais-page="{{ frais_page }}">
+    <span><span class="font-semibold">{{ frais_total }}</span> entree{{ 's' if frais_total != 1 else '' }}</span>
+</div>
+
+<div class="hidden lg:block overflow-x-auto">
+{% macro sort_icon(col, sort_col, sort_dir) %}
+{% if sort_col == col %}
+    {% if sort_dir == 'asc' %}<i class="fas fa-sort-up ml-1"></i>{% else %}<i class="fas fa-sort-down ml-1"></i>{% endif %}
+{% else %}<i class="fas fa-sort ml-1 opacity-30"></i>{% endif %}
+{% endmacro %}
+
+<table class="table table-sm w-full min-w-[980px]">
+    <thead>
+        <tr class="bg-base-200">
+            <th class="cursor-pointer select-none" onclick="sortFraisTable('ref_log')">No Bon{{ sort_icon('ref_log', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortFraisTable('fournisseur')">Fournisseur{{ sort_icon('fournisseur', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
+            <th>Produit</th>
+            <th class="cursor-pointer select-none" onclick="sortFraisTable('montant_eur')">Montant EUR{{ sort_icon('montant_eur', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
+            <th>Cours</th>
+            <th>Montant DA</th>
+            <th class="cursor-pointer select-none" onclick="sortFraisTable('champ1')">champ1{{ sort_icon('champ1', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortFraisTable('champ2')">champ2{{ sort_icon('champ2', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortFraisTable('champ3')">champ3{{ sort_icon('champ3', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
+            <th>Remarque</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for item in frais_items %}
+        <tr>
+            <td class="font-mono text-xs">{{ item.ref_log or '-' }}</td>
+            <td>{{ item.fournisseur or '-' }}</td>
+            <td>{{ item.produit or '-' }}</td>
+            <td class="font-semibold">{{ item.montant_eur|currency if item.montant_eur is not none else '-' }}</td>
+            <td>{{ ('%.4f'|format(item.cours)) if item.cours is not none else '-' }}</td>
+            <td>{{ item.montant_da|currency if item.montant_da is not none else '-' }}</td>
+            <td>{{ item.champ1 or '-' }}</td>
+            <td>{{ item.champ2 or '-' }}</td>
+            <td>{{ item.champ3 or '-' }}</td>
+            <td class="max-w-56 truncate">{{ item.remarque or '-' }}</td>
+        </tr>
+    {% else %}
+        <tr><td colspan="10" class="text-center py-8 opacity-50">Aucune entree frais</td></tr>
+    {% endfor %}
+    </tbody>
+</table>
+</div>
+
+<div class="lg:hidden space-y-2">
+{% for item in frais_items %}
+    <div class="card bg-base-100 border border-base-300 shadow-sm">
+        <div class="card-body p-3 text-sm">
+            <div class="font-semibold">{{ item.fournisseur or '-' }}</div>
+            <div class="text-xs opacity-70">{{ item.ref_log or '-' }}</div>
+            <div class="grid grid-cols-2 gap-2 mt-2 text-xs">
+                <div><span class="opacity-50">Montant EUR</span><br>{{ item.montant_eur|currency if item.montant_eur is not none else '-' }}</div>
+                <div><span class="opacity-50">Montant DA</span><br>{{ item.montant_da|currency if item.montant_da is not none else '-' }}</div>
+                <div><span class="opacity-50">champ1</span><br>{{ item.champ1 or '-' }}</div>
+                <div><span class="opacity-50">champ2</span><br>{{ item.champ2 or '-' }}</div>
+                <div><span class="opacity-50">champ3</span><br>{{ item.champ3 or '-' }}</div>
+            </div>
+        </div>
+    </div>
+{% else %}
+    <div class="text-center py-8 opacity-50">Aucune entree frais</div>
+{% endfor %}
+</div>
+
+{% if frais_total_pages > 1 %}
+<div class="flex justify-center mt-4">
+    <div class="join">
+        {% if frais_page > 1 %}
+        <button class="join-item btn btn-sm" onclick="goToFraisPage({{ frais_page - 1 }})"><i class="fas fa-chevron-left"></i></button>
+        {% endif %}
+        {% for p in range(1, frais_total_pages + 1) %}
+            {% if p == frais_page %}
+            <button class="join-item btn btn-sm btn-primary">{{ p }}</button>
+            {% elif p <= 3 or p >= frais_total_pages - 1 or (p >= frais_page - 1 and p <= frais_page + 1) %}
+            <button class="join-item btn btn-sm" onclick="goToFraisPage({{ p }})">{{ p }}</button>
+            {% elif p == 4 or p == frais_total_pages - 2 %}
+            <button class="join-item btn btn-sm btn-disabled">...</button>
+            {% endif %}
+        {% endfor %}
+        {% if frais_page < frais_total_pages %}
+        <button class="join-item btn btn-sm" onclick="goToFraisPage({{ frais_page + 1 }})"><i class="fas fa-chevron-right"></i></button>
+        {% endif %}
+    </div>
+</div>
+{% endif %}
+
+<script>
+var _fraisSort = '{{ frais_sort_col|default("") }}';
+var _fraisDir = '{{ frais_sort_dir|default("desc") }}';
+
+function sortFraisTable(col) {
+    if (_fraisSort === col) {
+        _fraisDir = _fraisDir === 'asc' ? 'desc' : 'asc';
+    } else {
+        _fraisSort = col;
+        _fraisDir = 'desc';
+    }
+    goToFraisPage(1);
+}
+
+function goToFraisPage(page) {
+    var params = new URLSearchParams();
+    var search = document.querySelector('[name="search"]');
+    var societe = document.querySelector('[name="societe"]');
+    if (search && search.value) params.set('search', search.value);
+    if (societe && societe.value) params.set('societe', societe.value);
+    params.set('frais_page', String(page));
+    if (_fraisSort) params.set('frais_sort', _fraisSort);
+    if (_fraisDir) params.set('frais_dir', _fraisDir);
+    htmx.ajax('GET', '{{ url_for("api_logistique_frais_list") }}?' + params.toString(), {target: '#frais-table', swap: 'innerHTML'});
+}
+</script>

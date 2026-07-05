@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Gestion des commandes - SRID COM{% endblock %}
+{% block title %}{% if selected_section == 'frais' %}Frais - SRID COM{% else %}Gestion des commandes - SRID COM{% endif %}{% endblock %}
 
 {% block content %}
 <div class="fade-in">
@@ -7,17 +7,25 @@
     <!-- En-tête -->
     <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
         <div>
+            {% if selected_section == 'frais' %}
+            <h1 class="text-2xl font-bold page-title">
+                <i class="fas fa-receipt text-teal-400 mr-2"></i>Frais
+            </h1>
+            <p class="text-sm page-subtitle mt-1">Table des frais logistiques — {{ frais_total }} entrée{{ 's' if frais_total != 1 else '' }}</p>
+            {% else %}
             <h1 class="text-2xl font-bold page-title">
                 <i class="fas fa-truck text-teal-400 mr-2"></i>Gestion des commandes
             </h1>
             <p class="text-sm page-subtitle mt-1">Suivi logistique des importations — {{ total }} entrée{{ 's' if total != 1 else '' }}</p>
+            {% endif %}
         </div>
         {% if can_write %}
         {# Bouton Nouvelle entrée supprimé : les entrées sont créées automatiquement depuis les bons de commande #}
         {% endif %}
     </div>
 
-    <!-- Notifications échéances logistique -->
+    <!-- Notifications échéances logistique (uniquement section gestion) -->
+    {% if selected_section != 'frais' %}
     <div id="logistique-notifications-panel"
          hx-get="{{ url_for('api_logistique_notifications') }}"
          hx-trigger="refreshGlobalAlert from:body"
@@ -25,15 +33,17 @@
          class="mb-4">
         {% include 'partials/logistique_notifications_panel.html' %}
     </div>
+    {% endif %}
 
+    {% if selected_section != 'frais' %}
     <!-- KPI Cards -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-5">
         {% set kpi_config = [
             ('ARRIVAGE',          'fas fa-box-open',           'text-neutral',    kpis.get('ARRIVAGE', 0)),
-            ('ETD',               'fas fa-file-invoice',       'text-info',       kpis.get('ETD', 0)),
+            ('ETD',               'fas fa-file-invoice',       'text-purple-500', kpis.get('ETD', 0)),
             ('DAP',               'fas fa-ship',               'text-teal-400',   kpis.get('DAP', 0)),
             ('D10',               'fas fa-list-check',         'text-primary',    kpis.get('D10', 0)),
-            ('DAD',               'fas fa-warehouse',          'text-success',    kpis.get('DAD', 0)),
+            ('DAD',               'fas fa-warehouse',          'text-amber-500',  kpis.get('DAD', 0)),
         ] %}
         {% for label, icon, color, count in kpi_config %}
         <a href="{{ url_for('logistique_gestion', statut=label, societe=societe) }}"
@@ -46,6 +56,7 @@
         </a>
         {% endfor %}
     </div>
+    {% endif %}
 
     <!-- Filtres HTMX -->
     <div class="card bg-base-100 shadow mb-4">
@@ -55,6 +66,15 @@
                 <div class="form-control">
                     <div class="input-group flex">
                         <span class="bg-primary text-primary-content px-3 flex items-center rounded-l-lg"><i class="fas fa-search"></i></span>
+                        {% if selected_section == 'frais' %}
+                        <input type="text" name="search" value="{{ search }}"
+                               placeholder="Réf. log / Fournisseur / Produit / Emballage..."
+                               class="input input-bordered flex-1"
+                               hx-get="{{ url_for('api_logistique_frais_list') }}"
+                               hx-trigger="keyup changed delay:300ms"
+                               hx-target="#frais-table"
+                               hx-include="[name='societe']">
+                        {% else %}
                         <input type="text" name="search" value="{{ search }}"
                                placeholder="Fournisseur / Produit..."
                                class="input input-bordered flex-1"
@@ -62,11 +82,24 @@
                                hx-trigger="keyup changed delay:300ms"
                                hx-target="#gestion-table"
                                hx-include="[name='societe'],[name='statut']">
+                        {% endif %}
                     </div>
                 </div>
 
                 <!-- Filtres -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-2 gap-3">
+                    {% if selected_section == 'frais' %}
+                    <select name="societe" class="select select-bordered select-sm w-full"
+                            hx-get="{{ url_for('api_logistique_frais_list') }}"
+                            hx-trigger="change"
+                            hx-target="#frais-table"
+                            hx-include="[name='search']">
+                        <option value="">Toutes sociétés</option>
+                        <option value="SRID" {% if societe == 'SRID' %}selected{% endif %}>SRID</option>
+                        <option value="SRID GENETICS" {% if societe == 'SRID GENETICS' %}selected{% endif %}>SRID GENETICS</option>
+                    </select>
+                    <div class="hidden sm:block"></div>
+                    {% else %}
                     <select name="societe" class="select select-bordered select-sm w-full"
                             hx-get="{{ url_for('api_logistique_gestion_list') }}"
                             hx-trigger="change"
@@ -86,16 +119,25 @@
                         <option value="{{ s }}" {% if statut_f == s %}selected{% endif %}>{{ s }}</option>
                         {% endfor %}
                     </select>
+                    {% endif %}
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Table (HTMX target) -->
+    <!-- Sous-sections Gestion / Frais -->
     <div class="card bg-base-100 shadow">
         <div class="card-body p-4">
-            <div class="overflow-x-auto" id="gestion-table">
-                {% include 'partials/logistique_gestion_table.html' %}
+            <div id="section-gestion" class="overflow-x-auto {% if selected_section == 'frais' %}hidden{% endif %}">
+                <div id="gestion-table">
+                    {% include 'partials/logistique_gestion_table.html' %}
+                </div>
+            </div>
+
+            <div id="section-frais" class="overflow-x-auto {% if selected_section != 'frais' %}hidden{% endif %}">
+                <div id="frais-table">
+                    {% include 'partials/logistique_frais_table.html' %}
+                </div>
             </div>
         </div>
     </div>
@@ -192,8 +234,9 @@ function sortGestionTable(col) {
     if (statut && statut.value) params.set('statut', statut.value);
     params.set('sort', _gestionSort);
     params.set('dir', _gestionDir);
-    htmx.ajax('GET', '{{ url_for("api_logistique_gestion_list") }}?' + params.toString(), '#gestion-table');
+    htmx.ajax('GET', '{{ url_for("api_logistique_gestion_list") }}?' + params.toString(), {target: '#gestion-table', swap: 'innerHTML'});
 }
+
 
 // ── Mécanique detail → edit (comme bons de commandes) ──────────────────────
 var _detailLogEl = null;
@@ -443,5 +486,6 @@ document.querySelectorAll('[name="montant_eur"],[name="cours"]').forEach(el => {
         if (modalId) updateMontantDA(modalId);
     });
 });
+
 </script>
 {% endblock %}

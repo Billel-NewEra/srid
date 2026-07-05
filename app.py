@@ -1,6 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session, flash, send_file, send_from_directory, make_response
 from config import Config
-from models import db, Operation, User, AuditLog, ClientLabel, RemettantLabel, CommandeLogistique, BonCommande, LigneCommande, Fournisseur, Product
+from models import db, Operation, User, AuditLog, ClientLabel, RemettantLabel, CommandeLogistique, FraisLogistique, BonCommande, LigneCommande, Fournisseur, Product
 from datetime import datetime, date, timedelta
 from sqlalchemy import or_, func, extract, desc, case
 from functools import wraps
@@ -853,7 +853,7 @@ def saisie():
             date_sortie=date_sortie,
             client=request.form.get('client'),
             remettant=request.form.get('remettant_commercial') or request.form.get('remettant') or None,
-            montant=float(request.form.get('montant', 0)),
+            montant=abs(float(request.form.get('montant', 0))),
             banque=_normalize_bank_name(request.form.get('banque')),
             numero_piece=request.form.get('numero_piece') or None,
             statut=statut_auto,
@@ -915,7 +915,7 @@ def edit_operation(op_id):
         op.date_sortie = date_sortie
         op.client = request.form.get('client')
         op.remettant = request.form.get('remettant_commercial') or request.form.get('remettant') or None
-        op.montant = float(request.form.get('montant', 0))
+        op.montant = abs(float(request.form.get('montant', 0)))
         op.banque = _normalize_bank_name(request.form.get('banque'))
         op.numero_piece = request.form.get('numero_piece') or None
         op.statut = _compute_statut(type_operation, type_cheque)
@@ -1137,68 +1137,25 @@ def api_ref_fournisseur_delete(item_id):
 
 def _log_kpis():
     """Calcule les KPIs logistique par statut via SQL (sans charger tous les objets)."""
-    today = date.today()
-    alert_date = today + timedelta(days=7)
-
-    # Compter en SQL selon la logique de la propriété .statut
-    paye = CommandeLogistique.query.filter(CommandeLogistique.date_valeur.isnot(None)).count()
-    paiement_en_cours = CommandeLogistique.query.filter(
-        CommandeLogistique.date_valeur.is_(None),
-        CommandeLogistique.date_paiement.isnot(None)
-    ).count()
-    echu = CommandeLogistique.query.filter(
-        CommandeLogistique.date_valeur.is_(None),
-        CommandeLogistique.date_paiement.is_(None),
-        CommandeLogistique.date_echeance.isnot(None),
-        CommandeLogistique.date_echeance < today
-    ).count()
-    arrive_echeance = CommandeLogistique.query.filter(
-        CommandeLogistique.date_valeur.is_(None),
-        CommandeLogistique.date_paiement.is_(None),
-        CommandeLogistique.date_echeance.isnot(None),
-        CommandeLogistique.date_echeance >= today,
-        CommandeLogistique.date_echeance <= alert_date
-    ).count()
-    echeance = CommandeLogistique.query.filter(
-        CommandeLogistique.date_valeur.is_(None),
-        CommandeLogistique.date_paiement.is_(None),
-        CommandeLogistique.date_echeance.isnot(None),
-        CommandeLogistique.date_echeance > alert_date
-    ).count()
     dad = CommandeLogistique.query.filter(
-        CommandeLogistique.date_valeur.is_(None),
-        CommandeLogistique.date_paiement.is_(None),
-        CommandeLogistique.date_echeance.is_(None),
         CommandeLogistique.date_arrivee_depot.isnot(None)
     ).count()
     d10 = CommandeLogistique.query.filter(
-        CommandeLogistique.date_valeur.is_(None),
-        CommandeLogistique.date_paiement.is_(None),
-        CommandeLogistique.date_echeance.is_(None),
         CommandeLogistique.date_arrivee_depot.is_(None),
         CommandeLogistique.date_d10.isnot(None)
     ).count()
     dap = CommandeLogistique.query.filter(
-        CommandeLogistique.date_valeur.is_(None),
-        CommandeLogistique.date_paiement.is_(None),
-        CommandeLogistique.date_echeance.is_(None),
         CommandeLogistique.date_arrivee_depot.is_(None),
         CommandeLogistique.date_d10.is_(None),
         CommandeLogistique.date_arrivee.isnot(None)
     ).count()
     etd = CommandeLogistique.query.filter(
-        CommandeLogistique.date_valeur.is_(None),
-        CommandeLogistique.date_paiement.is_(None),
-        CommandeLogistique.date_echeance.is_(None),
         CommandeLogistique.date_arrivee_depot.is_(None),
         CommandeLogistique.date_d10.is_(None),
         CommandeLogistique.date_arrivee.is_(None),
         CommandeLogistique.date_facture.isnot(None)
     ).count()
     arrivage = CommandeLogistique.query.filter(
-        CommandeLogistique.date_valeur.is_(None),
-        CommandeLogistique.date_paiement.is_(None),
-        CommandeLogistique.date_echeance.is_(None),
         CommandeLogistique.date_arrivee_depot.is_(None),
         CommandeLogistique.date_d10.is_(None),
         CommandeLogistique.date_arrivee.is_(None),
@@ -1206,11 +1163,8 @@ def _log_kpis():
     ).count()
 
     return {
-        'PAYÉ': paye, 'PAIEMENT EN COURS': paiement_en_cours,
-        'ÉCHU': echu, 'ARRIVE À ÉCHÉANCE': arrive_echeance,
-        'ÉCHÉANCE': echeance, 'DAD': dad,
-        'D10': d10, 'DAP': dap, 'ETD': etd,
-        'ARRIVAGE': arrivage,
+        'DAD': dad, 'D10': d10, 'DAP': dap,
+        'ETD': etd, 'ARRIVAGE': arrivage,
     }
 
 
@@ -1251,7 +1205,64 @@ def _get_logistique_notifications(limit=8):
     }
 
 
-LOG_STATUTS = ['ARRIVAGE', 'ETD', 'DAP', 'D10', 'DAD', 'ÉCHÉANCE', 'ARRIVE À ÉCHÉANCE', 'ÉCHU', 'PAIEMENT EN COURS', 'PAYÉ']
+LOG_STATUTS = ['ARRIVAGE', 'ETD', 'DAP', 'D10', 'DAD']
+
+
+def _build_frais_query(args):
+    """Construit la liste/pagination de la table Frais (vue independante)."""
+    page = args.get('frais_page', 1, type=int)
+    search = args.get('search', '').strip()
+    societe = args.get('societe', '').strip()
+    sort_col = args.get('frais_sort', '').strip()
+    sort_dir = args.get('frais_dir', 'desc').strip()
+    if sort_dir not in ('asc', 'desc'):
+        sort_dir = 'desc'
+
+    q = FraisLogistique.query
+    if search:
+        q = q.filter(or_(
+            FraisLogistique.ref_log.ilike(f'%{search}%'),
+            FraisLogistique.fournisseur.ilike(f'%{search}%'),
+            FraisLogistique.produit.ilike(f'%{search}%'),
+            FraisLogistique.emballage.ilike(f'%{search}%'),
+            FraisLogistique.annee.ilike(f'%{search}%'),
+            FraisLogistique.remarque.ilike(f'%{search}%'),
+        ))
+    if societe:
+        q = q.filter(FraisLogistique.societe == societe)
+
+    frais_sort_columns = {
+        'ref_log': FraisLogistique.ref_log,
+        'societe': FraisLogistique.societe,
+        'annee': FraisLogistique.annee,
+        'fournisseur': FraisLogistique.fournisseur,
+        'produit': FraisLogistique.produit,
+        'emballage': FraisLogistique.emballage,
+        'quantite': FraisLogistique.quantite,
+        'tva': FraisLogistique.tva,
+        'montant_eur': FraisLogistique.montant_eur,
+        'cours': FraisLogistique.cours,
+        'date_creation': FraisLogistique.date_creation,
+    }
+    if sort_col in frais_sort_columns:
+        col = frais_sort_columns[sort_col]
+        order = col.asc().nullslast() if sort_dir == 'asc' else col.desc().nullslast()
+        q = q.order_by(order, FraisLogistique.id.desc())
+    else:
+        q = q.order_by(FraisLogistique.date_creation.desc().nullslast(), FraisLogistique.id.desc())
+
+    total = q.count()
+    items = q.offset((page - 1) * LOG_PER_PAGE).limit(LOG_PER_PAGE).all()
+    total_pages = max(1, (total + LOG_PER_PAGE - 1) // LOG_PER_PAGE)
+
+    return {
+        'frais_items': items,
+        'frais_page': page,
+        'frais_total': total,
+        'frais_total_pages': total_pages,
+        'frais_sort_col': sort_col,
+        'frais_sort_dir': sort_dir,
+    }
 
 
 @app.route('/api/logistique/bons')
@@ -1440,6 +1451,19 @@ def api_logistique_gestion_list():
                            is_admin=_current_role() == 'admin')
 
 
+@app.route('/api/logistique/frais')
+@login_required
+def api_logistique_frais_list():
+    data = _build_frais_query(request.args)
+    return render_template(
+        'partials/logistique_frais_table.html',
+        search=request.args.get('search', '').strip(),
+        societe=request.args.get('societe', '').strip(),
+        can_write=_current_role() in ('admin', 'saisie'),
+        **data,
+    )
+
+
 @app.route('/logistique/gestion')
 @login_required
 def logistique_gestion():
@@ -1447,6 +1471,9 @@ def logistique_gestion():
     search   = request.args.get('search', '').strip()
     societe  = request.args.get('societe', '').strip()
     statut_f = request.args.get('statut', '').strip()
+    selected_section = request.args.get('section', 'gestion').strip().lower()
+    if selected_section not in ('gestion', 'frais'):
+        selected_section = 'gestion'
     date_filter = request.args.get('date_filter', '').strip()
     date_debut_raw = request.args.get('date_debut', '').strip()
     date_fin_raw = request.args.get('date_fin', '').strip()
@@ -1499,6 +1526,8 @@ def logistique_gestion():
 
     total_pages  = max(1, (total + LOG_PER_PAGE - 1) // LOG_PER_PAGE)
 
+    frais_data = _build_frais_query(request.args)
+
     return render_template('logistique_gestion.html',
                            items=items, page=page, total_pages=total_pages, total=total,
                            search=search, societe=societe,
@@ -1509,7 +1538,9 @@ def logistique_gestion():
                            today=date.today(),
                            log_statuts=LOG_STATUTS,
                            can_write=_current_role() in ('admin', 'saisie'),
-                           is_admin=_current_role() == 'admin')
+                           is_admin=_current_role() == 'admin',
+                           selected_section=selected_section,
+                           **frais_data)
 
 
 @app.route('/api/logistique/notifications')
@@ -1796,6 +1827,18 @@ def api_bon_add():
         cree_par          = session.get('username', ''),
     )
     db.session.add(log_entry)
+
+    # Créer automatiquement l'entrée miroir dans Frais
+    frais_entry = FraisLogistique(
+        bon_id      = bon.id,
+        ref_log     = numero,
+        societe     = bon.societe,
+        annee       = str(date.today().year),
+        fournisseur = bon.fournisseur,
+        montant_eur = total_montant if total_montant else None,
+        cree_par    = session.get('username', ''),
+    )
+    db.session.add(frais_entry)
     db.session.commit()
 
     return redirect(url_for('logistique_bons'))
@@ -1910,6 +1953,23 @@ def api_bon_update(bon_id):
             cree_par    = session.get('username', ''),
         ))
 
+    # Mettre à jour l'entrée Frais associée (ou la créer si absente)
+    frais_entry = FraisLogistique.query.filter_by(bon_id=bon.id).first()
+    if frais_entry:
+        frais_entry.societe     = bon.societe
+        frais_entry.fournisseur = bon.fournisseur
+        frais_entry.montant_eur = total_montant or None
+    else:
+        db.session.add(FraisLogistique(
+            bon_id      = bon.id,
+            ref_log     = bon.numero,
+            societe     = bon.societe,
+            annee       = str(date.today().year),
+            fournisseur = bon.fournisseur,
+            montant_eur = total_montant or None,
+            cree_par    = session.get('username', ''),
+        ))
+
     db.session.commit()
     return redirect(url_for('logistique_bons'))
 
@@ -1919,6 +1979,7 @@ def api_bon_update(bon_id):
 def api_bon_delete(bon_id):
     bon = BonCommande.query.get_or_404(bon_id)
     CommandeLogistique.query.filter_by(bon_id=bon.id).delete()
+    FraisLogistique.query.filter_by(bon_id=bon.id).delete()
     db.session.delete(bon)
     db.session.commit()
     return redirect(url_for('logistique_bons'))
@@ -2103,9 +2164,12 @@ def consultation():
 @login_required
 def api_operations():
     data = _build_operations_query(request.args)
+    role = _current_role()
     return render_template(
         'partials/operations_table.html',
-        is_admin=_current_role() == 'admin',
+        is_admin=role == 'admin',
+        can_write=role in ('admin', 'saisie'),
+        can_delete=role == 'admin',
         status_choices=STATUS_CHOICES,
         **data,
     )

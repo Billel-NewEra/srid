@@ -3,11 +3,11 @@
     <div class="notif-strip-title">Alertes échéance</div>
     <div class="notif-strip-meta">
                 {% if notifications.overdue_count > 0 and notifications.upcoming_count > 0 %}
-                    <span class="notif-strip-meta-late">{{ notifications.overdue_count }} échu{{ 's' if notifications.overdue_count > 1 else '' }}</span>
+                    <span class="notif-strip-meta-late">{{ notifications.overdue_count }} en retard</span>
                     <span class="meta-separator"> • </span>
                     <span class="notif-strip-meta-soon">{{ notifications.upcoming_count }} à venir (7j)</span>
                 {% elif notifications.overdue_count > 0 %}
-                    <span class="notif-strip-meta-late">{{ notifications.overdue_count }} échu{{ 's' if notifications.overdue_count > 1 else '' }}</span>
+                    <span class="notif-strip-meta-late">{{ notifications.overdue_count }} en retard</span>
                 {% elif notifications.upcoming_count > 0 %}
                     <span class="notif-strip-meta-soon">{{ notifications.upcoming_count }} à venir (7j)</span>
                 {% endif %}
@@ -20,13 +20,12 @@
 <div class="card bg-base-200 border border-base-300 mb-3">
     <div class="card-body p-3">
         <div class="flex items-center justify-between mb-2">
-            <h3 class="font-semibold text-sm"><i class="fas fa-triangle-exclamation mr-1 text-warning"></i>Commandes à traiter</h3>
+            <h3 class="font-semibold text-sm"><i class="fas fa-triangle-exclamation mr-1 text-warning"></i>À traiter en priorité</h3>
             <span class="badge badge-sm badge-warning">{{ notifications.critical_entries|length }}</span>
         </div>
         <div class="space-y-1">
             {% for item in notifications.critical_entries %}
             {% set delta = (item.date_echeance - notifications.today).days %}
-            {% set display_statut = item.statut | lower | capitalize %}
               <div class="notif-item cursor-pointer"
                  onclick="if (typeof openLogDetail === 'function') openLogDetail(this)"
                  data-id="{{ item.id }}"
@@ -63,9 +62,6 @@
                         {% endif %}
                     </div>
                 </div>
-                <span class="notif-badge whitespace-nowrap shrink-0 {% if item.statut == 'ÉCHU' %}notif-badge-secondary{% elif item.statut == 'ARRIVE À ÉCHÉANCE' %}notif-badge-accent{% elif item.statut == 'ÉCHÉANCE' %}notif-badge-warning{% elif item.statut == 'PAYÉ' %}notif-badge-success{% elif item.statut == 'PAIEMENT EN COURS' %}notif-badge-primary{% else %}notif-badge-neutral{% endif %}">
-                    {{ display_statut }}
-                </span>
             </div>
             {% endfor %}
         </div>

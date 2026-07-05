@@ -1,13 +1,8 @@
 {% macro badge_cls(s) %}
-    {% if s == 'PAYÉ' %}badge-success
-    {% elif s == 'PAIEMENT EN COURS' %}badge-primary
-    {% elif s == 'ARRIVE À ÉCHÉANCE' %}badge-accent
-    {% elif s == 'ÉCHU' %}badge-secondary
-    {% elif s == 'ÉCHÉANCE' %}badge-warning
-    {% elif s == 'DAD' %}badge-success
+    {% if s == 'DAD' %}badge-warning
     {% elif s == 'D10' %}badge-primary
     {% elif s == 'DAP' %}badge-accent
-    {% elif s == 'ETD' %}badge-info
+    {% elif s == 'ETD' %}badge-secondary
     {% elif s == 'ARRIVAGE' %}badge-neutral
     {% else %}badge-ghost{% endif %}
 {% endmacro %}
@@ -20,7 +15,10 @@
 <div class="space-y-3 lg:hidden">
     {% for item in items %}
     {% set s = item.statut %}
-    <div class="card bg-base-100 border border-base-300 shadow-sm cursor-pointer {% if s == 'PAYÉ' %}!bg-green-500/12{% elif s == 'ÉCHÉANCE' %}!bg-amber-500/12{% elif s == 'ÉCHU' %}!bg-red-500/12{% endif %}"
+    {% if item.date_valeur %}{% set card_style = 'background-color: rgba(34,197,94,0.13) !important;' %}
+    {% else %}{% set card_style = '' %}{% endif %}
+    <div class="card bg-base-100 border border-base-300 shadow-sm cursor-pointer"
+         style="{{ card_style }}"
          data-id="{{ item.id }}"
          data-ref-log="{{ item.ref_log or '' }}"
          data-bon-id="{{ item.bon_id or '' }}"
@@ -45,12 +43,12 @@
                     <div class="font-semibold">{{ item.fournisseur or '—' }}</div>
                     <div class="text-xs opacity-70 mt-1">{% if item.ref_log and item.bon_id %}<button type="button" onclick="openBonViewer({{ item.bon_id }}, event)" class="font-mono underline decoration-dotted hover:text-primary">{{ item.ref_log }}</button>{% elif item.ref_log %}<span class="font-mono">{{ item.ref_log }}</span>{% else %}—{% endif %}</div>
                 </div>
-                {% if s %}<span class="badge badge-sm font-semibold whitespace-nowrap {{ badge_cls(s) }}">{{ s if s in ['ETD','DAP','D10','DAD'] else s | lower | capitalize }}</span>{% endif %}
+                {% if s %}<span class="badge badge-sm font-semibold whitespace-nowrap {{ badge_cls(s) }}">{{ s }}</span>{% endif %}
             </div>
             <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-xs mt-2">
                 <div><span class="opacity-50">DAP</span><br>{{ item.date_arrivee.strftime('%d/%m/%Y') if item.date_arrivee else '—' }}</div>
                 <div><span class="opacity-50">Échéance</span><br>
-                    <span class="{% if s == 'ÉCHÉANCE' %}text-amber-600 font-semibold{% elif s == 'ÉCHU' %}text-red-600 font-bold{% elif item.date_echeance and item.date_echeance < today and not item.date_valeur %}text-error font-semibold{% endif %}">{{ item.date_echeance.strftime('%d/%m/%Y') if item.date_echeance else '—' }}</span>
+                    <span class="{% if item.date_echeance and item.date_echeance < today and not item.date_paiement %}text-red-600 font-bold{% elif item.date_echeance and (item.date_echeance - today).days <= 7 and not item.date_paiement %}text-amber-600 font-semibold{% endif %}">{{ item.date_echeance.strftime('%d/%m/%Y') if item.date_echeance else '—' }}</span>
                 </div>
                 <div><span class="opacity-50">D10</span><br>{{ item.date_d10.strftime('%d/%m/%Y') if item.date_d10 else '—' }}</div>
                 <div><span class="opacity-50">DAD</span><br>{{ item.date_arrivee_depot.strftime('%d/%m/%Y') if item.date_arrivee_depot else '—' }}</div>
@@ -73,7 +71,7 @@
 {% else %}<i class="fas fa-sort ml-1 opacity-30"></i>{% endif %}
 {% endmacro %}
 
-<table class="table table-sm table-zebra w-full min-w-[860px]">
+<table class="table table-sm w-full min-w-[860px]">
     <thead>
         <tr class="bg-base-200">
             <th class="whitespace-nowrap">N° Bon</th>
@@ -90,16 +88,13 @@
     <tbody>
     {% for item in items %}
     {% set s = item.statut %}
-    {% if s == 'PAYÉ' %}{% set row_cls = '!bg-green-500/12 hover:!bg-green-500/22' %}
-    {% elif s == 'ÉCHÉANCE' %}{% set row_cls = '!bg-amber-500/10 hover:!bg-amber-500/20' %}
-    {% elif s == 'ÉCHU' %}{% set row_cls = '!bg-red-500/15 hover:!bg-red-500/25' %}
-    {% else %}{% set row_cls = 'hover:bg-base-200' %}{% endif %}
-    {% set paye_cell_cls = '!bg-green-500/16 hover:!bg-green-500/22' if s == 'PAYÉ' else '' %}
-    {% set paye_style = 'background-color: rgba(34,197,94,0.13) !important;' if s == 'PAYÉ' else '' %}
-    {% set echeance_style = 'background-color: rgba(245,158,11,0.12) !important;' if s == 'ÉCHÉANCE' else '' %}
-    {% set echu_style = 'background-color: rgba(239,68,68,0.15) !important;' if s == 'ÉCHU' else '' %}
-    {% set row_style = paye_style or echeance_style or echu_style %}
-    <tr class="cursor-pointer {{ row_cls }}"
+    {# Seule date_valeur colore toute la ligne en vert #}
+    {% if item.date_valeur %}
+        {% set row_style = 'background-color: rgba(34,197,94,0.13) !important;' %}
+    {% else %}
+        {% set row_style = '' %}
+    {% endif %}
+    <tr class="cursor-pointer {% if not row_style %}hover:bg-base-200{% endif %}"
         style="{{ row_style }}"
         onclick="openLogDetail(this)"
         data-id="{{ item.id }}"
@@ -119,22 +114,22 @@
         data-date-paiement="{{ item.date_paiement.strftime('%Y-%m-%d') if item.date_paiement else '' }}"
         data-date-valeur="{{ item.date_valeur.strftime('%Y-%m-%d') if item.date_valeur else '' }}"
         data-remarque="{{ item.remarque or '' }}">
-        <td class="text-sm whitespace-nowrap {{ paye_cell_cls }}" style="{{ row_style }}">
+        <td class="text-sm whitespace-nowrap" style="{{ row_style }}">
             {% if item.ref_log and item.bon_id %}<button type="button" onclick="openBonViewer({{ item.bon_id }}, event)" class="badge badge-outline badge-sm font-mono hover:badge-primary cursor-pointer whitespace-nowrap">{{ item.ref_log }}</button>
             {% elif item.ref_log %}<span class="font-mono text-sm">{{ item.ref_log }}</span>
             {% else %}<span class="opacity-30">—</span>{% endif %}
         </td>
-        <td class="text-sm font-medium {{ paye_cell_cls }}" style="{{ row_style }}">{{ item.fournisseur or '—' }}</td>
-        <td class="text-sm whitespace-nowrap font-medium {{ paye_cell_cls }}" style="{{ row_style }}">{{ item.date_arrivee.strftime('%d/%m/%Y') if item.date_arrivee else '—' }}</td>
-        <td class="text-sm whitespace-nowrap opacity-70 {{ paye_cell_cls }}" style="{{ row_style }}">{{ item.date_d10.strftime('%d/%m/%Y') if item.date_d10 else '—' }}</td>
-        <td class="text-sm whitespace-nowrap font-medium {{ paye_cell_cls }}" style="{{ row_style }}">{{ item.date_arrivee_depot.strftime('%d/%m/%Y') if item.date_arrivee_depot else '—' }}</td>
-        <td class="text-sm whitespace-nowrap {{ paye_cell_cls }} {% if s == 'ÉCHÉANCE' %}text-amber-700 font-semibold{% elif s == 'ÉCHU' %}text-red-700 font-bold{% elif item.date_echeance and item.date_echeance < today and not item.date_valeur %}text-error font-semibold{% endif %}" style="{{ row_style }}">
-            {{ item.date_echeance.strftime('%d/%m/%Y') if item.date_echeance else '—' }}
+        <td class="text-sm font-medium" style="{{ row_style }}">{{ item.fournisseur or '—' }}</td>
+        <td class="text-sm whitespace-nowrap font-medium" style="{{ row_style }}">{{ item.date_arrivee.strftime('%d/%m/%Y') if item.date_arrivee else '—' }}</td>
+        <td class="text-sm whitespace-nowrap opacity-70" style="{{ row_style }}">{{ item.date_d10.strftime('%d/%m/%Y') if item.date_d10 else '—' }}</td>
+        <td class="text-sm whitespace-nowrap font-medium" style="{{ row_style }}">{{ item.date_arrivee_depot.strftime('%d/%m/%Y') if item.date_arrivee_depot else '—' }}</td>
+        <td class="text-sm whitespace-nowrap {% if item.date_echeance and item.date_echeance < today and not item.date_paiement %}text-red-700 font-bold{% elif item.date_echeance and (item.date_echeance - today).days <= 7 and not item.date_paiement %}text-amber-700 font-semibold{% endif %}" style="{{ row_style }}">
+            {% if item.date_echeance and item.date_echeance < today and not item.date_paiement %}<i class="fas fa-circle-exclamation text-red-600 mr-1"></i>{% elif item.date_echeance and (item.date_echeance - today).days <= 7 and not item.date_paiement %}<i class="fas fa-triangle-exclamation text-amber-500 mr-1"></i>{% endif %}{{ item.date_echeance.strftime('%d/%m/%Y') if item.date_echeance else '—' }}
         </td>
-        <td class="text-sm whitespace-nowrap opacity-70 {{ paye_cell_cls }}" style="{{ row_style }}">{{ item.date_paiement.strftime('%d/%m/%Y') if item.date_paiement else '—' }}</td>
-        <td class="text-sm whitespace-nowrap opacity-70 {{ paye_cell_cls }}" style="{{ row_style }}">{{ item.date_valeur.strftime('%d/%m/%Y') if item.date_valeur else '—' }}</td>
-        <td class="{{ paye_cell_cls }}" style="{{ row_style }}">
-            {% if s %}<span class="badge badge-sm font-semibold whitespace-nowrap {{ badge_cls(s) }}">{{ s if s in ['ETD','DAP','D10','DAD'] else s | lower | capitalize }}</span>
+        <td class="text-sm whitespace-nowrap {% if item.date_paiement and not item.date_valeur %}text-blue-600 font-semibold{% else %}opacity-70{% endif %}" style="{{ row_style }}">{{ item.date_paiement.strftime('%d/%m/%Y') if item.date_paiement else '—' }}</td>
+        <td class="text-sm whitespace-nowrap {% if item.date_valeur %}text-green-600 font-semibold{% else %}opacity-70{% endif %}" style="{{ row_style }}">{{ item.date_valeur.strftime('%d/%m/%Y') if item.date_valeur else '—' }}</td>
+        <td style="{{ row_style }}">
+            {% if s %}<span class="badge badge-sm font-semibold whitespace-nowrap {{ badge_cls(s) }}">{{ s }}</span>
             {% else %}<span class="opacity-30">—</span>{% endif %}
         </td>
     </tr>

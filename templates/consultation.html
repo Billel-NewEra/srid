@@ -155,7 +155,8 @@
         if (statut && statut.value) params.set('statut', statut.value);
         params.set('sort', _opsSort);
         params.set('dir', _opsDir);
-        htmx.ajax('GET', '{{ url_for("api_operations") }}?' + params.toString(), '#results-table');
+        _sortInProgress = true;
+        htmx.ajax('GET', '{{ url_for("api_operations") }}?' + params.toString(), {target: '#results-table', swap: 'innerHTML'});
     }
 
     // Ouvrir le modal de détail
@@ -214,10 +215,6 @@
     function refreshResultsTable() {
         const params = buildQueryParams({ page: currentPageFromTable() });
         htmx.ajax('GET', `{{ url_for('api_operations') }}?${params.toString()}`, { target: '#results-table', swap: 'innerHTML' });
-    }
-
-    function refreshNotificationsPanel() {
-        htmx.ajax('GET', `{{ url_for('api_notifications') }}`, { target: '#notifications-panel', swap: 'innerHTML' });
     }
 
     function renderStatusOptions(currentStatus) {
@@ -308,11 +305,12 @@
 
     updateExportLink();
 
+    var _sortInProgress = false;
     document.body.addEventListener('htmx:afterSwap', function(event) {
-        if (event.detail.target.id === 'results-table') {
-            refreshNotificationsPanel();
+        if (event.detail.target.id === 'results-table' && !_sortInProgress) {
             htmx.trigger(document.body, 'refreshGlobalAlert');
         }
+        _sortInProgress = false;
     });
 </script>
 {% endblock %}

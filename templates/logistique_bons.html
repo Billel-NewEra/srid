@@ -251,7 +251,7 @@ function sortBonsTable(col) {
     if (statut && statut.value) params.set('statut', statut.value);
     params.set('sort', _bonsSort);
     params.set('dir', _bonsDir);
-    htmx.ajax('GET', '{{ url_for("api_logistique_bons_list") }}?' + params.toString(), '#bons-table');
+    htmx.ajax('GET', '{{ url_for("api_logistique_bons_list") }}?' + params.toString(), {target: '#bons-table', swap: 'innerHTML'});
 }
 
 // ─── Catalogue produits ───────────────────────────────────────────────────────
