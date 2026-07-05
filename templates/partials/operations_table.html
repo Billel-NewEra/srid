@@ -126,7 +126,6 @@
             <th class="cursor-pointer select-none" onclick="sortOpsTable('client')">Client{{ sort_icon('client', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th>Type</th>
             <th class="cursor-pointer select-none" onclick="sortOpsTable('banque')">Banque{{ sort_icon('banque', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th>N° Pièce</th>
             <th class="cursor-pointer select-none" onclick="sortOpsTable('montant')">Montant{{ sort_icon('montant', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="cursor-pointer select-none" onclick="sortOpsTable('date_operation')">Date dép/vir{{ sort_icon('date_operation', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="cursor-pointer select-none" onclick="sortOpsTable('date_reception')">Date réc{{ sort_icon('date_reception', sort_col|default(''), sort_dir|default('asc')) }}</th>
@@ -145,7 +144,6 @@
             <td class="truncate">{{ op.client }}</td>
             <td class="text-sm truncate">{{ op.type_operation }}</td>
             <td class="text-sm truncate">{{ op.banque or '-' }}</td>
-            <td class="text-sm truncate">{{ op.numero_piece or '-' }}</td>
             <td class="whitespace-nowrap font-semibold">{{ op.montant|currency }}</td>
             <td class="whitespace-nowrap">{{ op.date_operation.strftime('%d/%m/%Y') if op.date_operation else '-' }}</td>
             <td class="whitespace-nowrap text-xs opacity-70">{{ op.date_reception.strftime('%d/%m/%Y') if op.type_operation == 'Chèque' and op.date_reception else '-' }}</td>
