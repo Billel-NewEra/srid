@@ -9,18 +9,20 @@
 {% else %}<i class="fas fa-sort ml-1 opacity-30"></i>{% endif %}
 {% endmacro %}
 
-<table class="table table-sm w-full min-w-[980px]">
+<table class="table table-sm w-full min-w-[1160px]">
     <thead>
         <tr class="bg-base-200">
-            <th class="cursor-pointer select-none" onclick="sortFraisTable('ref_log')">No Bon{{ sort_icon('ref_log', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortFraisTable('ref_log')">Ref. log{{ sort_icon('ref_log', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortFraisTable('societe')">Societe{{ sort_icon('societe', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortFraisTable('annee')">Annee{{ sort_icon('annee', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
             <th class="cursor-pointer select-none" onclick="sortFraisTable('fournisseur')">Fournisseur{{ sort_icon('fournisseur', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
-            <th>Produit</th>
-            <th class="cursor-pointer select-none" onclick="sortFraisTable('montant_eur')">Montant EUR{{ sort_icon('montant_eur', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
-            <th>Cours</th>
-            <th>Montant DA</th>
-            <th class="cursor-pointer select-none" onclick="sortFraisTable('champ1')">champ1{{ sort_icon('champ1', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
-            <th class="cursor-pointer select-none" onclick="sortFraisTable('champ2')">champ2{{ sort_icon('champ2', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
-            <th class="cursor-pointer select-none" onclick="sortFraisTable('champ3')">champ3{{ sort_icon('champ3', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortFraisTable('produit')">Produit{{ sort_icon('produit', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortFraisTable('emballage')">Emballage{{ sort_icon('emballage', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
+            <th class="cursor-pointer select-none text-right" onclick="sortFraisTable('quantite')">Quantite{{ sort_icon('quantite', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
+            <th class="cursor-pointer select-none text-right" onclick="sortFraisTable('tva')">TVA{{ sort_icon('tva', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
+            <th class="cursor-pointer select-none text-right" onclick="sortFraisTable('montant_eur')">Montant EUR{{ sort_icon('montant_eur', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
+            <th class="cursor-pointer select-none text-right" onclick="sortFraisTable('cours')">Cours{{ sort_icon('cours', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
+            <th class="text-right">Montant DA</th>
             <th>Remarque</th>
         </tr>
     </thead>
@@ -28,18 +30,20 @@
     {% for item in frais_items %}
         <tr>
             <td class="font-mono text-xs">{{ item.ref_log or '-' }}</td>
+            <td>{{ item.societe or '-' }}</td>
+            <td>{{ item.annee or '-' }}</td>
             <td>{{ item.fournisseur or '-' }}</td>
             <td>{{ item.produit or '-' }}</td>
-            <td class="font-semibold">{{ item.montant_eur|currency if item.montant_eur is not none else '-' }}</td>
-            <td>{{ ('%.4f'|format(item.cours)) if item.cours is not none else '-' }}</td>
-            <td>{{ item.montant_da|currency if item.montant_da is not none else '-' }}</td>
-            <td>{{ item.champ1 or '-' }}</td>
-            <td>{{ item.champ2 or '-' }}</td>
-            <td>{{ item.champ3 or '-' }}</td>
+            <td>{{ item.emballage or '-' }}</td>
+            <td class="text-right">{{ ('%.2f'|format(item.quantite)) if item.quantite is not none else '-' }}</td>
+            <td class="text-right">{{ ('%.2f'|format(item.tva)) if item.tva is not none else '-' }}</td>
+            <td class="text-right font-semibold">{{ item.montant_eur|currency if item.montant_eur is not none else '-' }}</td>
+            <td class="text-right">{{ ('%.4f'|format(item.cours)) if item.cours is not none else '-' }}</td>
+            <td class="text-right">{{ item.montant_da|currency if item.montant_da is not none else '-' }}</td>
             <td class="max-w-56 truncate">{{ item.remarque or '-' }}</td>
         </tr>
     {% else %}
-        <tr><td colspan="10" class="text-center py-8 opacity-50">Aucune entree frais</td></tr>
+        <tr><td colspan="12" class="text-center py-8 opacity-50">Aucune entree frais</td></tr>
     {% endfor %}
     </tbody>
 </table>
@@ -50,14 +54,18 @@
     <div class="card bg-base-100 border border-base-300 shadow-sm">
         <div class="card-body p-3 text-sm">
             <div class="font-semibold">{{ item.fournisseur or '-' }}</div>
-            <div class="text-xs opacity-70">{{ item.ref_log or '-' }}</div>
+            <div class="text-xs opacity-70">{{ item.ref_log or '-' }} · {{ item.societe or '-' }}</div>
             <div class="grid grid-cols-2 gap-2 mt-2 text-xs">
+                <div><span class="opacity-50">Produit</span><br>{{ item.produit or '-' }}</div>
+                <div><span class="opacity-50">Emballage</span><br>{{ item.emballage or '-' }}</div>
+                <div><span class="opacity-50">Quantite</span><br>{{ ('%.2f'|format(item.quantite)) if item.quantite is not none else '-' }}</div>
+                <div><span class="opacity-50">TVA</span><br>{{ ('%.2f'|format(item.tva)) if item.tva is not none else '-' }}</div>
                 <div><span class="opacity-50">Montant EUR</span><br>{{ item.montant_eur|currency if item.montant_eur is not none else '-' }}</div>
                 <div><span class="opacity-50">Montant DA</span><br>{{ item.montant_da|currency if item.montant_da is not none else '-' }}</div>
-                <div><span class="opacity-50">champ1</span><br>{{ item.champ1 or '-' }}</div>
-                <div><span class="opacity-50">champ2</span><br>{{ item.champ2 or '-' }}</div>
-                <div><span class="opacity-50">champ3</span><br>{{ item.champ3 or '-' }}</div>
             </div>
+            {% if item.remarque %}
+            <div class="mt-2 text-xs opacity-80">{{ item.remarque }}</div>
+            {% endif %}
         </div>
     </div>
 {% else %}

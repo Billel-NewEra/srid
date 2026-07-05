@@ -507,7 +507,8 @@ def dashboard():
         func.coalesce(func.sum(Operation.montant), 0)
     ).filter(
         ~Operation.type_operation.in_(_excluded_types),
-        ~Operation.statut.in_(_excluded_statuts)
+        ~Operation.statut.in_(_excluded_statuts),
+        extract('year', Operation.date_operation) == current_year
     ).group_by(Operation.societe).all()
     kpi_lookup = {s: float(m) for s, m in kpi_raw}
     total_montant = sum(kpi_lookup.values())
@@ -520,6 +521,8 @@ def dashboard():
         Operation.societe,
         func.count(Operation.id),
         func.coalesce(func.sum(Operation.montant), 0)
+    ).filter(
+        extract('year', Operation.date_operation) == current_year
     ).group_by(Operation.statut, Operation.societe).all()
     statuts_info = {s: {'count': 0, 'montant': 0.0, 'srid_count': 0, 'srid_montant': 0.0,
                         'genetics_count': 0, 'genetics_montant': 0.0} for s in status_labels}
@@ -673,7 +676,8 @@ def dashboard():
                            daily_srid=daily_srid, daily_genetics=daily_genetics,
                            today=date.today().strftime('%d/%m/%Y'),
                            year=current_year, previous_year=previous_year,
-                           available_years=available_years)
+                           available_years=available_years,
+                           selected_year=current_year, selected_month=0)
 
 
 # --- API Dashboard (filtres HTMX/JS) ---
@@ -704,6 +708,85 @@ def api_dashboard_monthly():
     monthly_data = [monthly_map.get(m, 0) for m in range(1, 13)]
     monthly_data_prev = [monthly_map_prev.get(m, 0) for m in range(1, 13)]
     return jsonify({'year': year, 'prev_year': prev_year, 'data': monthly_data, 'data_prev': monthly_data_prev})
+
+
+@app.route('/api/dashboard/kpis')
+@login_required
+def api_dashboard_kpis():
+    """HTMX partial: KPIs filtrés par année et/ou mois."""
+    year = request.args.get('year', date.today().year, type=int)
+    month = request.args.get('month', 0, type=int)
+
+    _excluded_types = ['Autre', 'Transfer']
+    _excluded_statuts = ['Rejeté']
+
+    # --- Filtre de base ---
+    base_filter = []
+    if year:
+        base_filter.append(extract('year', Operation.date_operation) == year)
+    if month:
+        base_filter.append(extract('month', Operation.date_operation) == month)
+
+    # --- KPIs globaux ---
+    kpi_q = db.session.query(
+        Operation.societe,
+        func.coalesce(func.sum(Operation.montant), 0)
+    ).filter(
+        ~Operation.type_operation.in_(_excluded_types),
+        ~Operation.statut.in_(_excluded_statuts),
+        *base_filter
+    ).group_by(Operation.societe)
+    kpi_lookup = {s: float(m) for s, m in kpi_q.all()}
+    total_montant = sum(kpi_lookup.values())
+    montant_srid = kpi_lookup.get('SRID', 0.0)
+    montant_genetics = kpi_lookup.get('Genetics', 0.0)
+
+    # --- Statuts avec montants par société ---
+    status_labels = STATUS_CHOICES
+    statuts_raw = db.session.query(
+        Operation.statut,
+        Operation.societe,
+        func.count(Operation.id),
+        func.coalesce(func.sum(Operation.montant), 0)
+    ).filter(*base_filter).group_by(Operation.statut, Operation.societe).all()
+
+    statuts_info = {s: {'count': 0, 'montant': 0.0, 'srid_count': 0, 'srid_montant': 0.0,
+                        'genetics_count': 0, 'genetics_montant': 0.0} for s in status_labels}
+    for statut, societe, count, montant in statuts_raw:
+        if statut in statuts_info:
+            statuts_info[statut]['count'] += count
+            statuts_info[statut]['montant'] += float(montant)
+            if societe == 'SRID':
+                statuts_info[statut]['srid_count'] += count
+                statuts_info[statut]['srid_montant'] += float(montant)
+            elif societe == 'Genetics':
+                statuts_info[statut]['genetics_count'] += count
+                statuts_info[statut]['genetics_montant'] += float(montant)
+
+    _encours_merge = ['Échéance', 'Arrive à échéance', 'Échu']
+    for _s in _encours_merge:
+        if _s in statuts_info:
+            statuts_info['En cours']['count'] += statuts_info[_s]['count']
+            statuts_info['En cours']['montant'] += statuts_info[_s]['montant']
+            statuts_info['En cours']['srid_count'] += statuts_info[_s]['srid_count']
+            statuts_info['En cours']['srid_montant'] += statuts_info[_s]['srid_montant']
+            statuts_info['En cours']['genetics_count'] += statuts_info[_s]['genetics_count']
+            statuts_info['En cours']['genetics_montant'] += statuts_info[_s]['genetics_montant']
+
+    # Années disponibles pour les filtres
+    years_raw = db.session.query(
+        extract('year', Operation.date_operation)
+    ).distinct().order_by(extract('year', Operation.date_operation).desc()).all()
+    available_years = [int(y[0]) for y in years_raw if y[0]]
+
+    return render_template('partials/dashboard_kpis.html',
+                           total_montant=float(total_montant),
+                           montant_srid=float(montant_srid),
+                           montant_genetics=float(montant_genetics),
+                           statuts_info=statuts_info,
+                           available_years=available_years,
+                           selected_year=year,
+                           selected_month=month)
 
 
 @app.route('/api/dashboard/societes')

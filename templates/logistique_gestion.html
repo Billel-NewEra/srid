@@ -125,20 +125,18 @@
         </div>
     </div>
 
-    <!-- Sous-sections Gestion / Frais -->
+    <!-- Section active -->
     <div class="card bg-base-100 shadow">
         <div class="card-body p-4">
-            <div id="section-gestion" class="overflow-x-auto {% if selected_section == 'frais' %}hidden{% endif %}">
-                <div id="gestion-table">
-                    {% include 'partials/logistique_gestion_table.html' %}
-                </div>
+            {% if selected_section == 'frais' %}
+            <div id="frais-table" class="overflow-x-auto">
+                {% include 'partials/logistique_frais_table.html' %}
             </div>
-
-            <div id="section-frais" class="overflow-x-auto {% if selected_section != 'frais' %}hidden{% endif %}">
-                <div id="frais-table">
-                    {% include 'partials/logistique_frais_table.html' %}
-                </div>
+            {% else %}
+            <div id="gestion-table" class="overflow-x-auto">
+                {% include 'partials/logistique_gestion_table.html' %}
             </div>
+            {% endif %}
         </div>
     </div>
 
