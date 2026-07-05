@@ -42,17 +42,17 @@
                                hx-get="{{ url_for('api_operations') }}"
                                hx-trigger="keyup changed delay:300ms"
                                hx-target="#results-table"
-                               hx-include="[name='type_operation'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']">
+                               hx-include="[name='type_operation'],[name='societe'],[name='statut']">
                     </div>
                 </div>
 
                 <!-- Filtres -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     <select name="type_operation" class="select select-bordered select-sm w-full"
                             hx-get="{{ url_for('api_operations') }}"
                             hx-trigger="change"
                             hx-target="#results-table"
-                            hx-include="[name='search'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']"
+                            hx-include="[name='search'],[name='societe'],[name='statut']"
                             data-type-operation-filter>
                         <option value="">Tous les types</option>
                         <option value="Chèque">Chèque</option>
@@ -65,7 +65,7 @@
                             hx-get="{{ url_for('api_operations') }}"
                             hx-trigger="change"
                             hx-target="#results-table"
-                            hx-include="[name='search'],[name='type_operation'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']">
+                            hx-include="[name='search'],[name='type_operation'],[name='statut']">
                         <option value="">Toutes les sociétés</option>
                         <option value="SRID">SRID</option>
                         <option value="Genetics">Genetics</option>
@@ -74,44 +74,15 @@
                             hx-get="{{ url_for('api_operations') }}"
                             hx-trigger="change"
                             hx-target="#results-table"
-                            hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='date_filter'],[name='date_debut'],[name='date_fin']">
+                            hx-include="[name='search'],[name='type_operation'],[name='societe']">
                         <option value="">Tous les statuts</option>
                         <option value="Encaissé">Encaissé</option>
                         <option value="Rejeté">Rejeté</option>
                         <option value="Échéance">Échéance</option>
-                        <option value="En cours">En cours</option>
+                        <option value="En cours">En cours d'encaissement</option>
                         <option value="Arrive à échéance">Arrive à échéance</option>
                         <option value="Échu">Échu</option>
                     </select>
-                    <div class="form-control">
-                        <label class="label label-text text-xs py-0">Filtrer dates par</label>
-                        <select name="date_filter" class="select select-bordered select-sm w-full"
-                                hx-get="{{ url_for('api_operations') }}"
-                                hx-trigger="change"
-                                hx-target="#results-table"
-                                hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_debut'],[name='date_fin']"
-                                data-date-filter>
-                            <option value="date_operation">Date dép/vir</option>
-                            <option value="date_reception">Date réc</option>
-                            <option value="date_echeance">Date échéance</option>
-                        </select>
-                    </div>
-                    <div class="form-control">
-                        <label class="label label-text text-xs py-0">Du</label>
-                        <input type="date" name="date_debut" class="input input-bordered input-sm w-full"
-                               hx-get="{{ url_for('api_operations') }}"
-                               hx-trigger="change"
-                               hx-target="#results-table"
-                               hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_fin']">
-                    </div>
-                    <div class="form-control">
-                        <label class="label label-text text-xs py-0">Au</label>
-                        <input type="date" name="date_fin" class="input input-bordered input-sm w-full"
-                               hx-get="{{ url_for('api_operations') }}"
-                               hx-trigger="change"
-                               hx-target="#results-table"
-                               hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut']">
-                    </div>
                 </div>
             </div>
         </div>
@@ -155,6 +126,38 @@
 
 {% block scripts %}
 <script>
+    // ── Tri colonnes consultation ─────────────────────────────────────────────
+    var _opsSort = '';
+    var _opsDir = 'asc';
+    var _opsStatutIdx = -1;
+    function sortOpsTable(col) {
+        if (col === 'statut') {
+            _opsStatutIdx++;
+            _opsSort = 'statut';
+            _opsDir = String(_opsStatutIdx);
+        } else {
+            _opsStatutIdx = -1;
+            if (_opsSort === col) {
+                _opsDir = _opsDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                _opsSort = col;
+                _opsDir = 'asc';
+            }
+        }
+        var params = new URLSearchParams();
+        var search = document.querySelector('[name="search"]');
+        var type_op = document.querySelector('[name="type_operation"]');
+        var societe = document.querySelector('[name="societe"]');
+        var statut = document.querySelector('[name="statut"]');
+        if (search && search.value) params.set('search', search.value);
+        if (type_op && type_op.value) params.set('type_operation', type_op.value);
+        if (societe && societe.value) params.set('societe', societe.value);
+        if (statut && statut.value) params.set('statut', statut.value);
+        params.set('sort', _opsSort);
+        params.set('dir', _opsDir);
+        htmx.ajax('GET', '{{ url_for("api_operations") }}?' + params.toString(), '#results-table');
+    }
+
     // Ouvrir le modal de détail
     document.body.addEventListener('htmx:afterSwap', function(event) {
         if (event.detail.target.id === 'modal-content') {
@@ -171,17 +174,14 @@
         '[name="search"]',
         '[name="type_operation"]',
         '[name="societe"]',
-        '[name="statut"]',
-        '[name="date_filter"]',
-        '[name="date_debut"]',
-        '[name="date_fin"]'
+        '[name="statut"]'
     ];
 
     const statusChoices = [
         { value: 'Encaissé', cls: 'badge-success' },
         { value: 'Rejeté', cls: 'badge-error' },
         { value: 'Échéance', cls: 'badge-warning' },
-        { value: 'En cours', cls: 'badge-primary' },
+        { value: 'En cours', label: "En cours d'encaissement", cls: 'badge-primary' },
         { value: 'Arrive à échéance', cls: 'badge-accent' },
         { value: 'Échu', cls: 'badge-secondary' }
     ];
@@ -229,7 +229,7 @@
             const button = document.createElement('button');
             button.type = 'button';
             button.className = `badge badge-lg justify-center py-4 ${item.cls} ${item.value === selectedStatus ? 'ring-2 ring-primary' : ''}`;
-            button.textContent = item.value;
+            button.textContent = item.label || item.value;
             button.addEventListener('click', () => {
                 selectedStatus = item.value;
                 renderStatusOptions(currentStatus);
@@ -250,26 +250,11 @@
         exportLink.setAttribute('href', url.pathname + url.search);
     }
 
-    function syncDateFilters() {
-        const typeOperationField = document.querySelector('[name="type_operation"]');
-        const dateFilterField = document.querySelector('[name="date_filter"]');
-        if (!dateFilterField) return;
-        const isCheque = typeOperationField && typeOperationField.value === 'Chèque';
-        const receptionOption = dateFilterField.querySelector('option[value="date_reception"]');
-        const echeanceOption  = dateFilterField.querySelector('option[value="date_echeance"]');
-        if (receptionOption) { receptionOption.hidden = !isCheque; receptionOption.disabled = !isCheque; }
-        if (echeanceOption)  { echeanceOption.hidden  = !isCheque; echeanceOption.disabled  = !isCheque; }
-        if (!isCheque && dateFilterField.value !== 'date_operation') dateFilterField.value = 'date_operation';
-    }
-
     filterSelectors.forEach((selector) => {
         const field = document.querySelector(selector);
         if (!field) return;
         field.addEventListener('input', updateExportLink);
-        field.addEventListener('change', () => {
-            syncDateFilters();
-            updateExportLink();
-        });
+        field.addEventListener('change', updateExportLink);
     });
 
     // Fonction globale pour ouvrir le modal de changement de statut depuis n'importe où
@@ -321,7 +306,6 @@
         alert('Erreur lors du changement de statut.');
     });
 
-    syncDateFilters();
     updateExportLink();
 
     document.body.addEventListener('htmx:afterSwap', function(event) {

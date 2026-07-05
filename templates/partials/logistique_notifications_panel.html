@@ -35,6 +35,7 @@
                  data-societe="{{ item.societe or '' }}"
                  data-date-d10="{{ item.date_d10.strftime('%Y-%m-%d') if item.date_d10 else '' }}"
                  data-date-arrivee="{{ item.date_arrivee.strftime('%Y-%m-%d') if item.date_arrivee else '' }}"
+                 data-date-arrivee-depot="{{ item.date_arrivee_depot.strftime('%Y-%m-%d') if item.date_arrivee_depot else '' }}"
                  data-fournisseur="{{ item.fournisseur or '' }}"
                  data-montant-eur="{{ item.montant_eur or '' }}"
                  data-cours="{{ item.cours or '' }}"

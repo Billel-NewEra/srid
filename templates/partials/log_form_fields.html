@@ -26,22 +26,28 @@
         <div class="input input-bordered input-sm flex items-center montant-da-preview opacity-60 font-mono">—</div>
     </div>
 
+    <!-- Date Facture / BL -->
+    <div class="form-control">
+        <label class="label pb-1"><span class="label-text text-xs font-semibold">Date Facture / BL</span></label>
+        <input type="date" name="date_facture" class="input input-bordered input-sm">
+    </div>
+
+    <!-- Date Arrivée au port -->
+    <div class="form-control">
+        <label class="label pb-1"><span class="label-text text-xs font-semibold">Date d'arrivée au port</span></label>
+        <input type="date" name="date_arrivee" class="input input-bordered input-sm">
+    </div>
+
     <!-- Date D10 -->
     <div class="form-control">
         <label class="label pb-1"><span class="label-text text-xs font-semibold">Date D10</span></label>
         <input type="date" name="date_d10" class="input input-bordered input-sm">
     </div>
 
-    <!-- Date Arrivée -->
+    <!-- Date Arrivée au dépôt -->
     <div class="form-control">
-        <label class="label pb-1"><span class="label-text text-xs font-semibold">Date d'arrivée</span></label>
-        <input type="date" name="date_arrivee" class="input input-bordered input-sm">
-    </div>
-
-    <!-- Date Facture -->
-    <div class="form-control">
-        <label class="label pb-1"><span class="label-text text-xs font-semibold">Date facture</span></label>
-        <input type="date" name="date_facture" class="input input-bordered input-sm">
+        <label class="label pb-1"><span class="label-text text-xs font-semibold">Date d'arrivée au dépôt</span></label>
+        <input type="date" name="date_arrivee_depot" class="input input-bordered input-sm">
     </div>
 
     <!-- Code paiement -->
@@ -65,7 +71,7 @@
     <!-- Date Échéance -->
     <div class="form-control">
         <label class="label pb-1"><span class="label-text text-xs font-semibold">Date d'échéance</span></label>
-        <input type="date" name="date_echeance" class="input input-bordered input-sm">
+        <input type="date" name="date_echeance" class="input input-bordered input-sm bg-base-200 opacity-70" readonly>
     </div>
 
     <!-- Date Paiement -->

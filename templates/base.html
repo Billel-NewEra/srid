@@ -900,21 +900,41 @@
     </dialog>
 
     <script>
-    // Override htmx confirm with DaisyUI modal
-    document.body.addEventListener('htmx:confirm', function(e) {
-        if (!e.detail.question) return;
-        e.preventDefault();
+    function openDeleteConfirmModal(message, onConfirm) {
         var dialog = document.getElementById('modal-confirm-delete');
-        document.getElementById('modal-confirm-msg').textContent = e.detail.question;
+        document.getElementById('modal-confirm-msg').textContent = message;
         var btn = document.getElementById('modal-confirm-btn');
         var newBtn = btn.cloneNode(true);
         btn.parentNode.replaceChild(newBtn, btn);
         newBtn.addEventListener('click', function() {
             dialog.close();
-            e.detail.issueRequest(true);
+            onConfirm();
         });
         dialog.showModal();
+    }
+
+    // Override htmx confirm with DaisyUI modal
+    document.body.addEventListener('htmx:confirm', function(e) {
+        if (!e.detail.question) return;
+        e.preventDefault();
+        openDeleteConfirmModal(e.detail.question, function() {
+            e.detail.issueRequest(true);
+        });
     });
+
+    // Replace native form confirm() with DaisyUI modal for standard POST forms
+    document.addEventListener('submit', function(e) {
+        var form = e.target;
+        if (!(form instanceof HTMLFormElement)) return;
+        var question = form.getAttribute('data-confirm');
+        if (!question || form.dataset.confirmed === '1') return;
+        e.preventDefault();
+        openDeleteConfirmModal(question, function() {
+            form.dataset.confirmed = '1';
+            form.submit();
+            setTimeout(function() { delete form.dataset.confirmed; }, 0);
+        });
+    }, true);
     </script>
 
     {% block scripts %}{% endblock %}

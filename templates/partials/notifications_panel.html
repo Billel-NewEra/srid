@@ -43,7 +43,7 @@
                         {% endif %}
                     </div>
                 </div>
-                <span class="notif-badge whitespace-nowrap shrink-0 {% if is_admin %}cursor-pointer hover:brightness-110{% endif %} {% if item.statut == 'Échu' %}notif-badge-secondary{% elif item.statut == 'Arrive à échéance' %}notif-badge-accent{% elif item.statut == 'Encaissé' %}notif-badge-success{% elif item.statut == 'Rejeté' %}notif-badge-error{% elif item.statut == 'Échéance' %}notif-badge-warning{% elif item.statut == 'En cours' %}notif-badge-primary{% else %}notif-badge-neutral{% endif %}"
+                <span class="notif-badge whitespace-nowrap shrink-0 {% if is_admin %}cursor-pointer hover:brightness-110{% endif %} {% if item.statut == 'Échu' %}notif-badge-secondary{% elif item.statut == 'Arrive à échéance' %}notif-badge-accent{% elif item.statut == 'Encaissé' %}notif-badge-success{% elif item.statut == 'Rejeté' %}notif-badge-error{% elif item.statut == 'Échéance' %}notif-badge-warning{% elif item.statut in ['En cours', "En cours d\'encaissement"] %}notif-badge-primary{% else %}notif-badge-neutral{% endif %}"
                     {% if is_admin %}
                     data-tip="Changer statut"
                     data-status-edit
@@ -51,7 +51,7 @@
                     data-current-status="{{ item.statut }}"
                     data-post-url="{{ url_for('api_update_operation_status', op_id=item.id) }}"
                     {% endif %}>
-                    {{ item.statut }}
+                    {{ "En cours d'encaissement" if item.statut == 'En cours' else item.statut }}
                 </span>
             </div>
             {% endfor %}

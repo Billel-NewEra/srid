@@ -40,7 +40,7 @@
                 {% if is_admin %}
                 <form method="POST" action="{{ url_for('api_bon_delete', bon_id=bon.id) }}"
                       style="display:inline"
-                      onsubmit="return confirm('Supprimer le bon {{ bon.numero }} ?')">
+                      data-confirm="Supprimer le bon {{ bon.numero }} ?">
                     <button type="submit" class="btn btn-ghost btn-xs tooltip" data-tip="Supprimer">
                         <i class="fas fa-trash text-error"></i>
                     </button>
@@ -60,14 +60,20 @@
 
 <!-- Vue desktop (table) -->
 <div class="hidden lg:block overflow-x-auto">
+{% macro sort_icon(col, sort_col, sort_dir) %}
+{% if sort_col == col %}
+    {% if sort_dir == 'asc' or sort_dir|int is defined and sort_col == 'statut' %}<i class="fas fa-sort-up ml-1"></i>{% elif sort_dir == 'desc' %}<i class="fas fa-sort-down ml-1"></i>{% else %}<i class="fas fa-sort-up ml-1"></i>{% endif %}
+{% else %}<i class="fas fa-sort ml-1 opacity-30"></i>{% endif %}
+{% endmacro %}
+
 <table class="table table-sm table-zebra w-full">
     <thead>
         <tr class="bg-base-200">
             <th>N° Bon</th>
-            <th>Société</th>
-            <th>Fournisseur</th>
-            <th>Date</th>
-            <th>Statut</th>
+            <th class="cursor-pointer select-none" onclick="sortBonsTable('societe')">Société{{ sort_icon('societe', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortBonsTable('fournisseur')">Fournisseur{{ sort_icon('fournisseur', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortBonsTable('date_commande')">Date{{ sort_icon('date_commande', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortBonsTable('statut')">Statut{{ sort_icon('statut', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="text-right">Total €</th>
             {% if can_write %}<th class="text-center">Actions</th>{% endif %}
         </tr>
@@ -106,7 +112,7 @@
                 {% if is_admin %}
                 <form method="POST" action="{{ url_for('api_bon_delete', bon_id=bon.id) }}"
                       style="display:inline"
-                      onsubmit="return confirm('Supprimer le bon {{ bon.numero }} ?')">
+                      data-confirm="Supprimer le bon {{ bon.numero }} ?">
                     <button type="submit" class="btn btn-ghost btn-xs tooltip" data-tip="Supprimer">
                         <i class="fas fa-trash text-error"></i>
                     </button>

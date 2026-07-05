@@ -27,7 +27,7 @@
                             <option value="Chèque">Chèque</option>
                             <option value="Virement">Virement</option>
                             <option value="Versement">Versement</option>
-                            <option value="Transfer">Transfer</option>
+                            <option value="Transfer">Transfert</option>
                             <option value="Autre">Autre</option>
                         </select>
                     </div>
@@ -98,7 +98,7 @@
                     </div>
                     <div class="form-control">
                         <label class="label"><span class="label-text font-medium">Montant *</span></label>
-                        <input type="number" name="montant" step="0.01" class="input input-bordered w-full" placeholder="0.00" required>
+                        <input type="text" name="montant" class="input input-bordered w-full" placeholder="0" inputmode="decimal" autocomplete="off" required data-montant-input>
                     </div>
                 </div>
 
@@ -127,24 +127,6 @@
                     </div>
                 </div>
 
-                <!-- Section: Détails -->
-                <div class="divider divider-start text-sm font-semibold opacity-70">
-                    <i class="fas fa-info-circle mr-1"></i> Détails
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Entrée (reçu par)</span></label>
-                        <input type="text" name="entree" class="input input-bordered w-full" placeholder="Personne qui a reçu">
-                    </div>
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Sortie (remis par)</span></label>
-                        <input type="text" name="sortie" class="input input-bordered w-full" placeholder="Personne qui a remis">
-                    </div>
-                    <div class="form-control">
-                        <label class="label"><span class="label-text font-medium">Saisi par</span></label>
-                        <input type="text" name="cree_par" class="input input-bordered w-full" placeholder="Votre nom">
-                    </div>
-                </div>
                 <div class="form-control">
                     <label class="label"><span class="label-text font-medium">Remarque</span></label>
                     <textarea name="remarque" class="textarea textarea-bordered w-full" rows="3" placeholder="Notes ou commentaires..."></textarea>
@@ -221,6 +203,43 @@
         const dateSortieInput = document.querySelector('[data-date-sortie]');
         const dateEcheanceWrap = document.querySelector('[data-date-echeance-wrap]');
         const dateEcheanceInput = document.querySelector('[data-date-echeance]');
+        const montantInput = document.querySelector('[data-montant-input]');
+        const form = document.querySelector('form[action="{{ url_for('saisie') }}"]');
+
+        function formatMontantInput(value) {
+            const normalized = (value || '').replace(/\s+/g, '').replace(/,/g, '.');
+            const cleaned = normalized.replace(/[^\d.]/g, '');
+            const firstDot = cleaned.indexOf('.');
+            const compact = firstDot === -1
+                ? cleaned
+                : cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, '');
+
+            const [intPartRaw, decimalPartRaw] = compact.split('.');
+            const intDigits = (intPartRaw || '').replace(/^0+(?=\d)/, '') || '0';
+            const grouped = intDigits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+
+            if (decimalPartRaw !== undefined) {
+                return `${grouped}.${decimalPartRaw.slice(0, 2)}`;
+            }
+            return grouped;
+        }
+
+        function normalizeMontantForSubmit(value) {
+            return (value || '').replace(/\s+/g, '').replace(/,/g, '.');
+        }
+
+        if (montantInput) {
+            montantInput.addEventListener('input', () => {
+                montantInput.value = formatMontantInput(montantInput.value);
+            });
+            montantInput.value = formatMontantInput(montantInput.value);
+        }
+
+        if (form && montantInput) {
+            form.addEventListener('submit', () => {
+                montantInput.value = normalizeMontantForSubmit(montantInput.value);
+            });
+        }
 
         function applyTypeRules() {
             const selectedType = typeSelect ? typeSelect.value : '';

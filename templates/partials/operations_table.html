@@ -72,7 +72,7 @@
                     {% if op.statut == 'Encaissé' %}badge-success
                     {% elif op.statut == 'Rejeté' %}badge-error
                     {% elif op.statut == 'Échéance' %}badge-warning
-                    {% elif op.statut == 'En cours' %}badge-primary
+                    {% elif op.statut in ['En cours', "En cours d'encaissement"] %}badge-primary
                     {% elif op.statut == 'Arrive à échéance' %}badge-accent
                     {% elif op.statut == 'Échu' %}badge-secondary
                     {% else %}badge-neutral{% endif %}"
@@ -83,7 +83,7 @@
                     data-current-status="{{ op.statut }}"
                     data-post-url="{{ url_for('api_update_operation_status', op_id=op.id) }}"
                     {% endif %}>
-                    {{ op.statut }}
+                    {{ "En cours d'encaissement" if op.statut == 'En cours' else op.statut }}
                 </span>
                 {% if can_write or can_delete %}
                 <div class="flex gap-1 justify-end" onclick="event.stopPropagation()">
@@ -114,19 +114,25 @@
 </div>
 
 <div class="hidden lg:block overflow-x-auto sm:mx-0">
+{% macro sort_icon(col, sort_col, sort_dir) %}
+{% if sort_col == col %}
+    {% if sort_dir == 'asc' or sort_col == 'statut' %}<i class="fas fa-sort-up ml-1"></i>{% elif sort_dir == 'desc' %}<i class="fas fa-sort-down ml-1"></i>{% else %}<i class="fas fa-sort-up ml-1"></i>{% endif %}
+{% else %}<i class="fas fa-sort ml-1 opacity-30"></i>{% endif %}
+{% endmacro %}
+
 <table class="table table-sm table-zebra w-full min-w-[860px]" id="operations-table">
     <thead>
         <tr class="bg-base-200">
-            <th>Société</th>
-            <th>Client</th>
+            <th class="cursor-pointer select-none" onclick="sortOpsTable('societe')">Société{{ sort_icon('societe', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortOpsTable('client')">Client{{ sort_icon('client', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th>Type</th>
-            <th>Banque</th>
+            <th class="cursor-pointer select-none" onclick="sortOpsTable('banque')">Banque{{ sort_icon('banque', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th>N° Pièce</th>
-            <th class="text-right">Montant</th>
-            <th>Date dép/vir</th>
-            <th>Date réc</th>
-            <th>Date échéance</th>
-            <th>Statut</th>
+            <th class="text-right cursor-pointer select-none" onclick="sortOpsTable('montant')">Montant{{ sort_icon('montant', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortOpsTable('date_operation')">Date dép/vir{{ sort_icon('date_operation', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortOpsTable('date_reception')">Date réc{{ sort_icon('date_reception', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortOpsTable('date_encaissement')">Date échéance{{ sort_icon('date_encaissement', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortOpsTable('statut')">Statut{{ sort_icon('statut', sort_col|default(''), sort_dir|default('asc')) }}</th>
             {% if can_write or can_delete %}<th class="text-center">Actions</th>{% endif %}
         </tr>
     </thead>
@@ -172,7 +178,7 @@
                     {% if op.statut == 'Encaissé' %}badge-success
                     {% elif op.statut == 'Rejeté' %}badge-error
                     {% elif op.statut == 'Échéance' %}badge-warning
-                    {% elif op.statut == 'En cours' %}badge-primary
+                    {% elif op.statut in ['En cours', "En cours d'encaissement"] %}badge-primary
                     {% elif op.statut == 'Arrive à échéance' %}badge-accent
                     {% elif op.statut == 'Échu' %}badge-secondary
                     {% else %}badge-neutral{% endif %}"
@@ -183,7 +189,7 @@
                     data-current-status="{{ op.statut }}"
                     data-post-url="{{ url_for('api_update_operation_status', op_id=op.id) }}"
                     {% endif %}>
-                    {{ op.statut }}
+                    {{ "En cours d'encaissement" if op.statut == 'En cours' else op.statut }}
                 </span>
                 </div>
             </td>

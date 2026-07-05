@@ -121,6 +121,7 @@ class CommandeLogistique(db.Model):
     annee             = db.Column(db.String(4))
     date_d10          = db.Column(db.Date)
     date_arrivee      = db.Column(db.Date, index=True)
+    date_arrivee_depot = db.Column(db.Date, index=True)
     fournisseur       = db.Column(db.String(200))
     produit           = db.Column(db.String(200))
     emballage         = db.Column(db.String(100))
@@ -160,11 +161,15 @@ class CommandeLogistique(db.Model):
             if days_left <= 7:
                 return 'ARRIVE À ÉCHÉANCE'
             return 'ÉCHÉANCE'
-        if self.date_arrivee:
-            return 'ARRIVÉ'
+        if self.date_arrivee_depot:
+            return 'DAD'
         if self.date_d10:
             return 'D10'
-        return 'EN COURS'
+        if self.date_arrivee:
+            return 'DAP'
+        if self.date_facture:
+            return 'ETD'
+        return 'ARRIVAGE'
 
 
 
@@ -206,6 +211,7 @@ class BonCommande(db.Model):
                     'quantite':      l.quantite,
                     'unite':         l.unite,
                     'prix_unitaire': l.prix_unitaire,
+                    'devise':        l.devise or 'EUR',
                 }
                 for l in self.lignes
             ],
@@ -222,6 +228,7 @@ class LigneCommande(db.Model):
     quantite      = db.Column(db.Float, nullable=False, default=1)
     unite         = db.Column(db.String(50))
     prix_unitaire = db.Column(db.Float)
+    devise        = db.Column(db.String(10), nullable=False, default='EUR')
 
 
 class AuditLog(db.Model):

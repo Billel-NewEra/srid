@@ -10,6 +10,13 @@
         .dashboard-muted { color: var(--text-muted-theme); }
         .dashboard-table td { font-weight: 500; color: hsl(var(--bc)); }
         .dashboard-table td strong { font-weight: 700; }
+        .dashboard-money {
+            font-variant-numeric: tabular-nums;
+            font-feature-settings: "tnum" 1, "lnum" 1;
+            letter-spacing: normal;
+            word-spacing: 0.12em;
+            white-space: nowrap;
+        }
 
         .status-dot { width: 0.75rem; height: 0.75rem; border-radius: 9999px; }
         .status-encaisse { color: var(--status-encaisse); }
@@ -103,15 +110,15 @@
                     <tbody>
                         <tr class="font-bold border-b-2 border-primary/30">
                             <td><i class="fas fa-layer-group text-primary mr-2"></i>Total</td>
-                            <td class="text-right text-primary" data-count="{{ total_montant }}" data-decimal="true" data-suffix=" DA">0</td>
+                            <td class="text-right text-primary dashboard-money" data-count="{{ total_montant }}" data-decimal="true" data-suffix=" DA">0</td>
                         </tr>
                         <tr>
                             <td><i class="fas fa-building societe-srid mr-2"></i>SRID</td>
-                            <td class="text-right societe-srid" data-count="{{ montant_srid }}" data-decimal="true" data-suffix=" DA">0</td>
+                            <td class="text-right societe-srid dashboard-money" data-count="{{ montant_srid }}" data-decimal="true" data-suffix=" DA">0</td>
                         </tr>
                         <tr>
                             <td><i class="fas fa-dna societe-genetics mr-2"></i>SRID Genetics</td>
-                            <td class="text-right societe-genetics" data-count="{{ montant_genetics }}" data-decimal="true" data-suffix=" DA">0</td>
+                            <td class="text-right societe-genetics dashboard-money" data-count="{{ montant_genetics }}" data-decimal="true" data-suffix=" DA">0</td>
                         </tr>
                     </tbody>
                 </table>
@@ -123,32 +130,33 @@
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {% set statut_colors = {
             'Encaissé': 'status-encaisse',
-            'Rejeté': 'status-rejete',
             'Échéance': 'status-echeance',
             'En cours': 'status-encours',
             'Arrive à échéance': 'status-arriveecheance',
             'Échu': 'status-echu'
         } %}
         {% for statut, info in statuts_info.items() %}
+        {% if statut != 'Rejeté' %}
         <div class="card bg-base-100 shadow-sm border border-base-300">
             <div class="card-body p-4">
                 <div class="flex items-center gap-2 mb-2">
                     <div class="status-dot {{ statut_colors[statut] }}"></div>
-                    <span class="font-bold text-sm">{{ statut }}s</span>
+                    <span class="font-bold text-sm">{% if statut == 'En cours' %}En cours d'encaissement{% else %}{{ statut }}{% endif %}</span>
                 </div>
-                <p class="font-bold text-lg {{ statut_colors[statut] }} mb-2">{{ info.montant|currency(0) }} DA</p>
+                <p class="font-bold text-lg {{ statut_colors[statut] }} mb-2 dashboard-money">{{ info.montant|currency(0) }} DA</p>
                 <div class="space-y-1 text-xs border-t border-base-300 pt-2">
                     <div class="flex justify-between">
                         <span class="societe-srid">SRID</span>
-                        <span><span class="font-semibold societe-srid">{{ info.srid_montant|currency(0) }} DA</span></span>
+                        <span><span class="font-semibold societe-srid dashboard-money">{{ info.srid_montant|currency(0) }} DA</span></span>
                     </div>
                     <div class="flex justify-between">
                         <span class="societe-genetics">Genetics</span>
-                        <span><span class="font-semibold societe-genetics">{{ info.genetics_montant|currency(0) }} DA</span></span>
+                        <span><span class="font-semibold societe-genetics dashboard-money">{{ info.genetics_montant|currency(0) }} DA</span></span>
                     </div>
                 </div>
             </div>
         </div>
+        {% endif %}
         {% endfor %}
     </div>
 
@@ -162,21 +170,21 @@
                         <i class="fas {% if type_op == 'Chèque' %}fa-money-check{% elif type_op == 'Virement' %}fa-exchange-alt{% elif type_op == 'Versement' %}fa-piggy-bank{% elif type_op == 'Transfer' %}fa-right-left{% else %}fa-shapes{% endif %}"></i>
                     </div>
                     <div>
-                        <p class="font-bold">{{ type_op }}s</p>
+                        <p class="font-bold">{% if type_op == 'Transfer' %}Transferts{% else %}{{ type_op }}s{% endif %}</p>
                     </div>
                 </div>
                 <div class="space-y-1 text-sm">
                     <div class="flex justify-between">
                         <span class="opacity-70">Total</span>
-                        <span class="font-bold">{{ info.total.montant|currency(0) }} DA</span>
+                        <span class="font-bold dashboard-money">{{ info.total.montant|currency(0) }} DA</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="societe-srid">SRID</span>
-                        <span class="font-semibold societe-srid">{{ info.SRID.montant|currency(0) }} DA</span>
+                        <span class="font-semibold societe-srid dashboard-money">{{ info.SRID.montant|currency(0) }} DA</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="societe-genetics">Genetics</span>
-                        <span class="font-semibold societe-genetics">{{ info.Genetics.montant|currency(0) }} DA</span>
+                        <span class="font-semibold societe-genetics dashboard-money">{{ info.Genetics.montant|currency(0) }} DA</span>
                     </div>
                 </div>
             </div>
@@ -270,7 +278,7 @@
                         <div class="flex-1">
                             <div class="flex justify-between items-center mb-1">
                                 <span class="text-sm font-medium truncate max-w-[180px]">{{ client_name or 'N/A' }}</span>
-                                <span class="text-sm font-bold">{{ total|currency(0) }} DA</span>
+                                <span class="text-sm font-bold dashboard-money">{{ total|currency(0) }} DA</span>
                             </div>
                             <progress class="progress progress-primary w-full h-2" value="{{ total }}" max="{{ top_clients[0][1] if top_clients else 1 }}"></progress>
                         </div>
@@ -320,7 +328,7 @@
                             </td>
                             <td class="text-xs">{{ op.societe }}</td>
                             <td class="max-w-32 truncate">{{ op.client }}</td>
-                            <td class="text-right font-mono font-semibold">{{ op.montant|currency }}</td>
+                            <td class="text-right font-mono font-semibold dashboard-money">{{ op.montant|currency }}</td>
                             <td>
                                 <span class="badge badge-sm font-semibold whitespace-nowrap
                                     {% if op.statut == 'Encaissé' %}badge-success
@@ -376,6 +384,18 @@
         };
     }
 
+    function formatDashboardAmount(value, decimals = 0) {
+        const n = Number(value || 0);
+        if (!Number.isFinite(n)) return '0';
+        const fixed = n.toFixed(decimals);
+        const parts = fixed.split('.');
+        const groupedInt = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+        if (decimals > 0) {
+            return `${groupedInt},${parts[1]}`;
+        }
+        return groupedInt;
+    }
+
     let chartColors = getThemePalette();
     let gridColor = chartColors.grid;
     const months = ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'];
@@ -407,7 +427,7 @@
         }] },
         options: { responsive: true, maintainAspectRatio: true,
             plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 15 } },
-                tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toLocaleString('fr-FR')} DA` } } },
+                tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${formatDashboardAmount(ctx.raw, 0)} DA` } } },
             scales: { y: { beginAtZero: true, grid: { color: gridColor }, ticks: { callback: fmtVal } }, x: { grid: { display: false } } },
             interaction: { intersect: false, mode: 'index' } }
     });
@@ -439,7 +459,7 @@
         ] },
         options: { responsive: true, maintainAspectRatio: true,
             plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 10 } } },
-                tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toLocaleString('fr-FR')} DA` } } },
+                tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${formatDashboardAmount(ctx.raw, 0)} DA` } } },
             scales: { y: { beginAtZero: true, stacked: true, grid: { color: gridColor }, ticks: { callback: fmtVal } }, x: { stacked: true, grid: { display: false } } } }
     });
 
@@ -472,7 +492,7 @@
         ] },
         options: { responsive: true, maintainAspectRatio: true,
             plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 15 } },
-                tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toLocaleString('fr-FR')} DA` } } },
+                tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${formatDashboardAmount(ctx.raw, 0)} DA` } } },
             scales: { y: { beginAtZero: true, stacked: true, grid: { color: gridColor }, ticks: { callback: fmtVal } }, x: { stacked: true, grid: { display: false } } } }
     });
 
@@ -494,7 +514,7 @@
             { label: 'Genetics', data: {{ daily_genetics | tojson }}, borderColor: chartColors.genetics, borderWidth: 1.5, tension: 0.3, pointRadius: 0 },
         ] },
         options: { responsive: true, plugins: { legend: { position: 'top', labels: { usePointStyle: true, pointStyle: 'circle', padding: 10, font: { size: 10 } } },
-            tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${ctx.raw.toLocaleString('fr-FR')} DA` } } },
+            tooltip: { callbacks: { label: ctx => ` ${ctx.dataset.label}: ${formatDashboardAmount(ctx.raw, 0)} DA` } } },
             scales: { y: { beginAtZero: true, grid: { color: gridColor }, ticks: { callback: fmtVal } }, x: { grid: { display: false }, ticks: { maxTicksLimit: 10, maxRotation: 0 } } },
             interaction: { intersect: false, mode: 'index' } }
     });
@@ -626,6 +646,12 @@
 
     ['yearFilterMonthly', 'yearFilterStatuts', 'yearFilterSocietes', 'topYearFilter', 'topMonthFilter'].forEach(initScrollableYearFilter);
 
+    // Rend les séparateurs de milliers plus visibles dans les montants statiques du dashboard.
+    document.querySelectorAll('.dashboard-money').forEach(el => {
+        if (el.hasAttribute('data-count')) return;
+        el.textContent = (el.textContent || '').replace(/[\u2009\u202F]/g, ' ');
+    });
+
     // === Compteurs animés ===
     document.querySelectorAll('[data-count]').forEach(el => {
         const target = parseFloat(el.dataset.count);
@@ -637,8 +663,8 @@
             const progress = Math.min((now - start) / duration, 1);
             const eased = 1 - Math.pow(1 - progress, 3);
             const current = target * eased;
-            if (isDecimal) el.textContent = current.toLocaleString('fr-FR', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + suffix;
-            else el.textContent = Math.floor(current).toLocaleString('fr-FR') + suffix;
+            if (isDecimal) el.textContent = formatDashboardAmount(current, 0) + suffix;
+            else el.textContent = formatDashboardAmount(Math.floor(current), 0) + suffix;
             if (progress < 1) requestAnimationFrame(animate);
         }
         requestAnimationFrame(animate);

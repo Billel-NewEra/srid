@@ -8,6 +8,7 @@ import io
 import re
 import json
 import os
+import zlib
 from openpyxl import Workbook, load_workbook
 
 REF_PER_PAGE = 25
@@ -499,9 +500,14 @@ def dashboard():
     available_years = [int(y[0]) for y in years_raw if y[0]]
 
     # --- KPIs globaux (1 query) ---
+    _excluded_types = ['Autre', 'Transfer']
+    _excluded_statuts = ['Rejeté']
     kpi_raw = db.session.query(
         Operation.societe,
         func.coalesce(func.sum(Operation.montant), 0)
+    ).filter(
+        ~Operation.type_operation.in_(_excluded_types),
+        ~Operation.statut.in_(_excluded_statuts)
     ).group_by(Operation.societe).all()
     kpi_lookup = {s: float(m) for s, m in kpi_raw}
     total_montant = sum(kpi_lookup.values())
@@ -527,6 +533,17 @@ def dashboard():
             elif societe == 'Genetics':
                 statuts_info[statut]['genetics_count'] += count
                 statuts_info[statut]['genetics_montant'] += float(montant)
+
+    # Point 7 : la carte "En cours" regroupe aussi Échéance, Arrive à échéance et Échu
+    _encours_merge = ['Échéance', 'Arrive à échéance', 'Échu']
+    for _s in _encours_merge:
+        if _s in statuts_info:
+            statuts_info['En cours']['count']           += statuts_info[_s]['count']
+            statuts_info['En cours']['montant']         += statuts_info[_s]['montant']
+            statuts_info['En cours']['srid_count']      += statuts_info[_s]['srid_count']
+            statuts_info['En cours']['srid_montant']    += statuts_info[_s]['srid_montant']
+            statuts_info['En cours']['genetics_count']  += statuts_info[_s]['genetics_count']
+            statuts_info['En cours']['genetics_montant']+= statuts_info[_s]['genetics_montant']
 
     # --- Types avec montants par société (1 query) ---
     types_raw = db.session.query(
@@ -1148,32 +1165,52 @@ def _log_kpis():
         CommandeLogistique.date_echeance.isnot(None),
         CommandeLogistique.date_echeance > alert_date
     ).count()
-    arrive = CommandeLogistique.query.filter(
+    dad = CommandeLogistique.query.filter(
         CommandeLogistique.date_valeur.is_(None),
         CommandeLogistique.date_paiement.is_(None),
         CommandeLogistique.date_echeance.is_(None),
-        CommandeLogistique.date_arrivee.isnot(None)
+        CommandeLogistique.date_arrivee_depot.isnot(None)
     ).count()
     d10 = CommandeLogistique.query.filter(
         CommandeLogistique.date_valeur.is_(None),
         CommandeLogistique.date_paiement.is_(None),
         CommandeLogistique.date_echeance.is_(None),
-        CommandeLogistique.date_arrivee.is_(None),
+        CommandeLogistique.date_arrivee_depot.is_(None),
         CommandeLogistique.date_d10.isnot(None)
     ).count()
-    en_cours = CommandeLogistique.query.filter(
+    dap = CommandeLogistique.query.filter(
         CommandeLogistique.date_valeur.is_(None),
         CommandeLogistique.date_paiement.is_(None),
         CommandeLogistique.date_echeance.is_(None),
+        CommandeLogistique.date_arrivee_depot.is_(None),
+        CommandeLogistique.date_d10.is_(None),
+        CommandeLogistique.date_arrivee.isnot(None)
+    ).count()
+    etd = CommandeLogistique.query.filter(
+        CommandeLogistique.date_valeur.is_(None),
+        CommandeLogistique.date_paiement.is_(None),
+        CommandeLogistique.date_echeance.is_(None),
+        CommandeLogistique.date_arrivee_depot.is_(None),
+        CommandeLogistique.date_d10.is_(None),
         CommandeLogistique.date_arrivee.is_(None),
-        CommandeLogistique.date_d10.is_(None)
+        CommandeLogistique.date_facture.isnot(None)
+    ).count()
+    arrivage = CommandeLogistique.query.filter(
+        CommandeLogistique.date_valeur.is_(None),
+        CommandeLogistique.date_paiement.is_(None),
+        CommandeLogistique.date_echeance.is_(None),
+        CommandeLogistique.date_arrivee_depot.is_(None),
+        CommandeLogistique.date_d10.is_(None),
+        CommandeLogistique.date_arrivee.is_(None),
+        CommandeLogistique.date_facture.is_(None)
     ).count()
 
     return {
         'PAYÉ': paye, 'PAIEMENT EN COURS': paiement_en_cours,
         'ÉCHU': echu, 'ARRIVE À ÉCHÉANCE': arrive_echeance,
-        'ÉCHÉANCE': echeance, 'ARRIVÉ': arrive,
-        'D10': d10, 'EN COURS': en_cours,
+        'ÉCHÉANCE': echeance, 'DAD': dad,
+        'D10': d10, 'DAP': dap, 'ETD': etd,
+        'ARRIVAGE': arrivage,
     }
 
 
@@ -1214,7 +1251,7 @@ def _get_logistique_notifications(limit=8):
     }
 
 
-LOG_STATUTS = ['EN COURS', 'D10', 'ARRIVÉ', 'ÉCHÉANCE', 'ARRIVE À ÉCHÉANCE', 'ÉCHU', 'PAIEMENT EN COURS', 'PAYÉ']
+LOG_STATUTS = ['ARRIVAGE', 'ETD', 'DAP', 'D10', 'DAD', 'ÉCHÉANCE', 'ARRIVE À ÉCHÉANCE', 'ÉCHU', 'PAIEMENT EN COURS', 'PAYÉ']
 
 
 @app.route('/api/logistique/bons')
@@ -1225,6 +1262,10 @@ def api_logistique_bons_list():
     search   = request.args.get('search', '').strip()
     societe  = request.args.get('societe', '').strip()
     statut_f = request.args.get('statut', '').strip()
+    sort_col = request.args.get('sort', '').strip()
+    sort_dir = request.args.get('dir', 'asc').strip()
+    if sort_col != 'statut' and sort_dir not in ('asc', 'desc'):
+        sort_dir = 'asc'
 
     q = BonCommande.query
     if search:
@@ -1236,7 +1277,43 @@ def api_logistique_bons_list():
         q = q.filter(BonCommande.societe == societe)
     if statut_f:
         q = q.filter(BonCommande.statut == statut_f)
-    q = q.order_by(BonCommande.date_commande.desc(), BonCommande.id.desc())
+
+    # -- Tri dynamique --
+    bon_sort_columns = {
+        'fournisseur': BonCommande.fournisseur,
+        'date_commande': BonCommande.date_commande,
+        'societe': BonCommande.societe,
+    }
+    if sort_col in bon_sort_columns:
+        col = bon_sort_columns[sort_col]
+        order = col.asc().nullslast() if sort_dir == 'asc' else col.desc().nullslast()
+        q = q.order_by(order, BonCommande.id.desc())
+    elif sort_col == 'statut':
+        all_bons = q.all()
+        present_statuts = [s for s in BON_STATUTS if any(b.statut == s for b in all_bons)]
+        if not present_statuts:
+            present_statuts = BON_STATUTS
+        statut_idx = 0
+        try:
+            statut_idx = int(sort_dir) % len(present_statuts)
+        except (ValueError, ZeroDivisionError):
+            pass
+        rotated = present_statuts[statut_idx:] + present_statuts[:statut_idx]
+        statut_order = {s: i for i, s in enumerate(rotated)}
+        all_bons.sort(key=lambda b: (statut_order.get(b.statut, 99), -(b.date_commande.toordinal() if b.date_commande else 0), -b.id))
+        total = len(all_bons)
+        bons = all_bons[(page - 1) * BON_PER_PAGE: page * BON_PER_PAGE]
+        total_pages = max(1, (total + BON_PER_PAGE - 1) // BON_PER_PAGE)
+        return render_template('partials/logistique_bons_table.html',
+                               bons=bons, page=page, total_pages=total_pages, total=total,
+                               search=search, societe=societe, statut_f=statut_f,
+                               bon_statuts=BON_STATUTS,
+                               sort_col=sort_col, sort_dir=sort_dir,
+                               can_write=_current_role() in ('admin', 'saisie'),
+                               is_admin=_current_role() == 'admin')
+    else:
+        q = q.order_by(BonCommande.date_commande.desc(), BonCommande.id.desc())
+
     total       = q.count()
     bons        = q.offset((page - 1) * BON_PER_PAGE).limit(BON_PER_PAGE).all()
     total_pages = max(1, (total + BON_PER_PAGE - 1) // BON_PER_PAGE)
@@ -1244,6 +1321,7 @@ def api_logistique_bons_list():
                            bons=bons, page=page, total_pages=total_pages, total=total,
                            search=search, societe=societe, statut_f=statut_f,
                            bon_statuts=BON_STATUTS,
+                           sort_col=sort_col, sort_dir=sort_dir,
                            can_write=_current_role() in ('admin', 'saisie'),
                            is_admin=_current_role() == 'admin')
 
@@ -1259,6 +1337,10 @@ def api_logistique_gestion_list():
     date_filter = request.args.get('date_filter', '').strip()
     date_debut_raw = request.args.get('date_debut', '').strip()
     date_fin_raw = request.args.get('date_fin', '').strip()
+    sort_col = request.args.get('sort', '').strip()
+    sort_dir = request.args.get('dir', 'asc').strip()
+    if sort_col != 'statut' and sort_dir not in ('asc', 'desc'):
+        sort_dir = 'asc'
 
     def _parse_date(v):
         try:
@@ -1292,16 +1374,59 @@ def api_logistique_gestion_list():
             q = q.filter(df >= date_debut)
         if date_fin:
             q = q.filter(df <= date_fin)
-    q = q.order_by(CommandeLogistique.date_arrivee.desc().nullslast(), CommandeLogistique.id.desc())
+
+    # -- Tri dynamique --
+    sort_columns = {
+        'fournisseur': CommandeLogistique.fournisseur,
+        'date_arrivee': CommandeLogistique.date_arrivee,
+        'date_d10': CommandeLogistique.date_d10,
+        'date_arrivee_depot': CommandeLogistique.date_arrivee_depot,
+        'date_echeance': CommandeLogistique.date_echeance,
+        'date_paiement': CommandeLogistique.date_paiement,
+        'date_valeur': CommandeLogistique.date_valeur,
+        'ref_log': CommandeLogistique.ref_log,
+    }
+    if sort_col in sort_columns:
+        col = sort_columns[sort_col]
+        order = col.asc().nullslast() if sort_dir == 'asc' else col.desc().nullslast()
+        q = q.order_by(order, CommandeLogistique.id.desc())
+    elif sort_col == 'statut':
+        # Tri par statut géré après fetch (propriété calculée)
+        pass
+    else:
+        q = q.order_by(
+            CommandeLogistique.date_creation.desc().nullslast(),
+            CommandeLogistique.id.desc(),
+        )
 
     if statut_f:
         all_items  = q.all()
         filtered   = [c for c in all_items if c.statut == statut_f]
         total      = len(filtered)
+        if sort_col == 'statut':
+            pass  # all same statut, no sort needed
         items      = filtered[(page - 1) * LOG_PER_PAGE: page * LOG_PER_PAGE]
     else:
-        total = q.count()
-        items = q.offset((page - 1) * LOG_PER_PAGE).limit(LOG_PER_PAGE).all()
+        if sort_col == 'statut':
+            all_items = q.all()
+            # Only cycle through statuses that actually have entries
+            present_statuts = [s for s in LOG_STATUTS if any(c.statut == s for c in all_items)]
+            if not present_statuts:
+                present_statuts = LOG_STATUTS
+            statut_idx = 0
+            try:
+                statut_idx = int(sort_dir) % len(present_statuts)
+            except (ValueError, ZeroDivisionError):
+                pass
+            # Rotate so that the target statut comes first
+            rotated = present_statuts[statut_idx:] + present_statuts[:statut_idx]
+            statut_order = {s: i for i, s in enumerate(rotated)}
+            all_items.sort(key=lambda c: (statut_order.get(c.statut, 99), -(c.date_creation.timestamp() if c.date_creation else 0), -c.id))
+            total = len(all_items)
+            items = all_items[(page - 1) * LOG_PER_PAGE: page * LOG_PER_PAGE]
+        else:
+            total = q.count()
+            items = q.offset((page - 1) * LOG_PER_PAGE).limit(LOG_PER_PAGE).all()
 
     total_pages = max(1, (total + LOG_PER_PAGE - 1) // LOG_PER_PAGE)
     return render_template('partials/logistique_gestion_table.html',
@@ -1309,6 +1434,7 @@ def api_logistique_gestion_list():
                            search=search, societe=societe,
                            statut_f=statut_f, date_filter=date_filter,
                            date_debut=date_debut_raw, date_fin=date_fin_raw,
+                           sort_col=sort_col, sort_dir=sort_dir,
                            today=date.today(),
                            can_write=_current_role() in ('admin', 'saisie'),
                            is_admin=_current_role() == 'admin')
@@ -1357,8 +1483,10 @@ def logistique_gestion():
         if date_fin:
             q = q.filter(df <= date_fin)
 
-    q = q.order_by(CommandeLogistique.date_arrivee.desc().nullslast(),
-                   CommandeLogistique.id.desc())
+    q = q.order_by(
+        CommandeLogistique.date_creation.desc().nullslast(),
+        CommandeLogistique.id.desc(),
+    )
 
     if statut_f:
         all_items        = q.all()
@@ -1419,6 +1547,7 @@ def _log_form_fields(c):
     c.annee         = request.form.get('annee', '').strip() or None
     c.date_d10      = fd('date_d10')
     c.date_arrivee  = fd('date_arrivee')
+    c.date_arrivee_depot = fd('date_arrivee_depot')
     if 'fournisseur' in request.form:
         c.fournisseur   = request.form.get('fournisseur', '').strip().upper() or None
     c.produit       = request.form.get('produit', '').strip() or None
@@ -1430,7 +1559,11 @@ def _log_form_fields(c):
     c.date_facture  = fd('date_facture')
     c.code_paiement = request.form.get('code_paiement', '').strip() or None
     c.nb_jours      = fi('nb_jours')
-    c.date_echeance = fd('date_echeance')
+    # Point 12 : date d'échéance calculée automatiquement = date facture/BL + délai (jours)
+    if c.date_facture is not None and c.nb_jours is not None:
+        c.date_echeance = c.date_facture + timedelta(days=c.nb_jours)
+    else:
+        c.date_echeance = None
     c.date_paiement = fd('date_paiement')
     c.date_valeur   = fd('date_valeur')
     c.remarque      = request.form.get('remarque', '').strip() or None
@@ -1458,9 +1591,8 @@ def api_logistique_edit(item_id):
 @app.route('/api/logistique/<int:item_id>/delete', methods=['POST', 'DELETE'])
 @role_required('admin')
 def api_logistique_delete(item_id):
-    c = CommandeLogistique.query.get_or_404(item_id)
-    db.session.delete(c)
-    db.session.commit()
+    CommandeLogistique.query.get_or_404(item_id)
+    flash('Suppression directe désactivée. Supprimez le bon de commande pour supprimer aussi son entrée de gestion.', 'warning')
     return redirect(url_for('logistique_gestion'))
 
 
@@ -1559,14 +1691,78 @@ def api_bon_add():
         except ValueError:
             return None
 
-    year_str = str(date.today().year)
-    count    = BonCommande.query.filter(BonCommande.numero.like(f'BC-{year_str}-%')).count()
-    numero   = f'BC-{year_str}-{count + 1:04d}'
+    designations   = request.form.getlist('designation[]')
+    quantites      = request.form.getlist('quantite[]')
+    unites         = request.form.getlist('unite[]')
+    prix_unitaires = request.form.getlist('prix_unitaire[]')
+    references     = request.form.getlist('reference[]')
+    devises        = request.form.getlist('devise[]')
+
+    parsed_lines = []
+    for i, raw_desig in enumerate(designations):
+        desig = raw_desig.strip()
+        qty_raw = quantites[i].strip() if i < len(quantites) else ''
+        prix_raw = prix_unitaires[i].strip() if i < len(prix_unitaires) else ''
+
+        try:
+            qty = float(qty_raw) if qty_raw else 0.0
+        except ValueError:
+            qty = 0.0
+        try:
+            prix = float(prix_raw) if prix_raw else 0.0
+        except ValueError:
+            prix = 0.0
+
+        if not desig or qty <= 0 or prix <= 0:
+            flash(f'Ligne {i + 1} invalide: désignation requise, quantité > 0 et prix unitaire > 0.', 'error')
+            return redirect(url_for('logistique_bons'))
+
+        devise_raw = devises[i].strip().upper() if i < len(devises) and devises[i].strip() else 'EUR'
+        devise_norm = 'EUR' if devise_raw in ('EUR', 'EURO') else devise_raw
+        if devise_norm not in ('EUR', 'USD'):
+            flash(f'Ligne {i + 1} invalide: devise non supportée ({devise_raw}).', 'error')
+            return redirect(url_for('logistique_bons'))
+
+        parsed_lines.append({
+            'designation': desig,
+            'quantite': qty,
+            'prix_unitaire': prix,
+            'reference': references[i].strip() if i < len(references) else '',
+            'unite': unites[i].strip() if i < len(unites) else '',
+            'devise': devise_norm,
+        })
+
+    if not parsed_lines:
+        flash('Ajoutez au moins une ligne de commande valide.', 'error')
+        return redirect(url_for('logistique_bons'))
+
+    first_devise = parsed_lines[0]['devise']
+    if any(l['devise'] != first_devise for l in parsed_lines):
+        flash('Toutes les lignes doivent avoir la même devise (EURO ou USD).', 'error')
+        return redirect(url_for('logistique_bons'))
+
+    fournisseur_raw = request.form.get('fournisseur', '').strip().upper()
+    if not fournisseur_raw:
+        flash('Le fournisseur est obligatoire.', 'error')
+        return redirect(url_for('logistique_bons'))
+
+    # Point 17: nomenclature courte par fournisseur, séquence indépendante
+    # Format: BC-<CODE>-<NNN> ex: BC-SONA7F-001
+    # CODE = 4 premiers alnum + signature fournisseur (2 hexa) pour éviter collisions entre fournisseurs homonymes en préfixe.
+    supplier_prefix = re.sub(r'[^A-Z0-9]+', '', fournisseur_raw)[:4] or 'SUPP'
+    supplier_sig = format(zlib.crc32(fournisseur_raw.encode('utf-8')) & 0xFF, '02X')
+    supplier_code = f'{supplier_prefix}{supplier_sig}'
+    supplier_count = BonCommande.query.filter(BonCommande.fournisseur == fournisseur_raw).count()
+    seq = supplier_count + 1
+    numero = f'BC-{supplier_code}-{seq:03d}'
+    while BonCommande.query.filter_by(numero=numero).first() is not None:
+        seq += 1
+        numero = f'BC-{supplier_code}-{seq:03d}'
 
     bon = BonCommande(
         numero                = numero,
         societe               = request.form.get('societe', '').strip(),
-        fournisseur           = request.form.get('fournisseur', '').strip().upper() or None,
+        fournisseur           = fournisseur_raw,
         statut                = request.form.get('statut', 'Brouillon'),
         date_commande         = fd('date_commande') or date.today(),
         date_livraison_prevue = fd('date_livraison_prevue'),
@@ -1576,39 +1772,20 @@ def api_bon_add():
     db.session.add(bon)
     db.session.flush()
 
-    designations   = request.form.getlist('designation[]')
-    quantites      = request.form.getlist('quantite[]')
-    unites         = request.form.getlist('unite[]')
-    prix_unitaires = request.form.getlist('prix_unitaire[]')
-    references     = request.form.getlist('reference[]')
-
-    for i, desig in enumerate(designations):
-        desig = desig.strip()
-        if not desig:
-            continue
-        try:
-            qty = float(quantites[i]) if i < len(quantites) and quantites[i].strip() else 1.0
-        except (ValueError, IndexError):
-            qty = 1.0
-        try:
-            prix = float(prix_unitaires[i]) if i < len(prix_unitaires) and prix_unitaires[i].strip() else None
-        except (ValueError, IndexError):
-            prix = None
-        ref   = references[i].strip() if i < len(references) else ''
-        unite = unites[i].strip() if i < len(unites) else ''
-        db.session.add(LigneCommande(bon_id=bon.id, reference=ref or None,
-                                     designation=desig, quantite=qty,
-                                     unite=unite or None, prix_unitaire=prix))
-    db.session.commit()
+    total_montant = 0.0
+    for l in parsed_lines:
+        db.session.add(LigneCommande(
+            bon_id=bon.id,
+            reference=l['reference'] or None,
+            designation=l['designation'],
+            quantite=l['quantite'],
+            unite=l['unite'] or None,
+            prix_unitaire=l['prix_unitaire'],
+            devise=l['devise'],
+        ))
+        total_montant += l['quantite'] * l['prix_unitaire']
 
     # Créer automatiquement l'entrée dans CommandeLogistique
-    total_montant = sum(
-        (float(quantites[i]) if i < len(quantites) and quantites[i].strip() else 1.0) *
-        (float(prix_unitaires[i]) if i < len(prix_unitaires) and prix_unitaires[i].strip() else 0)
-        for i in range(len(designations))
-        if designations[i].strip()
-    )
-    
     log_entry = CommandeLogistique(
         bon_id            = bon.id,
         ref_log           = numero,  # Même numéro que le bon
@@ -1645,6 +1822,54 @@ def api_bon_update(bon_id):
         except ValueError:
             return None
 
+    designations   = request.form.getlist('designation[]')
+    quantites      = request.form.getlist('quantite[]')
+    prix_unitaires = request.form.getlist('prix_unitaire[]')
+    references     = request.form.getlist('reference[]')
+    devises        = request.form.getlist('devise[]')
+
+    parsed_lines = []
+    for i, raw_desig in enumerate(designations):
+        desig = raw_desig.strip()
+        qty_raw = quantites[i].strip() if i < len(quantites) else ''
+        prix_raw = prix_unitaires[i].strip() if i < len(prix_unitaires) else ''
+
+        try:
+            qty = float(qty_raw) if qty_raw else 0.0
+        except ValueError:
+            qty = 0.0
+        try:
+            prix = float(prix_raw) if prix_raw else 0.0
+        except ValueError:
+            prix = 0.0
+
+        if not desig or qty <= 0 or prix <= 0:
+            flash(f'Ligne {i + 1} invalide: désignation requise, quantité > 0 et prix unitaire > 0.', 'error')
+            return redirect(url_for('logistique_bons'))
+
+        devise_raw = devises[i].strip().upper() if i < len(devises) and devises[i].strip() else 'EUR'
+        devise_norm = 'EUR' if devise_raw in ('EUR', 'EURO') else devise_raw
+        if devise_norm not in ('EUR', 'USD'):
+            flash(f'Ligne {i + 1} invalide: devise non supportée ({devise_raw}).', 'error')
+            return redirect(url_for('logistique_bons'))
+
+        parsed_lines.append({
+            'designation': desig,
+            'quantite': qty,
+            'prix_unitaire': prix,
+            'reference': references[i].strip() if i < len(references) else '',
+            'devise': devise_norm,
+        })
+
+    if not parsed_lines:
+        flash('Ajoutez au moins une ligne de commande valide.', 'error')
+        return redirect(url_for('logistique_bons'))
+
+    first_devise = parsed_lines[0]['devise']
+    if any(l['devise'] != first_devise for l in parsed_lines):
+        flash('Toutes les lignes doivent avoir la même devise (EURO ou USD).', 'error')
+        return redirect(url_for('logistique_bons'))
+
     bon.societe       = request.form.get('societe', bon.societe).strip()
     bon.fournisseur   = request.form.get('fournisseur', '').strip().upper() or None
     bon.statut        = request.form.get('statut', bon.statut)
@@ -1655,29 +1880,17 @@ def api_bon_update(bon_id):
     LigneCommande.query.filter_by(bon_id=bon.id).delete()
     db.session.flush()
 
-    designations   = request.form.getlist('designation[]')
-    quantites      = request.form.getlist('quantite[]')
-    prix_unitaires = request.form.getlist('prix_unitaire[]')
-    references     = request.form.getlist('reference[]')
-
     total_montant = 0.0
-    for i, desig in enumerate(designations):
-        desig = desig.strip()
-        if not desig:
-            continue
-        try:
-            qty = float(quantites[i]) if i < len(quantites) and quantites[i].strip() else 1.0
-        except (ValueError, IndexError):
-            qty = 1.0
-        try:
-            prix = float(prix_unitaires[i]) if i < len(prix_unitaires) and prix_unitaires[i].strip() else None
-        except (ValueError, IndexError):
-            prix = None
-        ref = references[i].strip() if i < len(references) else ''
-        db.session.add(LigneCommande(bon_id=bon.id, reference=ref or None,
-                                     designation=desig, quantite=qty,
-                                     prix_unitaire=prix))
-        total_montant += qty * (prix or 0)
+    for l in parsed_lines:
+        db.session.add(LigneCommande(
+            bon_id=bon.id,
+            reference=l['reference'] or None,
+            designation=l['designation'],
+            quantite=l['quantite'],
+            prix_unitaire=l['prix_unitaire'],
+            devise=l['devise'],
+        ))
+        total_montant += l['quantite'] * l['prix_unitaire']
 
     # Mettre à jour l'entrée CommandeLogistique associée
     log_entry = CommandeLogistique.query.filter_by(bon_id=bon.id).first()
@@ -1685,6 +1898,17 @@ def api_bon_update(bon_id):
         log_entry.societe     = bon.societe
         log_entry.fournisseur = bon.fournisseur
         log_entry.montant_eur = total_montant or None
+    else:
+        # Garantit la règle : chaque bon doit avoir une entrée de gestion
+        db.session.add(CommandeLogistique(
+            bon_id      = bon.id,
+            ref_log     = bon.numero,
+            societe     = bon.societe,
+            annee       = str(date.today().year),
+            fournisseur = bon.fournisseur,
+            montant_eur = total_montant or None,
+            cree_par    = session.get('username', ''),
+        ))
 
     db.session.commit()
     return redirect(url_for('logistique_bons'))
@@ -1694,6 +1918,7 @@ def api_bon_update(bon_id):
 @role_required('admin')
 def api_bon_delete(bon_id):
     bon = BonCommande.query.get_or_404(bon_id)
+    CommandeLogistique.query.filter_by(bon_id=bon.id).delete()
     db.session.delete(bon)
     db.session.commit()
     return redirect(url_for('logistique_bons'))
@@ -1788,52 +2013,62 @@ def _build_operations_query(args):
     if date_fin:
         query = query.filter(date_column <= date_fin)
 
-    # Tri
-    sort = args.get('sort', '').strip()
-    order = args.get('order', 'desc')
-    if sort and hasattr(Operation, sort):
-        col = getattr(Operation, sort)
-        query = query.order_by(col.desc() if order == 'desc' else col.asc())
+    # Tri: les dernières saisies doivent apparaître en haut.
+    sort_col = args.get('sort', '').strip()
+    sort_dir = args.get('dir', 'asc').strip()
+    if sort_col != 'statut' and sort_dir not in ('asc', 'desc'):
+        sort_dir = 'asc'
+
+    ops_sort_columns = {
+        'client': Operation.client,
+        'societe': Operation.societe,
+        'banque': Operation.banque,
+        'montant': Operation.montant,
+        'date_operation': Operation.date_operation,
+        'date_reception': Operation.date_reception,
+        'date_encaissement': Operation.date_encaissement,
+    }
+    if sort_col in ops_sort_columns:
+        col = ops_sort_columns[sort_col]
+        order = col.asc().nullslast() if sort_dir == 'asc' else col.desc().nullslast()
+        query = query.order_by(order, Operation.id.desc())
+    elif sort_col == 'statut':
+        # Will sort in-memory after fetch
+        pass
     else:
-        today = date.today()
-        alert_date = today + timedelta(days=7)
-        urgency_rank = case(
-            (
-                (
-                    (Operation.type_operation == 'Chèque') &
-                    (Operation.type_detail == 'À échéance') &
-                    (Operation.date_encaissement.isnot(None)) &
-                    (Operation.date_encaissement < today)
-                ),
-                0,
-            ),
-            (
-                (
-                    (Operation.type_operation == 'Chèque') &
-                    (Operation.type_detail == 'À échéance') &
-                    (Operation.date_encaissement.isnot(None)) &
-                    (Operation.date_encaissement >= today) &
-                    (Operation.date_encaissement <= alert_date)
-                ),
-                1,
-            ),
-            else_=2,
-        )
         query = query.order_by(
-            urgency_rank.asc(),
-            Operation.date_encaissement.asc(),
-            Operation.date_operation.desc(),
+            Operation.date_creation.desc().nullslast(),
+            Operation.id.desc(),
         )
 
     total_montant = db.session.query(func.sum(Operation.montant)).filter(
-        Operation.id.in_(query.with_entities(Operation.id))
+        Operation.id.in_(query.with_entities(Operation.id)),
+        ~Operation.type_operation.in_(['Autre', 'Transfer']),
+        ~Operation.statut.in_(['Rejeté'])
     ).scalar() or 0
     total_count = query.count()
 
     page = int(args.get('page', 1) or 1)
     per_page = 25
     offset = (page - 1) * per_page
-    operations = query.limit(per_page).offset(offset).all()
+
+    if sort_col == 'statut':
+        all_ops = query.all()
+        present_statuts = [s for s in STATUS_CHOICES if any(o.statut == s for o in all_ops)]
+        if not present_statuts:
+            present_statuts = STATUS_CHOICES
+        statut_idx = 0
+        try:
+            statut_idx = int(sort_dir) % len(present_statuts)
+        except (ValueError, ZeroDivisionError):
+            pass
+        rotated = present_statuts[statut_idx:] + present_statuts[:statut_idx]
+        statut_order = {s: i for i, s in enumerate(rotated)}
+        all_ops.sort(key=lambda o: (statut_order.get(o.statut, 99), -(o.date_creation.timestamp() if o.date_creation else 0), -o.id))
+        operations = all_ops[offset: offset + per_page]
+    else:
+        operations = query.limit(per_page).offset(offset).all()
+
     total_pages = (total_count + per_page - 1) // per_page
 
     return {
@@ -1842,6 +2077,8 @@ def _build_operations_query(args):
         'total_count': total_count,
         'page': page,
         'total_pages': total_pages,
+        'sort_col': sort_col,
+        'sort_dir': sort_dir,
     }
 
 

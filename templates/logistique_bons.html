@@ -84,12 +84,13 @@
                     </select>
                 </div>
                 <div class="form-control">
-                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Fournisseur</span></label>
+                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Fournisseur *</span></label>
                     <div class="relative">
                         <input type="text" name="fournisseur" id="bon-fournisseur"
                                class="input input-bordered input-sm w-full"
                                placeholder="Nom du fournisseur"
                                autocomplete="off"
+                               required
                                data-fournisseur-input>
                         <div class="absolute left-0 right-0 top-full mt-1 z-50 hidden max-h-48 overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-lg"
                              data-fournisseur-list>
@@ -97,9 +98,9 @@
                     </div>
                 </div>
                 <div class="form-control">
-                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Date de commande</span></label>
+                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Date de commande *</span></label>
                     <input type="date" name="date_commande" class="input input-bordered input-sm w-full"
-                           value="{{ now().strftime('%Y-%m-%d') }}">
+                           value="{{ now().strftime('%Y-%m-%d') }}" required>
                 </div>
                 <div class="form-control">
                     <label class="label pb-1"><span class="label-text text-xs font-semibold">Statut</span></label>
@@ -114,28 +115,40 @@
             <div class="divider divider-start text-sm font-semibold opacity-70">
                 <i class="fas fa-list mr-1"></i> Lignes de commande
             </div>
+            <div class="flex justify-end mb-2">
+                <div class="form-control w-44">
+                    <label class="label py-1"><span class="label-text text-xs font-semibold">Devise du bon</span></label>
+                    <select id="bon-devise-global" class="select select-bordered select-sm w-full">
+                        <option value="EUR">EURO</option>
+                        <option value="USD">USD</option>
+                    </select>
+                </div>
+            </div>
             <div class="mb-3">
                 <table class="table table-sm w-full" id="bon-lines-table">
                     <thead>
                         <tr class="bg-base-200">
                             <th class="w-32">Réf.</th>
                             <th>Désignation *</th>
-                            <th class="text-right w-28">Qté</th>
-                            <th class="text-right w-28">Prix unit. €</th>
-                            <th class="text-right w-28">Total €</th>
+                            <th class="text-right w-24">Qté</th>
+                            <th class="text-right w-28">Prix unit.</th>
+                            <th class="text-right w-28">Total</th>
                             <th class="w-8"></th>
                         </tr>
                     </thead>
                     <tbody id="bon-lines">
                         <tr class="bon-line">
-                            <td><input type="text" name="reference[]" class="input input-bordered input-sm w-full line-ref" placeholder="REF" readonly></td>
+                            <td>
+                                <input type="text" name="reference[]" class="input input-bordered input-sm w-full line-ref" placeholder="REF" readonly>
+                                <input type="hidden" name="devise[]" class="line-devise" value="EUR">
+                            </td>
                             <td class="relative">
                                 <input type="text" name="designation[]" class="input input-bordered input-sm w-full line-name" placeholder="Désignation (choisir société d'abord)" autocomplete="off">
                                 <div class="hidden absolute left-0 top-full mt-1 z-50 bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-40 overflow-y-auto prod-dropdown" style="min-width:280px"></div>
                             </td>
                             <td><input type="number" name="quantite[]" step="any" min="0" class="input input-bordered input-sm w-full text-right line-qty" value="1"></td>
                             <td><input type="number" name="prix_unitaire[]" step="any" min="0" class="input input-bordered input-sm w-full text-right line-price" placeholder="0.00"></td>
-                            <td class="line-total text-right font-mono text-sm font-semibold">0,00 €</td>
+                            <td class="line-total text-right font-mono text-sm font-semibold">0,00 EUR</td>
                             <td><button type="button" class="btn btn-ghost btn-sm text-error" onclick="removeBonLine(this)">×</button></td>
                         </tr>
                     </tbody>
@@ -168,6 +181,21 @@
     <form method="dialog" class="modal-backdrop"><button>close</button></form>
 </dialog>
 
+<!-- Modal validation erreur -->
+<dialog id="modal-validation-error" class="modal">
+    <div class="modal-box max-w-sm">
+        <div class="flex items-center gap-3 mb-4">
+            <i class="fas fa-exclamation-triangle text-error text-2xl"></i>
+            <h3 class="font-bold text-lg">Saisie incomplète</h3>
+        </div>
+        <p id="modal-validation-msg" class="text-sm mb-6"></p>
+        <div class="modal-action">
+            <button class="btn btn-primary btn-sm" onclick="document.getElementById('modal-validation-error').close()">Compris</button>
+        </div>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+
 <dialog id="modal-detail-bon" class="modal">
     <div class="modal-box max-w-3xl w-full">
         <h3 class="font-bold text-lg mb-1" id="detail-bon-numero">---</h3>
@@ -196,6 +224,36 @@
 
 {% block scripts %}
 <script>
+// ── Tri colonnes bons ─────────────────────────────────────────────────────────
+var _bonsSort = '';
+var _bonsDir = 'asc';
+var _bonsStatutIdx = -1;
+function sortBonsTable(col) {
+    if (col === 'statut') {
+        _bonsStatutIdx++;
+        _bonsSort = 'statut';
+        _bonsDir = String(_bonsStatutIdx);
+    } else {
+        _bonsStatutIdx = -1;
+        if (_bonsSort === col) {
+            _bonsDir = _bonsDir === 'asc' ? 'desc' : 'asc';
+        } else {
+            _bonsSort = col;
+            _bonsDir = 'asc';
+        }
+    }
+    var params = new URLSearchParams();
+    var search = document.querySelector('[name="search"]');
+    var societe = document.querySelector('[name="societe"]');
+    var statut = document.querySelector('[name="statut"]');
+    if (search && search.value) params.set('search', search.value);
+    if (societe && societe.value) params.set('societe', societe.value);
+    if (statut && statut.value) params.set('statut', statut.value);
+    params.set('sort', _bonsSort);
+    params.set('dir', _bonsDir);
+    htmx.ajax('GET', '{{ url_for("api_logistique_bons_list") }}?' + params.toString(), '#bons-table');
+}
+
 // ─── Catalogue produits ───────────────────────────────────────────────────────
 const PRODUCT_CATALOG = {{ products_json | safe }};
 
@@ -275,22 +333,36 @@ const FOURNISSEURS_MAP = {{ fournisseurs_json | safe }};
 })();
 
 // ─── Lignes de commande ───────────────────────────────────────────────────────
-function fmtEuro(n) {
-    return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' €';
+function fmtAmount(n, devise) {
+    return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + (devise || 'EUR');
+}
+
+function getCurrentDevise() {
+    var sel = document.getElementById('bon-devise-global');
+    return sel ? sel.value : 'EUR';
+}
+
+function syncDeviseAcrossLines(devise) {
+    var target = devise || 'EUR';
+    document.querySelectorAll('.line-devise').forEach(function(sel) {
+        sel.value = target;
+    });
 }
 
 function updateGrandTotal() {
     var total = 0;
+    var totalDevise = getCurrentDevise();
+    syncDeviseAcrossLines(totalDevise);
     document.querySelectorAll('.bon-line').forEach(function(row) {
-        var qty   = parseFloat((row.querySelector('.line-qty')  || {}).value) || 0;
-        var price = parseFloat((row.querySelector('.line-price') || {}).value) || 0;
+        var qty    = parseFloat((row.querySelector('.line-qty')    || {}).value) || 0;
+        var price  = parseFloat((row.querySelector('.line-price')  || {}).value) || 0;
         var t = qty * price;
         total += t;
         var cell = row.querySelector('.line-total');
-        if (cell) cell.textContent = fmtEuro(t);
+        if (cell) cell.textContent = fmtAmount(t, totalDevise);
     });
     var el = document.getElementById('grand-total');
-    if (el) el.textContent = fmtEuro(total);
+    if (el) el.textContent = fmtAmount(total, totalDevise);
 }
 
 function setupProductSuggestion(row) {
@@ -368,10 +440,10 @@ function setupProductSuggestion(row) {
 }
 
 function setupLineRow(row) {
-    var qty   = row.querySelector('.line-qty');
-    var price = row.querySelector('.line-price');
-    if (qty)   qty.addEventListener('input', updateGrandTotal);
-    if (price) price.addEventListener('input', updateGrandTotal);
+    var qty    = row.querySelector('.line-qty');
+    var price  = row.querySelector('.line-price');
+    if (qty)    qty.addEventListener('input', updateGrandTotal);
+    if (price)  price.addEventListener('input', updateGrandTotal);
     setupProductSuggestion(row);
 }
 
@@ -380,17 +452,19 @@ function addBonLine() {
     var tr = document.createElement('tr');
     tr.className = 'bon-line';
     tr.innerHTML =
-        '<td><input type="text" name="reference[]" class="input input-bordered input-sm w-full line-ref" placeholder="REF" readonly></td>' +
+        '<td><input type="text" name="reference[]" class="input input-bordered input-sm w-full line-ref" placeholder="REF" readonly><input type="hidden" name="devise[]" class="line-devise" value="EUR"></td>' +
         '<td class="relative">' +
             '<input type="text" name="designation[]" class="input input-bordered input-sm w-full line-name" placeholder="Désignation (choisir société d\'abord)" autocomplete="off">' +
             '<div class="hidden absolute left-0 top-full mt-1 z-50 bg-base-100 border border-base-300 rounded-lg shadow-lg max-h-40 overflow-y-auto prod-dropdown" style="min-width:280px"></div>' +
         '</td>' +
         '<td><input type="number" name="quantite[]" step="any" min="0" class="input input-bordered input-sm w-full text-right line-qty" value="1"></td>' +
         '<td><input type="number" name="prix_unitaire[]" step="any" min="0" class="input input-bordered input-sm w-full text-right line-price" placeholder="0.00"></td>' +
-        '<td class="line-total text-right font-mono text-sm font-semibold">0,00 €</td>' +
+        '<td class="line-total text-right font-mono text-sm font-semibold">0,00 EUR</td>' +
         '<td><button type="button" class="btn btn-ghost btn-sm text-error" onclick="removeBonLine(this)">×</button></td>';
     tbody.appendChild(tr);
+    syncDeviseAcrossLines(getCurrentDevise());
     setupLineRow(tr);
+    updateGrandTotal();
 }
 
 function removeBonLine(btn) {
@@ -400,6 +474,44 @@ function removeBonLine(btn) {
 
 // Init la première ligne dès le chargement
 document.querySelectorAll('.bon-line').forEach(setupLineRow);
+var globalDeviseSel = document.getElementById('bon-devise-global');
+if (globalDeviseSel) {
+    globalDeviseSel.addEventListener('change', function() {
+        syncDeviseAcrossLines(globalDeviseSel.value || 'EUR');
+        updateGrandTotal();
+    });
+}
+syncDeviseAcrossLines(getCurrentDevise());
+updateGrandTotal();
+
+function showBonError(message) {
+    document.getElementById('modal-validation-msg').textContent = message;
+    document.getElementById('modal-validation-error').showModal();
+}
+
+document.getElementById('form-add-bon').addEventListener('submit', function(e) {
+    var rows = document.querySelectorAll('#bon-lines .bon-line');
+    var invalidIndex = -1;
+
+    rows.forEach(function(row, idx) {
+        if (invalidIndex !== -1) return;
+        var name  = (row.querySelector('.line-name')  || {}).value || '';
+        var qty   = parseFloat((row.querySelector('.line-qty')   || {}).value) || 0;
+        var price = parseFloat((row.querySelector('.line-price') || {}).value) || 0;
+        if (!(name.trim() && qty > 0 && price > 0)) {
+            invalidIndex = idx;
+        }
+    });
+
+    if (rows.length === 0 || invalidIndex !== -1) {
+        e.preventDefault();
+        if (invalidIndex !== -1) {
+            showBonError('Ligne ' + (invalidIndex + 1) + ' incomplète : renseignez une désignation, une quantité > 0 et un prix unitaire > 0.');
+        } else {
+            showBonError('Ajoutez au moins une ligne de commande valide avant de créer le bon.');
+        }
+    }
+});
 
 // ─── Nouveau bon / Modifier bon ───────────────────────────────────────────────
 var ADD_BON_ACTION = "{{ url_for('api_bon_add') }}";
@@ -426,6 +538,8 @@ function openNewBon() {
     sub.innerHTML = '<i class="fas fa-save mr-1"></i>Créer le bon';
     var tbody = document.getElementById('bon-lines');
     tbody.innerHTML = '';
+    var globalDevise = document.getElementById('bon-devise-global');
+    if (globalDevise) globalDevise.value = 'EUR';
     addBonLine();
     var gt = document.getElementById('grand-total');
     if (gt) gt.textContent = '0,00 EUR';
@@ -461,6 +575,8 @@ function openEditBon(bon) {
     if (lignes.length === 0) {
         addBonLine();
     } else {
+        var globalDevise = document.getElementById('bon-devise-global');
+        if (globalDevise) globalDevise.value = (lignes[0].devise || 'EUR');
         lignes.forEach(function(l) {
             addBonLine();
             var rows = tbody.querySelectorAll('.bon-line');
@@ -474,6 +590,7 @@ function openEditBon(bon) {
             if (qtyInput)   qtyInput.value   = l.quantite     || 1;
             if (priceInput) priceInput.value = l.prix_unitaire || '';
         });
+        syncDeviseAcrossLines(getCurrentDevise());
         updateGrandTotal();
     }
 
@@ -507,17 +624,19 @@ function openBonDetail(el) {
         var rows = lignes.map(function(l) {
             var t = (Number(l.quantite) || 0) * (Number(l.prix_unitaire) || 0);
             total += t;
+            var devise = l.devise || 'EUR';
             return '<tr>' +
                 '<td class="font-mono text-xs font-semibold">' + escapeHtml(l.reference || '') + '</td>' +
                 '<td>' + escapeHtml(l.designation || '—') + '</td>' +
                 '<td class="text-right">' + (l.quantite || '—') + '</td>' +
+                '<td class="text-center font-mono text-xs">' + escapeHtml(devise) + '</td>' +
                 '<td class="text-right font-mono">' + (l.prix_unitaire ? parseFloat(l.prix_unitaire).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) : '—') + '</td>' +
-                '<td class="text-right font-mono font-semibold">' + (t ? t.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' €' : '—') + '</td>' +
+                '<td class="text-right font-mono font-semibold">' + (t ? t.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' ' + devise : '—') + '</td>' +
                 '</tr>';
         }).join('');
         container.innerHTML =
             '<table class="table table-xs w-full mb-2">' +
-            '<thead><tr class="bg-base-200"><th>Réf.</th><th>Désignation</th><th class="text-right">Quantité</th><th class="text-right">Prix unitaire €</th><th class="text-right">Total €</th></tr></thead>' +
+            '<thead><tr class="bg-base-200"><th>Réf.</th><th>Désignation</th><th class="text-right">Quantité</th><th class="text-center">Devise</th><th class="text-right">Prix unitaire</th><th class="text-right">Total</th></tr></thead>' +
             '<tbody>' + rows + '</tbody></table>' +
             '<div class="flex justify-end">' +
             '<div class="bg-base-200 rounded-lg px-4 py-2 font-bold font-mono text-lg text-primary">Total : ' + euroFmt.format(total) + '</div>' +

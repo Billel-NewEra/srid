@@ -53,11 +53,11 @@
                 {% if operation.statut == 'Encaissé' %}badge-success
                 {% elif operation.statut == 'Rejeté' %}badge-error
                 {% elif operation.statut == 'Échéance' %}badge-warning
-                {% elif operation.statut == 'En cours' %}badge-primary
+                {% elif operation.statut in ['En cours', "En cours d'encaissement"] %}badge-primary
                 {% elif operation.statut == 'Arrive à échéance' %}badge-accent
                 {% elif operation.statut == 'Échu' %}badge-secondary
                 {% else %}badge-neutral{% endif %}">
-                {{ operation.statut }}
+                {{ "En cours d'encaissement" if operation.statut == 'En cours' else operation.statut }}
             </span>
         </div>
         {% if operation.remettant %}
