@@ -37,7 +37,8 @@
                        hx-get="{{ url_for('api_ref_clients_list') }}"
                        hx-trigger="input changed delay:300ms"
                        hx-target="#clients-list"
-                       hx-swap="innerHTML">
+                      hx-swap="innerHTML"
+                      hx-include="[name='per_page_clients']">
 
                 <div id="clients-list" class="max-h-[380px] overflow-y-auto"
                      hx-get="{{ url_for('api_ref_clients_list') }}"
@@ -77,7 +78,8 @@
                        hx-get="{{ url_for('api_ref_remettants_list') }}"
                        hx-trigger="input changed delay:300ms"
                        hx-target="#remettants-list"
-                       hx-swap="innerHTML">
+                      hx-swap="innerHTML"
+                      hx-include="[name='per_page_remettants']">
 
                 <div id="remettants-list" class="max-h-[380px] overflow-y-auto"
                      hx-get="{{ url_for('api_ref_remettants_list') }}"

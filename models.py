@@ -68,6 +68,8 @@ class Operation(db.Model):
             'famille': self.famille,
             'date_operation': self.date_operation.isoformat() if self.date_operation else None,
             'date_reception': self.date_reception.isoformat() if self.date_reception else None,
+            'date_encaissement': self.date_encaissement.isoformat() if self.date_encaissement else None,
+            'date_sortie': self.date_sortie.isoformat() if self.date_sortie else None,
             'client': self.client,
             'remettant': self.remettant,
             'montant': self.montant,
@@ -75,6 +77,8 @@ class Operation(db.Model):
             'numero_piece': self.numero_piece,
             'statut': self.statut,
             'type_detail': self.type_detail,
+            'entree': self.entree,
+            'sortie': self.sortie,
             'remarque': self.remarque,
             'cree_par': self.cree_par,
             'date_creation': self.date_creation.isoformat() if self.date_creation else None,
@@ -130,6 +134,7 @@ class CommandeLogistique(db.Model):
     montant_eur       = db.Column(db.Float)
     cours             = db.Column(db.Float)               # 4 décimales
     date_facture      = db.Column(db.Date)
+    date_etd          = db.Column(db.Date)
     code_paiement     = db.Column(db.String(10))          # T / R / CAD
     nb_jours          = db.Column(db.Integer)
     date_echeance     = db.Column(db.Date, index=True)
@@ -155,39 +160,47 @@ class CommandeLogistique(db.Model):
             return 'D10'
         if self.date_arrivee:
             return 'DAP'
-        if self.date_facture:
+        if self.date_etd:
             return 'ETD'
         return 'ARRIVAGE'
 
 
 class FraisLogistique(db.Model):
+    """Charges de dédouanement/transit saisies manuellement une seule fois par bon.
+    Le cours (taux de change) et le montant DA sont déjà disponibles sur l'entrée
+    CommandeLogistique correspondante (même bon_id) et ne sont donc pas dupliqués ici.
+    Ces charges servent à calculer le prix de revient (PR) par produit du bon,
+    en répartissant les charges au prorata de la part de valeur en douane de chaque produit.
+    """
     __tablename__ = 'frais_logistique'
 
-    id                = db.Column(db.Integer, primary_key=True)
-    bon_id            = db.Column(db.Integer, db.ForeignKey('bons_commande.id'), index=True)
-    ref_log           = db.Column(db.String(20))
-    societe           = db.Column(db.String(50), nullable=False, index=True)
-    annee             = db.Column(db.String(4))
-    fournisseur       = db.Column(db.String(200))
-    produit           = db.Column(db.String(200))
-    emballage         = db.Column(db.String(100))
-    quantite          = db.Column(db.Float)
-    tva               = db.Column(db.Float)
-    montant_eur       = db.Column(db.Float)
-    cours             = db.Column(db.Float)
-    remarque          = db.Column(db.Text)
-    champ1            = db.Column(db.String(200))
-    champ2            = db.Column(db.String(200))
-    champ3            = db.Column(db.String(200))
-    cree_par          = db.Column(db.String(100))
-    date_creation     = db.Column(db.DateTime, default=datetime.utcnow)
-    date_modification = db.Column(db.DateTime, onupdate=datetime.utcnow)
+    id                     = db.Column(db.Integer, primary_key=True)
+    bon_id                 = db.Column(db.Integer, db.ForeignKey('bons_commande.id'), index=True)
+    ref_log                = db.Column(db.String(20))
+    societe                = db.Column(db.String(50), nullable=False, index=True)
+    annee                  = db.Column(db.String(4))
+    fournisseur            = db.Column(db.String(200))
+    taux_douane            = db.Column(db.Float)              # 0, 0.15 ou 0.30 - saisi par bon
+    rps                    = db.Column(db.Float, default=2500)  # droit fixe, défaut 2500 DA
+    echange                = db.Column(db.Float)
+    honoraires_transitaire = db.Column(db.Float)
+    magasinage             = db.Column(db.Float)
+    surestaries            = db.Column(db.Float)
+    pr_config              = db.Column(db.Text)              # JSON : taux editables + surcharges par produit
+    remarque               = db.Column(db.Text)
+    cree_par               = db.Column(db.String(100))
+    date_creation          = db.Column(db.DateTime, default=datetime.utcnow)
+    date_modification      = db.Column(db.DateTime, onupdate=datetime.utcnow)
 
     @property
-    def montant_da(self):
-        if self.montant_eur and self.cours:
-            return round(self.montant_eur * self.cours, 2)
-        return None
+    def charges_saisies(self):
+        """True si au moins une charge manuelle a été renseignée (permet de savoir si le PR peut être calculé)."""
+        if self.pr_config:
+            return True
+        return any(v is not None for v in (
+            self.taux_douane, self.rps, self.echange,
+            self.honoraires_transitaire, self.magasinage, self.surestaries,
+        ))
 
 
 class BonCommande(db.Model):

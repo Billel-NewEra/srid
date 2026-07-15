@@ -1,5 +1,13 @@
 <div class="flex justify-between items-center mb-3 text-sm opacity-70" data-current-frais-page="{{ frais_page }}">
     <span><span class="font-semibold">{{ frais_total }}</span> entree{{ 's' if frais_total != 1 else '' }}</span>
+    <div class="flex items-center gap-2">
+        <label class="text-xs opacity-60">Entrées</label>
+        <select name="per_page_frais" class="select select-bordered select-xs" onchange="goToFraisPage(1)">
+            {% for size in per_page_options %}
+            <option value="{{ size }}" {% if per_page_frais == size %}selected{% endif %}>{{ size }}</option>
+            {% endfor %}
+        </select>
+    </div>
 </div>
 
 <div class="hidden lg:block overflow-x-auto">
@@ -12,35 +20,37 @@
 <table class="table table-sm w-full min-w-[1160px]">
     <thead>
         <tr class="bg-base-200">
-            <th class="cursor-pointer select-none" onclick="sortFraisTable('ref_log')">Ref. log{{ sort_icon('ref_log', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
+            <th class="cursor-pointer select-none sticky left-0 bg-base-200 z-10" onclick="sortFraisTable('ref_log')">Ref. bon{{ sort_icon('ref_log', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
             <th class="cursor-pointer select-none" onclick="sortFraisTable('societe')">Societe{{ sort_icon('societe', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
             <th class="cursor-pointer select-none" onclick="sortFraisTable('annee')">Annee{{ sort_icon('annee', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
             <th class="cursor-pointer select-none" onclick="sortFraisTable('fournisseur')">Fournisseur{{ sort_icon('fournisseur', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
-            <th class="cursor-pointer select-none" onclick="sortFraisTable('produit')">Produit{{ sort_icon('produit', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
-            <th class="cursor-pointer select-none" onclick="sortFraisTable('emballage')">Emballage{{ sort_icon('emballage', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
-            <th class="cursor-pointer select-none text-right" onclick="sortFraisTable('quantite')">Quantite{{ sort_icon('quantite', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
-            <th class="cursor-pointer select-none text-right" onclick="sortFraisTable('tva')">TVA{{ sort_icon('tva', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
-            <th class="cursor-pointer select-none text-right" onclick="sortFraisTable('montant_eur')">Montant EUR{{ sort_icon('montant_eur', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
-            <th class="cursor-pointer select-none text-right" onclick="sortFraisTable('cours')">Cours{{ sort_icon('cours', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
-            <th class="text-right">Montant DA</th>
-            <th>Remarque</th>
+            <th class="text-right">Cours</th>
+            <th class="cursor-pointer select-none text-right" onclick="sortFraisTable('taux_douane')">Taux douane{{ sort_icon('taux_douane', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
+            <th class="cursor-pointer select-none text-right" onclick="sortFraisTable('rps')">RPS{{ sort_icon('rps', frais_sort_col|default(''), frais_sort_dir|default('desc')) }}</th>
+            <th class="text-right">Échange</th>
+            <th class="text-right">Honoraires</th>
+            <th class="text-right">Magasinage</th>
+            <th class="text-right">Surestaries</th>
+            <th class="text-right">PR TTC</th>
+            <th class="text-right">PR HT</th>
         </tr>
     </thead>
     <tbody>
     {% for item in frais_items %}
-        <tr>
-            <td class="font-mono text-xs">{{ item.ref_log or '-' }}</td>
+        <tr {% if can_write %}class="cursor-pointer hover:bg-base-200" onclick="openFraisEdit({{ item.id }})"{% endif %}>
+            <td class="font-mono text-xs sticky left-0 bg-base-100 z-10">{{ item.ref_log or '-' }}</td>
             <td>{{ item.societe or '-' }}</td>
             <td>{{ item.annee or '-' }}</td>
             <td>{{ item.fournisseur or '-' }}</td>
-            <td>{{ item.produit or '-' }}</td>
-            <td>{{ item.emballage or '-' }}</td>
-            <td class="text-right">{{ ('%.2f'|format(item.quantite)) if item.quantite is not none else '-' }}</td>
-            <td class="text-right">{{ ('%.2f'|format(item.tva)) if item.tva is not none else '-' }}</td>
-            <td class="text-right font-semibold">{{ item.montant_eur|currency if item.montant_eur is not none else '-' }}</td>
-            <td class="text-right">{{ ('%.4f'|format(item.cours)) if item.cours is not none else '-' }}</td>
-            <td class="text-right">{{ item.montant_da|currency if item.montant_da is not none else '-' }}</td>
-            <td class="max-w-56 truncate">{{ item.remarque or '-' }}</td>
+            <td class="text-right">{{ ('%.4f'|format(item.cours_bon)) if item.cours_bon is not none else '-' }}</td>
+            <td class="text-right">{{ ('%.0f%%'|format(item.taux_douane * 100)) if item.taux_douane is not none else '-' }}</td>
+            <td class="text-right">{{ item.rps|currency if item.rps is not none else '-' }}</td>
+            <td class="text-right">{{ item.echange|currency if item.echange is not none else '-' }}</td>
+            <td class="text-right">{{ item.honoraires_transitaire|currency if item.honoraires_transitaire is not none else '-' }}</td>
+            <td class="text-right">{{ item.magasinage|currency if item.magasinage is not none else '-' }}</td>
+            <td class="text-right">{{ item.surestaries|currency if item.surestaries is not none else '-' }}</td>
+            <td class="text-right font-semibold">{{ item.pr_ttc_total|currency if item.pr_ttc_total is not none else '-' }}</td>
+            <td class="text-right">{{ item.pr_ht_total|currency if item.pr_ht_total is not none else '-' }}</td>
         </tr>
     {% else %}
         <tr><td colspan="12" class="text-center py-8 opacity-50">Aucune entree frais</td></tr>
@@ -51,17 +61,20 @@
 
 <div class="lg:hidden space-y-2">
 {% for item in frais_items %}
-    <div class="card bg-base-100 border border-base-300 shadow-sm">
+    <div class="card bg-base-100 border border-base-300 shadow-sm {% if can_write %}cursor-pointer active:bg-base-200{% endif %}" {% if can_write %}onclick="openFraisEdit({{ item.id }})"{% endif %}>
         <div class="card-body p-3 text-sm">
             <div class="font-semibold">{{ item.fournisseur or '-' }}</div>
             <div class="text-xs opacity-70">{{ item.ref_log or '-' }} · {{ item.societe or '-' }}</div>
             <div class="grid grid-cols-2 gap-2 mt-2 text-xs">
-                <div><span class="opacity-50">Produit</span><br>{{ item.produit or '-' }}</div>
-                <div><span class="opacity-50">Emballage</span><br>{{ item.emballage or '-' }}</div>
-                <div><span class="opacity-50">Quantite</span><br>{{ ('%.2f'|format(item.quantite)) if item.quantite is not none else '-' }}</div>
-                <div><span class="opacity-50">TVA</span><br>{{ ('%.2f'|format(item.tva)) if item.tva is not none else '-' }}</div>
-                <div><span class="opacity-50">Montant EUR</span><br>{{ item.montant_eur|currency if item.montant_eur is not none else '-' }}</div>
-                <div><span class="opacity-50">Montant DA</span><br>{{ item.montant_da|currency if item.montant_da is not none else '-' }}</div>
+                <div><span class="opacity-50">Cours</span><br>{{ ('%.4f'|format(item.cours_bon)) if item.cours_bon is not none else '-' }}</div>
+                <div><span class="opacity-50">Taux douane</span><br>{{ ('%.0f%%'|format(item.taux_douane * 100)) if item.taux_douane is not none else '-' }}</div>
+                <div><span class="opacity-50">RPS</span><br>{{ item.rps|currency if item.rps is not none else '-' }}</div>
+                <div><span class="opacity-50">Échange</span><br>{{ item.echange|currency if item.echange is not none else '-' }}</div>
+                <div><span class="opacity-50">Honoraires</span><br>{{ item.honoraires_transitaire|currency if item.honoraires_transitaire is not none else '-' }}</div>
+                <div><span class="opacity-50">Magasinage</span><br>{{ item.magasinage|currency if item.magasinage is not none else '-' }}</div>
+                <div><span class="opacity-50">Surestaries</span><br>{{ item.surestaries|currency if item.surestaries is not none else '-' }}</div>
+                <div><span class="opacity-50">PR TTC</span><br>{{ item.pr_ttc_total|currency if item.pr_ttc_total is not none else '-' }}</div>
+                <div><span class="opacity-50">PR HT</span><br>{{ item.pr_ht_total|currency if item.pr_ht_total is not none else '-' }}</div>
             </div>
             {% if item.remarque %}
             <div class="mt-2 text-xs opacity-80">{{ item.remarque }}</div>
@@ -72,6 +85,82 @@
     <div class="text-center py-8 opacity-50">Aucune entree frais</div>
 {% endfor %}
 </div>
+
+{% if can_write %}
+<dialog id="modal-frais-edit" class="modal">
+    <div class="modal-box max-w-5xl">
+        <h3 class="font-bold text-lg">Prix de revient du bon <span id="frais-modal-numero" class="text-primary"></span></h3>
+        <p class="text-xs opacity-60 mb-3">Toutes les valeurs et pourcentages sont modifiables. Le calcul se met à jour en direct.</p>
+
+        <div id="frais-cours-warning" class="alert alert-warning py-2 text-sm mb-3 hidden">
+            <i class="fas fa-triangle-exclamation"></i>
+            <span>Aucun <strong>cours</strong> n'est renseigné pour ce bon. Renseignez-le dans « Gestion des commandes » pour obtenir le prix de revient.</span>
+        </div>
+
+        <form id="form-frais-edit" method="POST" action="">
+            <input type="hidden" name="pr_config" id="frais-pr-config">
+
+            <div class="divider text-xs my-2 font-semibold">Produits du bon (prix &amp; quantité non modifiables)</div>
+            <div class="overflow-x-auto">
+                <table class="table table-xs">
+                    <thead id="frais-in-head"></thead>
+                    <tbody id="frais-in-body"></tbody>
+                </table>
+            </div>
+
+            <div class="divider text-xs my-2 font-semibold text-info">Taxes douanières</div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <label class="form-control"><span class="label-text text-xs">Droits de douane (D.D.)</span>
+                    <select id="pg_douane" class="select select-bordered select-xs" oninput="recomputePR()">
+                        <option value="0">TAUX 1 — 0 %</option>
+                        <option value="15">TAUX 2 — 15 %</option>
+                        <option value="30">TAUX 3 — 30 %</option>
+                    </select></label>
+                <label class="form-control"><span class="label-text text-xs">TCS (%)</span>
+                    <input type="number" step="0.01" id="pg_tcs" class="input input-bordered input-xs" oninput="recomputePR()"></label>
+                <label class="form-control"><span class="label-text text-xs">Précompte IBS (%)</span>
+                    <input type="number" step="0.01" id="pg_precompte" class="input input-bordered input-xs" oninput="recomputePR()"></label>
+                <label class="form-control"><span class="label-text text-xs">RPS (DA, réparti)</span>
+                    <input type="number" step="0.01" id="pc_rps" class="input input-bordered input-xs" oninput="recomputePR()"></label>
+            </div>
+
+            <div class="divider text-xs my-2 font-semibold text-warning">Frais transitaire</div>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <label class="form-control"><span class="label-text text-xs">Fret ($, réparti)</span>
+                    <input type="number" step="0.01" id="pc_fret" class="input input-bordered input-xs" oninput="recomputePR()"></label>
+                <label class="form-control"><span class="label-text text-xs">Taxe domiciliation (%)</span>
+                    <input type="number" step="0.001" id="pg_taxedom" class="input input-bordered input-xs" oninput="recomputePR()"></label>
+                <label class="form-control"><span class="label-text text-xs">Frais transfert (%)</span>
+                    <input type="number" step="0.001" id="pg_transfert" class="input input-bordered input-xs" oninput="recomputePR()"></label>
+                <label class="form-control"><span class="label-text text-xs">Échange (DA, réparti)</span>
+                    <input type="number" step="0.01" id="pc_echange" class="input input-bordered input-xs" oninput="recomputePR()"></label>
+                <label class="form-control"><span class="label-text text-xs">Honoraires transitaire (DA, réparti)</span>
+                    <input type="number" step="0.01" id="pc_honoraires" class="input input-bordered input-xs" oninput="recomputePR()"></label>
+                <label class="form-control"><span class="label-text text-xs">Magasinage (DA, réparti)</span>
+                    <input type="number" step="0.01" id="pc_magasinage" class="input input-bordered input-xs" oninput="recomputePR()"></label>
+                <label class="form-control"><span class="label-text text-xs">Surestaries (DA, réparti)</span>
+                    <input type="number" step="0.01" id="pc_surestaries" class="input input-bordered input-xs" oninput="recomputePR()"></label>
+                <label class="form-control"><span class="label-text text-xs">Remarque</span>
+                    <input type="text" name="remarque" id="frais-remarque" class="input input-bordered input-xs"></label>
+            </div>
+
+            <div class="divider text-xs my-2 font-semibold">Détail du prix de revient</div>
+            <div class="overflow-x-auto">
+                <table class="table table-xs">
+                    <thead id="frais-out-head"></thead>
+                    <tbody id="frais-out-body"></tbody>
+                </table>
+            </div>
+
+            <div class="modal-action">
+                <button type="button" class="btn btn-ghost btn-sm" onclick="document.getElementById('modal-frais-edit').close()">Annuler</button>
+                <button type="submit" class="btn btn-primary btn-sm">Enregistrer</button>
+            </div>
+        </form>
+    </div>
+    <form method="dialog" class="modal-backdrop"><button>close</button></form>
+</dialog>
+{% endif %}
 
 {% if frais_total_pages > 1 %}
 <div class="flex justify-center mt-4">
@@ -113,11 +202,233 @@ function goToFraisPage(page) {
     var params = new URLSearchParams();
     var search = document.querySelector('[name="search"]');
     var societe = document.querySelector('[name="societe"]');
+    var perPage = document.querySelector('[name="per_page_frais"]');
     if (search && search.value) params.set('search', search.value);
     if (societe && societe.value) params.set('societe', societe.value);
+    if (perPage && perPage.value) params.set('per_page_frais', perPage.value);
     params.set('frais_page', String(page));
     if (_fraisSort) params.set('frais_sort', _fraisSort);
     if (_fraisDir) params.set('frais_dir', _fraisDir);
     htmx.ajax('GET', '{{ url_for("api_logistique_frais_list") }}?' + params.toString(), {target: '#frais-table', swap: 'innerHTML'});
 }
+
+// ── Calculateur de prix de revient (réplique éditable de la feuille Excel) ──
+var FRAIS_PR_MAP = {{ frais_pr_map|tojson }};
+var _fraisCurrent = null;
+
+function _numv(id) {
+    var el = document.getElementById(id);
+    if (!el) return 0;
+    var v = parseFloat(el.value);
+    return isNaN(v) ? 0 : v;
+}
+function _setv(id, val) {
+    var el = document.getElementById(id);
+    if (el) el.value = (val === null || val === undefined) ? '' : val;
+}
+function _fmtDA(x) {
+    if (x === null || x === undefined) return '-';
+    return x.toLocaleString('fr-FR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+function _fmtPct(x) {
+    if (x === null || x === undefined) return '-';
+    return (x * 100).toLocaleString('fr-FR', {minimumFractionDigits: 0, maximumFractionDigits: 2}) + ' %';
+}
+
+function openFraisEdit(id) {
+    _fraisCurrent = FRAIS_PR_MAP[id] || null;
+    document.getElementById('form-frais-edit').action = '/api/logistique/frais/' + id + '/edit';
+    document.getElementById('frais-modal-numero').textContent =
+        (_fraisCurrent && _fraisCurrent.numero) ? _fraisCurrent.numero : '';
+
+    var cfg = _fraisCurrent || {rates: {}, charges: {}, produits: [], remarque: ''};
+    var r = cfg.rates || {}, c = cfg.charges || {};
+    _setv('pg_douane',     r.douane     != null ? Math.round(r.douane * 100) : '0');
+    _setv('pg_tcs',        r.tcs        != null ? r.tcs * 100 : '');
+    _setv('pg_precompte',  r.precompte  != null ? r.precompte * 100 : '');
+    _setv('pg_taxedom',    r.taxe_dom   != null ? r.taxe_dom * 100 : '');
+    _setv('pg_transfert',  r.frais_transfert != null ? r.frais_transfert * 100 : '');
+    _setv('pc_rps',         c.rps         != null ? c.rps : '');
+    _setv('pc_fret',        c.fret        != null ? c.fret : '');
+    _setv('pc_echange',     c.echange     != null ? c.echange : '');
+    _setv('pc_honoraires',  c.honoraires  != null ? c.honoraires : '');
+    _setv('pc_magasinage',  c.magasinage  != null ? c.magasinage : '');
+    _setv('pc_surestaries', c.surestaries != null ? c.surestaries : '');
+    _setv('frais-remarque', cfg.remarque || '');
+
+    buildFraisGrid();
+    recomputePR();
+    document.getElementById('modal-frais-edit').showModal();
+}
+
+function _fmtNum(x) {
+    if (x === null || x === undefined) return '-';
+    return x.toLocaleString('fr-FR', {maximumFractionDigits: 4});
+}
+
+function buildFraisGrid() {
+    var prods = (_fraisCurrent && _fraisCurrent.produits) ? _fraisCurrent.produits : [];
+    var head = '<tr><th class="text-left">Produit</th>';
+    prods.forEach(function (p) { head += '<th class="text-right">' + (p.nom || '-') + '</th>'; });
+    head += '</tr>';
+    document.getElementById('frais-in-head').innerHTML = head;
+
+    var body = '';
+    // Prix achat $ C&F (lecture seule)
+    body += '<tr><td class="font-medium">Prix achat $ C&F</td>';
+    prods.forEach(function (p) { body += '<td class="text-right opacity-70">' + _fmtNum(p.prix) + '</td>'; });
+    body += '</tr>';
+    // Quantité (lecture seule)
+    body += '<tr><td class="font-medium">Quantité</td>';
+    prods.forEach(function (p) { body += '<td class="text-right opacity-70">' + _fmtNum(p.qte) + '</td>'; });
+    body += '</tr>';
+    // TVA (%) par produit (modifiable)
+    body += '<tr><td class="font-medium">TVA (%)</td>';
+    prods.forEach(function (p, i) {
+        var v = (p.tva === null || p.tva === undefined) ? '' : p.tva * 100;
+        body += '<td class="text-right"><input type="number" step="0.01" id="pa_tva_' + i +
+                '" value="' + v + '" class="input input-bordered input-xs w-20 text-right" oninput="recomputePR()"></td>';
+    });
+    body += '</tr>';
+    document.getElementById('frais-in-body').innerHTML = body;
+}
+
+var _fraisOutRows = [
+    {label: 'Prix achat $ (total)', g: 'info', get: function (r) { return r.prix_usd_total; }, money: true},
+    {label: 'Fret réparti ($)',     g: 'info', get: function (r) { return r.fret_usd; }, money: true, total: true},
+    {label: 'Montant DA',           g: 'info', get: function (r) { return r.montant_da; }, money: true, total: true},
+    {label: 'Fret (DA)',            g: 'info', get: function (r) { return r.fret_da; }, money: true, total: true},
+    {label: 'Valeur en douane (DA)', g: 'info', strong: true, get: function (r) { return r.valeur_douane; }, money: true, total: true},
+    {label: 'Part du bon',          g: 'info', get: function (r) { return r.part; }, pct: true},
+    {label: 'RPS (réparti)',        g: 'douane', get: function (r) { return r.rps; }, money: true, total: true},
+    {label: 'TCS',                  g: 'douane', get: function (r) { return r.tcs; }, money: true, total: true},
+    {label: 'Droits de douane (D.D.)', g: 'douane', get: function (r) { return r.douane; }, money: true, total: true},
+    {label: 'TVA',                  g: 'douane', get: function (r) { return r.tva; }, money: true, total: true},
+    {label: 'Précompte IBS',        g: 'douane', get: function (r) { return r.precompte; }, money: true, total: true},
+    {label: 'Total Douanes',        g: 'douane', isTotal: true, get: function (r) { return r.total_douanes; }, money: true, total: true},
+    {label: 'Taxe domiciliation',   g: 'transit', get: function (r) { return r.taxe_dom; }, money: true, total: true},
+    {label: 'Frais transfert',      g: 'transit', get: function (r) { return r.frais_transfert; }, money: true, total: true},
+    {label: 'Échange (réparti)',    g: 'transit', get: function (r) { return r.echange; }, money: true, total: true},
+    {label: 'Honoraires (réparti)', g: 'transit', get: function (r) { return r.honoraires; }, money: true, total: true},
+    {label: 'Magasinage (réparti)', g: 'transit', get: function (r) { return r.magasinage; }, money: true, total: true},
+    {label: 'Surestaries (réparti)', g: 'transit', get: function (r) { return r.surestaries; }, money: true, total: true},
+    {label: 'Total Transitaire',    g: 'transit', isTotal: true, get: function (r) { return r.total_transitaire; }, money: true, total: true},
+    {label: 'Prix de revient TTC',  g: 'result', strong: true, get: function (r) { return r.pr_ttc; }, money: true, total: true},
+    {label: 'PR / unité TTC',       g: 'result', get: function (r) { return r.pr_unit_ttc; }, money: true},
+    {label: 'Prix de revient HT',   g: 'result', strong: true, get: function (r) { return r.pr_ht; }, money: true, total: true},
+    {label: 'PR / unité HT',        g: 'result', get: function (r) { return r.pr_unit_ht; }, money: true}
+];
+
+function _rowClass(row) {
+    if (row.g === 'douane') return row.isTotal ? 'bg-info/20 font-semibold' : 'bg-info/10';
+    if (row.g === 'transit') return row.isTotal ? 'bg-warning/20 font-semibold' : 'bg-warning/10';
+    if (row.g === 'result') return row.strong ? 'bg-base-300 font-semibold' : '';
+    return row.strong ? 'bg-base-200 font-semibold' : '';
+}
+
+function recomputePR() {
+    var warn = document.getElementById('frais-cours-warning');
+    var outHead = document.getElementById('frais-out-head');
+    var outBody = document.getElementById('frais-out-body');
+    outHead.innerHTML = '';
+    outBody.innerHTML = '';
+
+    var prods = (_fraisCurrent && _fraisCurrent.produits) ? _fraisCurrent.produits : [];
+    if (!prods.length) {
+        warn.classList.add('hidden');
+        outBody.innerHTML = '<tr><td class="text-center opacity-50 py-3">Aucun produit sur ce bon</td></tr>';
+        return;
+    }
+    var cours = _fraisCurrent.cours;
+    if (!cours) {
+        warn.classList.remove('hidden');
+        outBody.innerHTML = '<tr><td class="text-center opacity-50 py-3">Cours manquant — calcul indisponible</td></tr>';
+        return;
+    }
+    warn.classList.add('hidden');
+
+    var douaneR = _numv('pg_douane') / 100;
+    var tcsR = _numv('pg_tcs') / 100, precR = _numv('pg_precompte') / 100,
+        domR = _numv('pg_taxedom') / 100, transR = _numv('pg_transfert') / 100;
+    var rps = _numv('pc_rps'), fret = _numv('pc_fret'), echange = _numv('pc_echange'),
+        honoraires = _numv('pc_honoraires'), magasinage = _numv('pc_magasinage'), surestaries = _numv('pc_surestaries');
+
+    var inputs = prods.map(function (p, i) {
+        return {nom: p.nom, prix: p.prix || 0, qte: p.qte || 0, tva: _numv('pa_tva_' + i) / 100};
+    });
+    var montants = inputs.map(function (p) { return p.prix * p.qte * cours; });
+    var totalDa = montants.reduce(function (a, b) { return a + b; }, 0);
+
+    var res = inputs.map(function (p, i) {
+        var md = montants[i];
+        var part = totalDa ? md / totalDa : 0;
+        var fretUsd = fret * part;
+        var fretDa = fretUsd * cours;
+        var vd = md + fretDa;                       // valeur en douane (fret inclus)
+        var tcs = vd * tcsR;
+        var douane = vd * douaneR;
+        var tva = (vd + tcs) * p.tva;
+        var precompte = (vd + tcs + tva) * precR;
+        var rpsL = rps * part;
+        var totalDouanes = vd + rpsL + tcs + douane + tva + precompte;
+        var taxeDom = vd * domR;
+        var fraisTransfert = vd * transR;
+        var echL = echange * part, honL = honoraires * part, magL = magasinage * part, surL = surestaries * part;
+        var totalTransitaire = taxeDom + fraisTransfert + echL + honL + magL + surL;
+        var prTtc = totalDouanes + totalTransitaire;
+        var prHt = prTtc - tva;
+        var qty = p.qte || 0;
+        return {
+            prix_usd_total: p.prix * qty, fret_usd: fretUsd, fret_da: fretDa,
+            montant_da: md, valeur_douane: vd, part: part,
+            rps: rpsL, tcs: tcs, douane: douane, tva: tva, precompte: precompte, total_douanes: totalDouanes,
+            taxe_dom: taxeDom, frais_transfert: fraisTransfert, echange: echL, honoraires: honL,
+            magasinage: magL, surestaries: surL, total_transitaire: totalTransitaire,
+            pr_ttc: prTtc, pr_ht: prHt,
+            pr_unit_ttc: qty ? prTtc / qty : null, pr_unit_ht: qty ? prHt / qty : null
+        };
+    });
+
+    var head = '<tr><th class="text-left">Détail (DA)</th>';
+    inputs.forEach(function (p) { head += '<th class="text-right">' + (p.nom || '-') + '</th>'; });
+    head += '<th class="text-right">Total bon</th></tr>';
+    outHead.innerHTML = head;
+
+    var body = '';
+    _fraisOutRows.forEach(function (row) {
+        var cls = _rowClass(row);
+        body += '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + row.label + '</td>';
+        var sum = 0;
+        res.forEach(function (r) {
+            var v = row.get(r);
+            body += '<td class="text-right">' + (row.pct ? _fmtPct(v) : _fmtDA(v)) + '</td>';
+            if (row.money && v != null) sum += v;
+        });
+        body += '<td class="text-right font-semibold">' + (row.total ? _fmtDA(sum) : '') + '</td>';
+        body += '</tr>';
+    });
+    outBody.innerHTML = body;
+}
+
+document.addEventListener('submit', function (e) {
+    if (!e.target || e.target.id !== 'form-frais-edit') return;
+    var cfg = _fraisCurrent || {produits: []};
+    var prods = cfg.produits || [];
+    var config = {rates: {}, charges: {}, produits: {}};
+    config.rates.douane = _numv('pg_douane') / 100;
+    config.rates.tcs = _numv('pg_tcs') / 100;
+    config.rates.precompte = _numv('pg_precompte') / 100;
+    config.rates.taxe_dom = _numv('pg_taxedom') / 100;
+    config.rates.frais_transfert = _numv('pg_transfert') / 100;
+    config.charges.rps = _numv('pc_rps');
+    config.charges.fret = _numv('pc_fret');
+    config.charges.echange = _numv('pc_echange');
+    config.charges.honoraires = _numv('pc_honoraires');
+    config.charges.magasinage = _numv('pc_magasinage');
+    config.charges.surestaries = _numv('pc_surestaries');
+    prods.forEach(function (p, i) {
+        config.produits[p.id] = {tva: _numv('pa_tva_' + i) / 100};
+    });
+    document.getElementById('frais-pr-config').value = JSON.stringify(config);
+});
 </script>

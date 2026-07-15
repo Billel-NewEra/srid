@@ -45,7 +45,8 @@
                        hx-get="{{ url_for('api_ref_fournisseurs_list') }}?societe=SRID"
                        hx-trigger="input changed delay:300ms"
                        hx-target="#fournisseurs-list"
-                       hx-swap="innerHTML">
+                      hx-swap="innerHTML"
+                      hx-include="[name='per_page_fournisseurs']">
 
                 <div id="fournisseurs-list" class="max-h-[380px] overflow-y-auto"
                      hx-get="{{ url_for('api_ref_fournisseurs_list') }}?societe=SRID"
@@ -70,13 +71,15 @@ function switchSociete(societe) {
     document.getElementById('add-societe').value = societe;
     // Update search hx-get
     var encoded = encodeURIComponent(societe);
+    var perPage = document.querySelector('[name="per_page_fournisseurs"]');
+    var perPageValue = perPage && perPage.value ? perPage.value : '20';
     var searchInput = document.getElementById('filter-fournisseurs');
-    searchInput.setAttribute('hx-get', '{{ url_for("api_ref_fournisseurs_list") }}?societe=' + encoded);
+    searchInput.setAttribute('hx-get', '{{ url_for("api_ref_fournisseurs_list") }}?societe=' + encoded + '&per_page_fournisseurs=' + encodeURIComponent(perPageValue));
     searchInput.value = '';
     htmx.process(searchInput);
     // Reload list
     var listDiv = document.getElementById('fournisseurs-list');
-    htmx.ajax('GET', '{{ url_for("api_ref_fournisseurs_list") }}?societe=' + encoded, {target: listDiv, swap: 'innerHTML'});
+    htmx.ajax('GET', '{{ url_for("api_ref_fournisseurs_list") }}?societe=' + encoded + '&per_page_fournisseurs=' + encodeURIComponent(perPageValue), {target: listDiv, swap: 'innerHTML'});
 }
 </script>
 {% endblock %}

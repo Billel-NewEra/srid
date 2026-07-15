@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block title %}Prix de revient - SRID COM{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+
+    <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
+        <div>
+            <h1 class="text-2xl font-bold page-title">
+                <i class="fas fa-calculator text-teal-400 mr-2"></i>Prix de revient
+            </h1>
+            <p class="text-sm page-subtitle mt-1">Prix de revient par produit, par bon — {{ bons_pr|length }} bon{{ 's' if bons_pr|length != 1 else '' }} calculé{{ 's' if bons_pr|length != 1 else '' }}</p>
+        </div>
+    </div>
+
+    {% if not bons_pr %}
+    <div class="card bg-base-100 shadow">
+        <div class="card-body text-center py-12 opacity-60">
+            <i class="fas fa-calculator text-4xl mb-3"></i>
+            <p>Aucun prix de revient disponible pour le moment.</p>
+            <p class="text-xs mt-1">Renseignez le cours dans « Gestion des commandes » et les charges dans « Frais » pour un bon.</p>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="space-y-4">
+    {% for entry in bons_pr %}
+        <div class="card bg-base-100 shadow">
+            <div class="card-body p-4">
+                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
+                    <div>
+                        <span class="font-mono font-semibold">{{ entry.bon.numero }}</span>
+                        <span class="opacity-60 text-sm ml-2">{{ entry.bon.fournisseur or '-' }} · {{ entry.bon.societe or '-' }}</span>
+                    </div>
+                    <div class="text-sm opacity-70">Cours : <span class="font-semibold">{{ '%.4f'|format(entry.cours) }}</span></div>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="table table-sm w-full min-w-[900px]">
+                        <thead>
+                            <tr class="bg-base-200">
+                                <th>Produit</th>
+                                <th class="text-right">Quantité</th>
+                                <th class="text-right">Montant DA</th>
+                                <th class="text-right">Part du bon</th>
+                                <th class="text-right">PR TTC</th>
+                                <th class="text-right">PR HT</th>
+                                <th class="text-right">PR/unité TTC</th>
+                                <th class="text-right">PR/unité HT</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        {% for r in entry.lignes %}
+                            <tr>
+                                <td>{{ r.nom or r.ligne.designation }}</td>
+                                <td class="text-right">{{ '%.2f'|format(r.qte or 0) }} {{ r.ligne.unite or '' }}</td>
+                                <td class="text-right">{{ r.montant_da|currency }}</td>
+                                <td class="text-right">{{ '%.1f%%'|format(r.part * 100) }}</td>
+                                <td class="text-right font-semibold">{{ r.pr_ttc|currency }}</td>
+                                <td class="text-right">{{ r.pr_ht|currency }}</td>
+                                <td class="text-right">{{ r.pr_unit_ttc|currency if r.pr_unit_ttc is not none else '-' }}</td>
+                                <td class="text-right">{{ r.pr_unit_ht|currency if r.pr_unit_ht is not none else '-' }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                        <tfoot>
+                            <tr class="font-semibold bg-base-200">
+                                <td colspan="4" class="text-right">Total</td>
+                                <td class="text-right">{{ entry.pr_ttc_total|currency }}</td>
+                                <td class="text-right">{{ entry.pr_ht_total|currency }}</td>
+                                <td colspan="2"></td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+    </div>
+</div>
+{% endblock %}

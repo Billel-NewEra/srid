@@ -4,7 +4,7 @@
 {% block content %}
 <div class="fade-in">
     <div class="flex items-center gap-3 mb-6">
-        <a href="{{ url_for('consultation') }}" class="btn btn-ghost btn-sm">
+        <a href="{{ url_for('operations') }}" class="btn btn-ghost btn-sm">
             <i class="fas fa-arrow-left"></i>
         </a>
         <h1 class="text-2xl font-bold page-title"><i class="fas fa-edit text-primary mr-2"></i>Modifier l'opération #{{ operation.id }}</h1>
@@ -138,7 +138,7 @@
                 </div>
 
                 <div class="flex justify-end gap-3 pt-4">
-                    <a href="{{ url_for('consultation') }}" class="btn btn-ghost">Annuler</a>
+                    <a href="{{ url_for('operations') }}" class="btn btn-ghost">Annuler</a>
                     <button type="submit" class="btn btn-primary">
                         <i class="fas fa-save mr-1"></i> Enregistrer les modifications
                     </button>

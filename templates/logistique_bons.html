@@ -31,14 +31,14 @@
                                hx-get="{{ url_for('api_logistique_bons_list') }}"
                                hx-trigger="keyup changed delay:300ms"
                                hx-target="#bons-table"
-                               hx-include="[name='societe'],[name='statut']">
+                               hx-include="[name='societe'],[name='statut'],[name='per_page_bons']">
                     </div>
                 </div>
                 <select name="societe" class="select select-bordered select-sm"
                         hx-get="{{ url_for('api_logistique_bons_list') }}"
                         hx-trigger="change"
                         hx-target="#bons-table"
-                        hx-include="[name='search'],[name='statut']">
+                    hx-include="[name='search'],[name='statut'],[name='per_page_bons']">
                     <option value="">Toutes sociétés</option>
                     <option value="SRID" {% if societe == 'SRID' %}selected{% endif %}>SRID</option>
                     <option value="SRID GENETICS" {% if societe == 'SRID GENETICS' %}selected{% endif %}>SRID GENETICS</option>
@@ -47,7 +47,7 @@
                         hx-get="{{ url_for('api_logistique_bons_list') }}"
                         hx-trigger="change"
                         hx-target="#bons-table"
-                        hx-include="[name='search'],[name='societe']">
+                    hx-include="[name='search'],[name='societe'],[name='per_page_bons']">
                     <option value="">Tous statuts</option>
                     {% for s in bon_statuts %}
                     <option value="{{ s }}" {% if statut_f == s %}selected{% endif %}>{{ s }}</option>
@@ -246,9 +246,11 @@ function sortBonsTable(col) {
     var search = document.querySelector('[name="search"]');
     var societe = document.querySelector('[name="societe"]');
     var statut = document.querySelector('[name="statut"]');
+    var perPage = document.querySelector('[name="per_page_bons"]');
     if (search && search.value) params.set('search', search.value);
     if (societe && societe.value) params.set('societe', societe.value);
     if (statut && statut.value) params.set('statut', statut.value);
+    if (perPage && perPage.value) params.set('per_page_bons', perPage.value);
     params.set('sort', _bonsSort);
     params.set('dir', _bonsDir);
     htmx.ajax('GET', '{{ url_for("api_logistique_bons_list") }}?' + params.toString(), {target: '#bons-table', swap: 'innerHTML'});
@@ -604,7 +606,14 @@ function openEditBon(bon) {
 
 // ─── Modal détail bon ─────────────────────────────────────────────────────────
 var dateFmt = function(d) { return d ? new Date(d + 'T12:00:00').toLocaleDateString('fr-FR') : '—'; };
-var euroFmt = new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR' });
+function deviseFmt(devise) {
+    var code = (devise || 'EUR').toUpperCase();
+    try {
+        return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: code });
+    } catch (err) {
+        return new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+}
 
 function openBonDetail(el) {
     var bon;
@@ -621,6 +630,7 @@ function openBonDetail(el) {
         container.innerHTML = '<p class="opacity-50 text-sm">Aucune ligne</p>';
     } else {
         var total = 0;
+        var bonDevise = lignes[0].devise || 'EUR';
         var rows = lignes.map(function(l) {
             var t = (Number(l.quantite) || 0) * (Number(l.prix_unitaire) || 0);
             total += t;
@@ -639,7 +649,7 @@ function openBonDetail(el) {
             '<thead><tr class="bg-base-200"><th>Réf.</th><th>Désignation</th><th class="text-right">Quantité</th><th class="text-center">Devise</th><th class="text-right">Prix unitaire</th><th class="text-right">Total</th></tr></thead>' +
             '<tbody>' + rows + '</tbody></table>' +
             '<div class="flex justify-end">' +
-            '<div class="bg-base-200 rounded-lg px-4 py-2 font-bold font-mono text-lg text-primary">Total : ' + euroFmt.format(total) + '</div>' +
+            '<div class="bg-base-200 rounded-lg px-4 py-2 font-bold font-mono text-lg text-primary">Total : ' + deviseFmt(bonDevise).format(total) + '</div>' +
             '</div>' +
             (bon.notes ? '<div class="mt-3 p-3 border-l-4 border-primary bg-base-100 rounded text-sm">' +
                 '<span class="text-xs font-semibold opacity-60 block mb-1">REMARQUE</span>' + escapeHtml(bon.notes) + '</div>' : '');
@@ -659,6 +669,7 @@ function printBon(bon, autoprint) {
     var letterheadUrl = SCRIPT_ROOT + '/static/img/' + (isGenetics ? 'entete-srid-genetics.png' : 'entete-srid.png');
     var euro2 = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     var lignes = bon.lignes || [];
+    var printDevise = (lignes[0] && lignes[0].devise) || 'EUR';
     var grandTotal = lignes.reduce(function(s, l) { return s + (Number(l.quantite)||0)*(Number(l.prix_unitaire)||0); }, 0);
 
     var rows = lignes.map(function(l) {
@@ -715,7 +726,7 @@ function printBon(bon, autoprint) {
         '</div></div></section>' +
         '<table><thead><tr><th>RÉF.</th><th>DÉSIGNATION</th><th class="num">QUANTITÉ</th><th class="num">PRIX UNITAIRE</th><th class="num">TOTAL</th></tr></thead>' +
         '<tbody>' + rows + '</tbody></table>' +
-        '<div class="total-wrap"><div class="total-box"><span>Montant total</span><strong>' + euro2.format(grandTotal) + ' €</strong></div></div>' +
+        '<div class="total-wrap"><div class="total-box"><span>Montant total</span><strong>' + euro2.format(grandTotal) + ' ' + escapeHtml(printDevise) + '</strong></div></div>' +
         '</div>' +
         (bon.notes ? '<div class="notes"><span class="lbl">REMARQUE</span><p>' + escapeHtml(bon.notes) + '</p></div>' : '') +
         '</main></section></div>' +

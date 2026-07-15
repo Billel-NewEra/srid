@@ -1,6 +1,18 @@
 <div class="flex items-center justify-between mb-2 text-xs opacity-50">
     <span>{{ total }} entrée{{ 's' if total != 1 else '' }}</span>
-    {% if total_pages > 1 %}<span>Page {{ page }}/{{ total_pages }}</span>{% endif %}
+    <div class="flex items-center gap-2">
+        {% if total_pages > 1 %}<span>Page {{ page }}/{{ total_pages }}</span>{% endif %}
+        <select name="per_page_clients" class="select select-bordered select-xs"
+                hx-get="{{ url_for('api_ref_clients_list') }}"
+                hx-trigger="change"
+                hx-target="#clients-list" hx-swap="innerHTML"
+                hx-include="#filter-clients"
+                hx-vals='{"page": 1}'>
+            {% for size in per_page_options %}
+            <option value="{{ size }}" {% if per_page == size %}selected{% endif %}>{{ size }}</option>
+            {% endfor %}
+        </select>
+    </div>
 </div>
 
 {% if clients %}
@@ -24,7 +36,7 @@
 <div class="flex justify-center items-center gap-1 mt-3">
     {% if page > 1 %}
     <button class="btn btn-ghost btn-xs"
-            hx-get="{{ url_for('api_ref_clients_list') }}?page={{ page - 1 }}&search={{ search | urlencode }}"
+            hx-get="{{ url_for('api_ref_clients_list') }}?page={{ page - 1 }}&search={{ search | urlencode }}&per_page_clients={{ per_page }}"
             hx-target="#clients-list" hx-swap="innerHTML">
         <i class="fas fa-chevron-left"></i>
     </button>
@@ -34,7 +46,7 @@
     <span class="text-xs opacity-60 px-2">{{ page }} / {{ total_pages }}</span>
     {% if page < total_pages %}
     <button class="btn btn-ghost btn-xs"
-            hx-get="{{ url_for('api_ref_clients_list') }}?page={{ page + 1 }}&search={{ search | urlencode }}"
+            hx-get="{{ url_for('api_ref_clients_list') }}?page={{ page + 1 }}&search={{ search | urlencode }}&per_page_clients={{ per_page }}"
             hx-target="#clients-list" hx-swap="innerHTML">
         <i class="fas fa-chevron-right"></i>
     </button>

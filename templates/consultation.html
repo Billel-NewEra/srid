@@ -42,7 +42,7 @@
                                hx-get="{{ url_for('api_operations') }}"
                                hx-trigger="keyup changed delay:300ms"
                                hx-target="#results-table"
-                               hx-include="[name='type_operation'],[name='societe'],[name='statut']">
+                               hx-include="[name='type_operation'],[name='societe'],[name='statut'],[name='per_page']">
                     </div>
                 </div>
 
@@ -52,7 +52,7 @@
                             hx-get="{{ url_for('api_operations') }}"
                             hx-trigger="change"
                             hx-target="#results-table"
-                            hx-include="[name='search'],[name='societe'],[name='statut']"
+                            hx-include="[name='search'],[name='societe'],[name='statut'],[name='per_page']"
                             data-type-operation-filter>
                         <option value="">Tous les types</option>
                         <option value="Chèque">Chèque</option>
@@ -65,7 +65,7 @@
                             hx-get="{{ url_for('api_operations') }}"
                             hx-trigger="change"
                             hx-target="#results-table"
-                            hx-include="[name='search'],[name='type_operation'],[name='statut']">
+                            hx-include="[name='search'],[name='type_operation'],[name='statut'],[name='per_page']">
                         <option value="">Toutes les sociétés</option>
                         <option value="SRID">SRID</option>
                         <option value="Genetics">Genetics</option>
@@ -74,7 +74,7 @@
                             hx-get="{{ url_for('api_operations') }}"
                             hx-trigger="change"
                             hx-target="#results-table"
-                            hx-include="[name='search'],[name='type_operation'],[name='societe']">
+                            hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='per_page']">
                         <option value="">Tous les statuts</option>
                         <option value="Encaissé">Encaissé</option>
                         <option value="Rejeté">Rejeté</option>
@@ -149,10 +149,12 @@
         var type_op = document.querySelector('[name="type_operation"]');
         var societe = document.querySelector('[name="societe"]');
         var statut = document.querySelector('[name="statut"]');
+        var perPage = document.querySelector('[name="per_page"]');
         if (search && search.value) params.set('search', search.value);
         if (type_op && type_op.value) params.set('type_operation', type_op.value);
         if (societe && societe.value) params.set('societe', societe.value);
         if (statut && statut.value) params.set('statut', statut.value);
+        if (perPage && perPage.value) params.set('per_page', perPage.value);
         params.set('sort', _opsSort);
         params.set('dir', _opsDir);
         _sortInProgress = true;
@@ -175,7 +177,8 @@
         '[name="search"]',
         '[name="type_operation"]',
         '[name="societe"]',
-        '[name="statut"]'
+        '[name="statut"]',
+        '[name="per_page"]'
     ];
 
     const statusChoices = [

@@ -656,17 +656,10 @@
                             Finance
                         </div>
                     </div>
-                    {% if can_write %}
-                    <a href="{{ url_for('saisie') }}"
-                       class="nav-link nav-link-finance {% if request.endpoint == 'saisie' %}active{% endif %}">
-                        <i class="nav-icon fas fa-plus-circle"></i>
-                        <span>Saisie</span>
-                    </a>
-                    {% endif %}
-                    <a href="{{ url_for('consultation') }}"
-                       class="nav-link nav-link-finance {% if request.endpoint == 'consultation' %}active{% endif %}">
-                        <i class="nav-icon fas fa-search"></i>
-                        <span>Consultation</span>
+                    <a href="{{ url_for('operations') }}"
+                       class="nav-link nav-link-finance {% if request.endpoint == 'operations' %}active{% endif %}">
+                        <i class="nav-icon fas fa-coins"></i>
+                        <span>Opérations</span>
                     </a>
                     {% if can_write %}
                     <a href="{{ url_for('import_excel') }}"
@@ -705,6 +698,11 @@
                                 <i class="nav-icon fas fa-receipt"></i>
                                 <span>Frais</span>
                           </a>
+                    <a href="{{ url_for('logistique_prix_revient') }}"
+                       class="nav-link nav-link-logistique {% if request.endpoint == 'logistique_prix_revient' %}active{% endif %}">
+                        <i class="nav-icon fas fa-calculator"></i>
+                        <span>Prix de revient</span>
+                    </a>
                     {% if can_write %}
                     <a href="{{ url_for('logistique_referentiels') }}"
                        class="nav-link nav-link-logistique {% if request.endpoint == 'logistique_referentiels' %}active{% endif %}">
@@ -761,7 +759,7 @@
                 </div>
                 <div class="navbar-end gap-1">
                     <!-- Badge alertes global -->
-                          <a href="{{ url_for('consultation') }}"
+                          <a href="{{ url_for('operations') }}"
                        id="global-alert-badge"
                        class="btn btn-ghost btn-sm btn-circle relative"
                               onclick="return handleGlobalAlertClick(event, this)"

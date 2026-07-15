@@ -310,8 +310,8 @@
                         <th>Référence</th>
                         <th>Désignation</th>
                         <th class="text-right" style="width: 60px;">Qté</th>
-                        <th class="text-right" style="width: 80px;">Prix unit. €</th>
-                        <th class="text-right" style="width: 100px;">Total €</th>
+                        <th class="text-right" style="width: 90px;">Prix unit.</th>
+                        <th class="text-right" style="width: 110px;">Total</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -324,14 +324,14 @@
                         <td class="text-right">{{ ligne.quantite or '—' }}</td>
                         <td class="text-right" style="font-family: 'Courier New', monospace;">
                             {% if ligne.prix_unitaire %}
-                                {{ "%.2f"|format(ligne.prix_unitaire) }}
+                                {{ "%.2f"|format(ligne.prix_unitaire) }} {{ ligne.devise or 'EUR' }}
                             {% else %}
                                 —
                             {% endif %}
                         </td>
                         <td class="text-right" style="font-family: 'Courier New', monospace; font-weight: 600;">
                             {% if ligne.quantite and ligne.prix_unitaire %}
-                                {{ "%.2f"|format(ligne.quantite * ligne.prix_unitaire) }}
+                                {{ "%.2f"|format(ligne.quantite * ligne.prix_unitaire) }} {{ ligne.devise or 'EUR' }}
                             {% else %}
                                 —
                             {% endif %}
@@ -350,7 +350,7 @@
         <div class="totals-section">
             <div class="total-row">
                 <div class="total-label">Montant total:</div>
-                <div class="total-value">{{ "%.2f"|format(bon.total_eur or 0) }} €</div>
+                <div class="total-value">{{ "%.2f"|format(bon.total_eur or 0) }} {{ bon.lignes[0].devise or 'EUR' }}</div>
             </div>
         </div>
         {% endif %}

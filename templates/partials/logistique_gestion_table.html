@@ -9,6 +9,19 @@
 
 <div class="flex justify-between items-center mb-3 text-sm opacity-70" data-current-page="{{ page }}">
     <span><span class="font-semibold">{{ total }}</span> entrée{{ 's' if total != 1 else '' }}</span>
+    <div class="flex items-center gap-2">
+        <label class="text-xs opacity-60">Entrées</label>
+        <select name="per_page_log" class="select select-bordered select-xs"
+                hx-get="{{ url_for('api_logistique_gestion_list') }}"
+                hx-trigger="change"
+                hx-target="#gestion-table"
+                hx-include="[name='search'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']"
+                hx-vals='{"page": 1}'>
+            {% for size in per_page_options %}
+            <option value="{{ size }}" {% if per_page_log == size %}selected{% endif %}>{{ size }}</option>
+            {% endfor %}
+        </select>
+    </div>
 </div>
 
 <!-- Vue mobile (cards) -->
@@ -30,6 +43,7 @@
          data-montant-eur="{{ item.montant_eur or '' }}"
          data-cours="{{ item.cours or '' }}"
          data-date-facture="{{ item.date_facture.strftime('%Y-%m-%d') if item.date_facture else '' }}"
+         data-date-etd="{{ item.date_etd.strftime('%Y-%m-%d') if item.date_etd else '' }}"
          data-code-paiement="{{ item.code_paiement or '' }}"
          data-nb-jours="{{ item.nb_jours or '' }}"
          data-date-echeance="{{ item.date_echeance.strftime('%Y-%m-%d') if item.date_echeance else '' }}"
@@ -76,6 +90,7 @@
         <tr class="bg-base-200">
             <th class="whitespace-nowrap">N° Bon</th>
             <th class="cursor-pointer select-none" onclick="sortGestionTable('fournisseur')">Fournisseur{{ sort_icon('fournisseur', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_etd')">ETD{{ sort_icon('date_etd', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_arrivee')">DAP{{ sort_icon('date_arrivee', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_d10')">D10{{ sort_icon('date_d10', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_arrivee_depot')">DAD{{ sort_icon('date_arrivee_depot', sort_col|default(''), sort_dir|default('asc')) }}</th>
@@ -108,6 +123,7 @@
         data-montant-eur="{{ item.montant_eur or '' }}"
         data-cours="{{ item.cours or '' }}"
         data-date-facture="{{ item.date_facture.strftime('%Y-%m-%d') if item.date_facture else '' }}"
+        data-date-etd="{{ item.date_etd.strftime('%Y-%m-%d') if item.date_etd else '' }}"
         data-code-paiement="{{ item.code_paiement or '' }}"
         data-nb-jours="{{ item.nb_jours or '' }}"
         data-date-echeance="{{ item.date_echeance.strftime('%Y-%m-%d') if item.date_echeance else '' }}"
@@ -120,6 +136,7 @@
             {% else %}<span class="opacity-30">—</span>{% endif %}
         </td>
         <td class="text-sm font-medium" style="{{ row_style }}">{{ item.fournisseur or '—' }}</td>
+        <td class="text-sm whitespace-nowrap opacity-70" style="{{ row_style }}">{{ item.date_etd.strftime('%d/%m/%Y') if item.date_etd else '—' }}</td>
         <td class="text-sm whitespace-nowrap font-medium" style="{{ row_style }}">{{ item.date_arrivee.strftime('%d/%m/%Y') if item.date_arrivee else '—' }}</td>
         <td class="text-sm whitespace-nowrap opacity-70" style="{{ row_style }}">{{ item.date_d10.strftime('%d/%m/%Y') if item.date_d10 else '—' }}</td>
         <td class="text-sm whitespace-nowrap font-medium" style="{{ row_style }}">{{ item.date_arrivee_depot.strftime('%d/%m/%Y') if item.date_arrivee_depot else '—' }}</td>
@@ -134,7 +151,7 @@
         </td>
     </tr>
     {% else %}
-    <tr><td colspan="9" class="text-center py-12 opacity-50">
+    <tr><td colspan="10" class="text-center py-12 opacity-50">
         <i class="fas fa-inbox text-4xl mb-2 block"></i>
         Aucune entrée{% if search or societe or statut_f or date_filter or date_debut or date_fin %} pour ces filtres{% endif %}
     </td></tr>
@@ -151,7 +168,7 @@
         <button class="join-item btn btn-sm"
                 hx-get="{{ url_for('api_logistique_gestion_list') }}"
                 hx-target="#gestion-table"
-                hx-include="[name='search'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']"
+            hx-include="[name='search'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='per_page_log']"
                 hx-vals='{"page": {{ page - 1 }}}'><i class="fas fa-chevron-left"></i></button>
         {% endif %}
         {% for p in range(1, total_pages + 1) %}
@@ -161,7 +178,7 @@
             <button class="join-item btn btn-sm"
                     hx-get="{{ url_for('api_logistique_gestion_list') }}"
                     hx-target="#gestion-table"
-                    hx-include="[name='search'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']"
+                    hx-include="[name='search'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='per_page_log']"
                     hx-vals='{"page": {{ p }}}'>{{ p }}</button>
             {% elif p == 4 or p == total_pages - 2 %}
             <button class="join-item btn btn-sm btn-disabled">...</button>
@@ -171,7 +188,7 @@
         <button class="join-item btn btn-sm"
                 hx-get="{{ url_for('api_logistique_gestion_list') }}"
                 hx-target="#gestion-table"
-                hx-include="[name='search'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']"
+            hx-include="[name='search'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='per_page_log']"
                 hx-vals='{"page": {{ page + 1 }}}'><i class="fas fa-chevron-right"></i></button>
         {% endif %}
     </div>

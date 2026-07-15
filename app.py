@@ -11,10 +11,18 @@ import os
 import zlib
 from openpyxl import Workbook, load_workbook
 
-REF_PER_PAGE = 25
-LOG_PER_PAGE = 25
-BON_PER_PAGE = 25
+REF_PER_PAGE = 20
+LOG_PER_PAGE = 20
+BON_PER_PAGE = 20
+PER_PAGE_OPTIONS = (20, 40, 60)
 BON_STATUTS  = ['Brouillon', 'En attente', 'Approuvé', 'Envoyé', 'Reçu']
+
+
+def _get_per_page(args, key, default_value):
+    value = args.get(key, default_value, type=int)
+    if value not in PER_PAGE_OPTIONS:
+        return default_value
+    return value
 
 
 app = Flask(__name__)
@@ -902,66 +910,57 @@ def api_dashboard_types():
 
 # --- Saisie ---
 
-@app.route('/saisie', methods=['GET', 'POST'])
+@app.route('/api/operation/add', methods=['POST'])
 @role_required('admin', 'saisie')
-def saisie():
-    if request.method == 'POST':
-        type_operation = _normalize_type_operation(request.form.get('type_operation'))
-        type_cheque = (request.form.get('type_cheque') or request.form.get('type_detail')) if type_operation == 'Chèque' else None
-        if type_cheque not in CHECK_TYPE_CHOICES:
-            type_cheque = None
+def api_operation_add():
+    type_operation = _normalize_type_operation(request.form.get('type_operation'))
+    type_cheque = (request.form.get('type_cheque') or request.form.get('type_detail')) if type_operation == 'Chèque' else None
+    if type_cheque not in CHECK_TYPE_CHOICES:
+        type_cheque = None
 
-        date_operation = None
-        date_reception = None
-        date_sortie = None
-        date_echeance = None
-        if type_operation == 'Chèque':
-            date_reception = _parse_date(request.form.get('date_reception'))
-            date_sortie = _parse_date(request.form.get('date_sortie'))
-            if type_cheque == 'À échéance':
-                date_echeance = _parse_date(request.form.get('date_echeance') or request.form.get('date_encaissement'))
-            date_operation = date_sortie
-        else:
-            date_operation = _parse_date(request.form.get('date_operation'))
+    date_operation = None
+    date_reception = None
+    date_sortie = None
+    date_echeance = None
+    if type_operation == 'Chèque':
+        date_reception = _parse_date(request.form.get('date_reception'))
+        date_sortie = _parse_date(request.form.get('date_sortie'))
+        if type_cheque == 'À échéance':
+            date_echeance = _parse_date(request.form.get('date_echeance') or request.form.get('date_encaissement'))
+        date_operation = date_sortie
+    else:
+        date_operation = _parse_date(request.form.get('date_operation'))
 
-        statut_auto = _compute_statut(type_operation, type_cheque)
+    statut_auto = _compute_statut(type_operation, type_cheque)
 
-        op = Operation(
-            type_operation=type_operation,
-            societe=request.form.get('societe'),
-            famille=None,
-            date_operation=date_operation,
-            date_reception=date_reception,
-            date_encaissement=date_echeance,
-            date_sortie=date_sortie,
-            client=request.form.get('client'),
-            remettant=request.form.get('remettant_commercial') or request.form.get('remettant') or None,
-            montant=abs(float(request.form.get('montant', 0))),
-            banque=_normalize_bank_name(request.form.get('banque')),
-            numero_piece=request.form.get('numero_piece') or None,
-            statut=statut_auto,
-            type_detail=type_cheque,
-            entree=request.form.get('entree') or None,
-            sortie=request.form.get('sortie') or None,
-            remarque=request.form.get('remarque') or None,
-            cree_par=session.get('user_nom', ''),
-        )
-        db.session.add(op)
-        db.session.commit()
-        _log_audit(op.id, 'création', f"{op.type_operation} - {op.client} - {op.montant}")
-
-        if request.headers.get('HX-Request'):
-            return render_template('partials/success_message.html', operation=op)
-        flash('Opération enregistrée !', 'success')
-        return redirect(url_for('saisie'))
-
-    return render_template(
-        'saisie.html',
-        bank_options=_get_bank_suggestions(),
-        client_options=_get_client_suggestions(),
-        remettant_options=_get_remettant_suggestions(),
-        check_type_options=CHECK_TYPE_CHOICES,
+    op = Operation(
+        type_operation=type_operation,
+        societe=request.form.get('societe'),
+        famille=None,
+        date_operation=date_operation,
+        date_reception=date_reception,
+        date_encaissement=date_echeance,
+        date_sortie=date_sortie,
+        client=request.form.get('client'),
+        remettant=request.form.get('remettant_commercial') or request.form.get('remettant') or None,
+        montant=abs(float(request.form.get('montant', 0))),
+        banque=_normalize_bank_name(request.form.get('banque')),
+        numero_piece=request.form.get('numero_piece') or None,
+        statut=statut_auto,
+        type_detail=type_cheque,
+        entree=request.form.get('entree') or None,
+        sortie=request.form.get('sortie') or None,
+        remarque=request.form.get('remarque') or None,
+        cree_par=session.get('user_nom', ''),
     )
+    db.session.add(op)
+    db.session.commit()
+    _log_audit(op.id, 'création', f"{op.type_operation} - {op.client} - {op.montant}")
+
+    if request.headers.get('HX-Request'):
+        return render_template('partials/success_message.html', operation=op)
+    flash('Opération enregistrée !', 'success')
+    return redirect(url_for('operations'))
 
 
 # --- Modification ---
@@ -1003,8 +1002,10 @@ def edit_operation(op_id):
         op.numero_piece = request.form.get('numero_piece') or None
         op.statut = _compute_statut(type_operation, type_cheque)
         op.type_detail = type_cheque
-        op.entree = request.form.get('entree') or None
-        op.sortie = request.form.get('sortie') or None
+        if 'entree' in request.form:
+            op.entree = request.form.get('entree') or None
+        if 'sortie' in request.form:
+            op.sortie = request.form.get('sortie') or None
         op.remarque = request.form.get('remarque') or None
         op.date_modification = datetime.utcnow()
         db.session.commit()
@@ -1013,7 +1014,7 @@ def edit_operation(op_id):
         if request.headers.get('HX-Request'):
             return render_template('partials/success_message.html', operation=op, action='modifiée')
         flash('Opération modifiée !', 'success')
-        return redirect(url_for('consultation'))
+        return redirect(url_for('operations'))
 
     if request.headers.get('HX-Request'):
         return render_template(
@@ -1036,24 +1037,26 @@ def edit_operation(op_id):
 
 # ─── RÉFÉRENTIELS ────────────────────────────────────────────────────────────
 
-def _ref_clients_ctx(is_admin, page=1, search=''):
+def _ref_clients_ctx(is_admin, page=1, search='', per_page=REF_PER_PAGE):
     q = ClientLabel.query.order_by(ClientLabel.nom)
     if search:
         q = q.filter(ClientLabel.nom.ilike(f'%{search}%'))
     total = q.count()
-    clients = q.offset((page - 1) * REF_PER_PAGE).limit(REF_PER_PAGE).all()
+    clients = q.offset((page - 1) * per_page).limit(per_page).all()
     return dict(clients=clients, is_admin=is_admin, page=page, search=search,
-                total=total, total_pages=max(1, (total + REF_PER_PAGE - 1) // REF_PER_PAGE))
+                total=total, total_pages=max(1, (total + per_page - 1) // per_page),
+                per_page=per_page, per_page_options=PER_PAGE_OPTIONS)
 
 
-def _ref_remettants_ctx(is_admin, page=1, search=''):
+def _ref_remettants_ctx(is_admin, page=1, search='', per_page=REF_PER_PAGE):
     q = RemettantLabel.query.order_by(RemettantLabel.nom)
     if search:
         q = q.filter(RemettantLabel.nom.ilike(f'%{search}%'))
     total = q.count()
-    remettants = q.offset((page - 1) * REF_PER_PAGE).limit(REF_PER_PAGE).all()
+    remettants = q.offset((page - 1) * per_page).limit(per_page).all()
     return dict(remettants=remettants, is_admin=is_admin, page=page, search=search,
-                total=total, total_pages=max(1, (total + REF_PER_PAGE - 1) // REF_PER_PAGE))
+                total=total, total_pages=max(1, (total + per_page - 1) // per_page),
+                per_page=per_page, per_page_options=PER_PAGE_OPTIONS)
 
 
 @app.route('/referentiels')
@@ -1067,8 +1070,9 @@ def referentiels():
 def api_ref_clients_list():
     page   = request.args.get('page', 1, type=int)
     search = request.args.get('search', '').strip()
+    per_page = _get_per_page(request.args, 'per_page_clients', REF_PER_PAGE)
     return render_template('partials/ref_clients_list.html',
-                           **_ref_clients_ctx(_current_role() == 'admin', page, search))
+                           **_ref_clients_ctx(_current_role() == 'admin', page, search, per_page))
 
 
 @app.route('/api/referentiels/remettants/list')
@@ -1076,8 +1080,9 @@ def api_ref_clients_list():
 def api_ref_remettants_list():
     page   = request.args.get('page', 1, type=int)
     search = request.args.get('search', '').strip()
+    per_page = _get_per_page(request.args, 'per_page_remettants', REF_PER_PAGE)
     return render_template('partials/ref_remettants_list.html',
-                           **_ref_remettants_ctx(_current_role() == 'admin', page, search))
+                           **_ref_remettants_ctx(_current_role() == 'admin', page, search, per_page))
 
 
 @app.route('/api/referentiels/clients/add', methods=['POST'])
@@ -1152,16 +1157,17 @@ def api_ref_remettant_delete(item_id):
 
 # ── Référentiels Fournisseurs ──
 
-def _ref_fournisseurs_ctx(is_admin, page=1, search='', societe=''):
+def _ref_fournisseurs_ctx(is_admin, page=1, search='', societe='', per_page=REF_PER_PAGE):
     q = Fournisseur.query.order_by(Fournisseur.nom)
     if societe:
         q = q.filter(Fournisseur.societe == societe)
     if search:
         q = q.filter(Fournisseur.nom.ilike(f'%{search}%'))
     total = q.count()
-    fournisseurs = q.offset((page - 1) * REF_PER_PAGE).limit(REF_PER_PAGE).all()
+    fournisseurs = q.offset((page - 1) * per_page).limit(per_page).all()
     return dict(fournisseurs=fournisseurs, is_admin=is_admin, page=page, search=search,
-                societe=societe, total=total, total_pages=max(1, (total + REF_PER_PAGE - 1) // REF_PER_PAGE))
+                societe=societe, total=total, total_pages=max(1, (total + per_page - 1) // per_page),
+                per_page=per_page, per_page_options=PER_PAGE_OPTIONS)
 
 
 @app.route('/logistique/referentiels')
@@ -1176,8 +1182,9 @@ def api_ref_fournisseurs_list():
     page    = request.args.get('page', 1, type=int)
     search  = request.args.get('search', '').strip()
     societe = request.args.get('societe', '').strip()
+    per_page = _get_per_page(request.args, 'per_page_fournisseurs', REF_PER_PAGE)
     return render_template('partials/ref_fournisseurs_list.html',
-                           **_ref_fournisseurs_ctx(_current_role() == 'admin', page, search, societe))
+                           **_ref_fournisseurs_ctx(_current_role() == 'admin', page, search, societe, per_page))
 
 
 @app.route('/api/logistique/referentiels/fournisseurs/add', methods=['POST'])
@@ -1236,13 +1243,13 @@ def _log_kpis():
         CommandeLogistique.date_arrivee_depot.is_(None),
         CommandeLogistique.date_d10.is_(None),
         CommandeLogistique.date_arrivee.is_(None),
-        CommandeLogistique.date_facture.isnot(None)
+        CommandeLogistique.date_etd.isnot(None)
     ).count()
     arrivage = CommandeLogistique.query.filter(
         CommandeLogistique.date_arrivee_depot.is_(None),
         CommandeLogistique.date_d10.is_(None),
         CommandeLogistique.date_arrivee.is_(None),
-        CommandeLogistique.date_facture.is_(None)
+        CommandeLogistique.date_etd.is_(None)
     ).count()
 
     return {
@@ -1291,9 +1298,167 @@ def _get_logistique_notifications(limit=8):
 LOG_STATUTS = ['ARRIVAGE', 'ETD', 'DAP', 'D10', 'DAD']
 
 
+# ── Prix de revient : taux par défaut (modifiables par l'utilisateur) ───────
+PR_TAUX_TCS             = 0.03   # TCS 3%
+PR_TAUX_TVA             = 0.09   # TVA 9%
+PR_TAUX_PRECOMPTE_IBS   = 0.02   # Précompte IBS 2%
+PR_TAUX_TAXE_DOM        = 0.003  # Taxe domiciliation 0.3%
+PR_TAUX_FRAIS_TRANSFERT = 0.004  # Frais de transfert 0.4%
+
+
+def _cours_du_bon(bon_id):
+    """Récupère le cours (taux de change) déjà saisi dans l'entrée Gestion des commandes du bon."""
+    log_entry = CommandeLogistique.query.filter_by(bon_id=bon_id).first()
+    return log_entry.cours if log_entry else None
+
+
+def _pr_config(frais, bon):
+    """Construit la configuration de calcul du PR pour un bon.
+
+    Fusionne les valeurs éditables enregistrées (frais.pr_config, JSON) avec les
+    valeurs par défaut : taux fixes standards + données produits issues du bon.
+    - Prix achat et quantité proviennent du bon (non modifiables).
+    - Le taux de droits de douane (D.D.) et le fret sont communs au bon.
+    - Seule la TVA peut différer par produit.
+    Structure retournée :
+      {
+        'rates':   {'tcs','tva','precompte','taxe_dom','frais_transfert','douane'},
+        'charges': {'rps','fret','echange','honoraires','magasinage','surestaries'},
+        'produits': { <ligne_id>: {'nom','prix','qte','tva'} },
+      }
+    """
+    saved = {}
+    if frais and frais.pr_config:
+        try:
+            saved = json.loads(frais.pr_config)
+        except (ValueError, TypeError):
+            saved = {}
+
+    s_rates    = saved.get('rates', {}) or {}
+    s_charges  = saved.get('charges', {}) or {}
+    s_produits = saved.get('produits', {}) or {}
+
+    default_douane = frais.taux_douane if (frais and frais.taux_douane is not None) else 0
+    rates = {
+        'tcs':             s_rates.get('tcs',             PR_TAUX_TCS),
+        'tva':             s_rates.get('tva',             PR_TAUX_TVA),
+        'precompte':       s_rates.get('precompte',       PR_TAUX_PRECOMPTE_IBS),
+        'taxe_dom':        s_rates.get('taxe_dom',        PR_TAUX_TAXE_DOM),
+        'frais_transfert': s_rates.get('frais_transfert', PR_TAUX_FRAIS_TRANSFERT),
+        'douane':          s_rates.get('douane',          default_douane),
+    }
+    charges = {
+        'rps':         s_charges.get('rps',         frais.rps if frais else 2500),
+        'fret':        s_charges.get('fret',        0),
+        'echange':     s_charges.get('echange',     frais.echange if frais else 0),
+        'honoraires':  s_charges.get('honoraires',  frais.honoraires_transitaire if frais else 0),
+        'magasinage':  s_charges.get('magasinage',  frais.magasinage if frais else 0),
+        'surestaries': s_charges.get('surestaries', frais.surestaries if frais else 0),
+    }
+
+    produits = {}
+    if bon:
+        for l in bon.lignes:
+            sp = s_produits.get(str(l.id), {}) or {}
+            produits[str(l.id)] = {
+                'nom':  l.designation,
+                'prix': l.prix_unitaire or 0,   # depuis le bon (lecture seule)
+                'qte':  l.quantite or 0,        # depuis le bon (lecture seule)
+                'tva':  sp.get('tva', rates['tva']),
+            }
+    return {'rates': rates, 'charges': charges, 'produits': produits}
+
+
+def _calculer_pr_bon(bon, frais, cours):
+    """Calcule le prix de revient (PR) détaillé de chaque produit d'un bon.
+
+    Valeur en douane = Montant DA + (fret réparti × cours). Le fret et le RPS
+    sont saisis une fois pour le bon puis répartis au prorata de la part de chaque
+    produit dans la valeur des marchandises. Le taux de droits de douane est commun
+    au bon ; la TVA peut différer par produit. Les taxes proportionnelles sont
+    calculées sur la valeur en douane (fret inclus).
+    """
+    if not bon or not bon.lignes or not cours:
+        return []
+
+    cfg = _pr_config(frais, bon)
+    rates = cfg['rates']
+    charges = cfg['charges']
+    fret_total = charges['fret'] or 0
+    douane_rate = rates['douane'] or 0
+
+    ordered = [(l, cfg['produits'][str(l.id)]) for l in bon.lignes if str(l.id) in cfg['produits']]
+
+    montants_da = [(p['prix'] or 0) * (p['qte'] or 0) * cours for _, p in ordered]
+    total_da = sum(montants_da)
+
+    resultats = []
+    for (ligne, p), montant_da in zip(ordered, montants_da):
+        part = (montant_da / total_da) if total_da else 0
+        qty  = p['qte'] or 0
+
+        fret_part_usd = fret_total * part
+        fret_da       = fret_part_usd * cours
+        valeur_douane = montant_da + fret_da
+
+        # Taxes douanières (sur la valeur en douane, fret inclus)
+        tcs       = valeur_douane * rates['tcs']
+        douane    = valeur_douane * douane_rate
+        tva       = (valeur_douane + tcs) * (p['tva'] or 0)
+        precompte = (valeur_douane + tcs + tva) * rates['precompte']
+        rps_l     = (charges['rps'] or 0) * part
+        total_taxes_douane = rps_l + tcs + douane + tva + precompte
+        total_douanes      = valeur_douane + total_taxes_douane
+
+        # Frais transitaire
+        taxe_dom        = valeur_douane * rates['taxe_dom']
+        frais_transfert = valeur_douane * rates['frais_transfert']
+        echange_l       = (charges['echange'] or 0) * part
+        honoraires_l    = (charges['honoraires'] or 0) * part
+        magasinage_l    = (charges['magasinage'] or 0) * part
+        surestaries_l   = (charges['surestaries'] or 0) * part
+        total_transitaire = (taxe_dom + frais_transfert + echange_l
+                             + honoraires_l + magasinage_l + surestaries_l)
+
+        pr_ttc = total_douanes + total_transitaire
+        pr_ht  = pr_ttc - tva
+
+        resultats.append({
+            'ligne':             ligne,
+            'nom':               p['nom'],
+            'prix':              p['prix'],
+            'qte':               qty,
+            'prix_usd_total':    (p['prix'] or 0) * qty,
+            'fret_usd':          fret_part_usd,
+            'fret_da':           fret_da,
+            'montant_da':        montant_da,
+            'valeur_douane':     valeur_douane,
+            'part':              part,
+            'rps':               rps_l,
+            'tcs':               tcs,
+            'douane':            douane,
+            'tva':               tva,
+            'precompte':         precompte,
+            'total_douanes':     total_douanes,
+            'taxe_dom':          taxe_dom,
+            'frais_transfert':   frais_transfert,
+            'echange':           echange_l,
+            'honoraires':        honoraires_l,
+            'magasinage':        magasinage_l,
+            'surestaries':       surestaries_l,
+            'total_transitaire': total_transitaire,
+            'pr_ttc':            pr_ttc,
+            'pr_ht':             pr_ht,
+            'pr_unit_ttc':       (pr_ttc / qty) if qty else None,
+            'pr_unit_ht':        (pr_ht / qty) if qty else None,
+        })
+    return resultats
+
+
 def _build_frais_query(args):
     """Construit la liste/pagination de la table Frais (vue independante)."""
     page = args.get('frais_page', 1, type=int)
+    per_page = _get_per_page(args, 'per_page_frais', LOG_PER_PAGE)
     search = args.get('search', '').strip()
     societe = args.get('societe', '').strip()
     sort_col = args.get('frais_sort', '').strip()
@@ -1306,8 +1471,6 @@ def _build_frais_query(args):
         q = q.filter(or_(
             FraisLogistique.ref_log.ilike(f'%{search}%'),
             FraisLogistique.fournisseur.ilike(f'%{search}%'),
-            FraisLogistique.produit.ilike(f'%{search}%'),
-            FraisLogistique.emballage.ilike(f'%{search}%'),
             FraisLogistique.annee.ilike(f'%{search}%'),
             FraisLogistique.remarque.ilike(f'%{search}%'),
         ))
@@ -1319,12 +1482,8 @@ def _build_frais_query(args):
         'societe': FraisLogistique.societe,
         'annee': FraisLogistique.annee,
         'fournisseur': FraisLogistique.fournisseur,
-        'produit': FraisLogistique.produit,
-        'emballage': FraisLogistique.emballage,
-        'quantite': FraisLogistique.quantite,
-        'tva': FraisLogistique.tva,
-        'montant_eur': FraisLogistique.montant_eur,
-        'cours': FraisLogistique.cours,
+        'taux_douane': FraisLogistique.taux_douane,
+        'rps': FraisLogistique.rps,
         'date_creation': FraisLogistique.date_creation,
     }
     if sort_col in frais_sort_columns:
@@ -1335,16 +1494,44 @@ def _build_frais_query(args):
         q = q.order_by(FraisLogistique.date_creation.desc().nullslast(), FraisLogistique.id.desc())
 
     total = q.count()
-    items = q.offset((page - 1) * LOG_PER_PAGE).limit(LOG_PER_PAGE).all()
-    total_pages = max(1, (total + LOG_PER_PAGE - 1) // LOG_PER_PAGE)
+    items = q.offset((page - 1) * per_page).limit(per_page).all()
+    total_pages = max(1, (total + per_page - 1) // per_page)
+
+    # Cours (taux de change) et PR agrege par bon, pour affichage dans la table.
+    # frais_pr_map : configuration complete par entree pour le calcul PR live dans la modale.
+    frais_pr_map = {}
+    for item in items:
+        item.cours_bon = _cours_du_bon(item.bon_id) if item.bon_id else None
+        bon = BonCommande.query.get(item.bon_id) if item.bon_id else None
+        cfg = _pr_config(item, bon)
+        frais_pr_map[item.id] = {
+            'numero': bon.numero if bon else None,
+            'cours':  item.cours_bon,
+            'remarque': item.remarque or '',
+            'rates':  cfg['rates'],
+            'charges': cfg['charges'],
+            'produits': [
+                dict(id=lid, **vals) for lid, vals in cfg['produits'].items()
+            ],
+        }
+        if item.bon_id and item.cours_bon and bon:
+            pr_lignes = _calculer_pr_bon(bon, item, item.cours_bon)
+            item.pr_ttc_total = sum(r['pr_ttc'] for r in pr_lignes) if pr_lignes else None
+            item.pr_ht_total = sum(r['pr_ht'] for r in pr_lignes) if pr_lignes else None
+        else:
+            item.pr_ttc_total = None
+            item.pr_ht_total = None
 
     return {
         'frais_items': items,
+        'frais_pr_map': frais_pr_map,
         'frais_page': page,
         'frais_total': total,
         'frais_total_pages': total_pages,
         'frais_sort_col': sort_col,
         'frais_sort_dir': sort_dir,
+        'per_page_frais': per_page,
+        'per_page_options': PER_PAGE_OPTIONS,
     }
 
 
@@ -1358,6 +1545,7 @@ def api_logistique_bons_list():
     statut_f = request.args.get('statut', '').strip()
     sort_col = request.args.get('sort', '').strip()
     sort_dir = request.args.get('dir', 'asc').strip()
+    per_page = _get_per_page(request.args, 'per_page_bons', BON_PER_PAGE)
     if sort_col != 'statut' and sort_dir not in ('asc', 'desc'):
         sort_dir = 'asc'
 
@@ -1396,26 +1584,30 @@ def api_logistique_bons_list():
         statut_order = {s: i for i, s in enumerate(rotated)}
         all_bons.sort(key=lambda b: (statut_order.get(b.statut, 99), -(b.date_commande.toordinal() if b.date_commande else 0), -b.id))
         total = len(all_bons)
-        bons = all_bons[(page - 1) * BON_PER_PAGE: page * BON_PER_PAGE]
-        total_pages = max(1, (total + BON_PER_PAGE - 1) // BON_PER_PAGE)
+        bons = all_bons[(page - 1) * per_page: page * per_page]
+        total_pages = max(1, (total + per_page - 1) // per_page)
         return render_template('partials/logistique_bons_table.html',
                                bons=bons, page=page, total_pages=total_pages, total=total,
                                search=search, societe=societe, statut_f=statut_f,
                                bon_statuts=BON_STATUTS,
                                sort_col=sort_col, sort_dir=sort_dir,
+                       per_page_bons=per_page,
+                       per_page_options=PER_PAGE_OPTIONS,
                                can_write=_current_role() in ('admin', 'saisie'),
                                is_admin=_current_role() == 'admin')
     else:
         q = q.order_by(BonCommande.date_commande.desc(), BonCommande.id.desc())
 
     total       = q.count()
-    bons        = q.offset((page - 1) * BON_PER_PAGE).limit(BON_PER_PAGE).all()
-    total_pages = max(1, (total + BON_PER_PAGE - 1) // BON_PER_PAGE)
+    bons        = q.offset((page - 1) * per_page).limit(per_page).all()
+    total_pages = max(1, (total + per_page - 1) // per_page)
     return render_template('partials/logistique_bons_table.html',
                            bons=bons, page=page, total_pages=total_pages, total=total,
                            search=search, societe=societe, statut_f=statut_f,
                            bon_statuts=BON_STATUTS,
                            sort_col=sort_col, sort_dir=sort_dir,
+                           per_page_bons=per_page,
+                           per_page_options=PER_PAGE_OPTIONS,
                            can_write=_current_role() in ('admin', 'saisie'),
                            is_admin=_current_role() == 'admin')
 
@@ -1433,6 +1625,7 @@ def api_logistique_gestion_list():
     date_fin_raw = request.args.get('date_fin', '').strip()
     sort_col = request.args.get('sort', '').strip()
     sort_dir = request.args.get('dir', 'asc').strip()
+    per_page = _get_per_page(request.args, 'per_page_log', LOG_PER_PAGE)
     if sort_col != 'statut' and sort_dir not in ('asc', 'desc'):
         sort_dir = 'asc'
 
@@ -1473,6 +1666,7 @@ def api_logistique_gestion_list():
     sort_columns = {
         'fournisseur': CommandeLogistique.fournisseur,
         'date_arrivee': CommandeLogistique.date_arrivee,
+        'date_etd': CommandeLogistique.date_etd,
         'date_d10': CommandeLogistique.date_d10,
         'date_arrivee_depot': CommandeLogistique.date_arrivee_depot,
         'date_echeance': CommandeLogistique.date_echeance,
@@ -1499,7 +1693,7 @@ def api_logistique_gestion_list():
         total      = len(filtered)
         if sort_col == 'statut':
             pass  # all same statut, no sort needed
-        items      = filtered[(page - 1) * LOG_PER_PAGE: page * LOG_PER_PAGE]
+        items      = filtered[(page - 1) * per_page: page * per_page]
     else:
         if sort_col == 'statut':
             all_items = q.all()
@@ -1517,12 +1711,12 @@ def api_logistique_gestion_list():
             statut_order = {s: i for i, s in enumerate(rotated)}
             all_items.sort(key=lambda c: (statut_order.get(c.statut, 99), -(c.date_creation.timestamp() if c.date_creation else 0), -c.id))
             total = len(all_items)
-            items = all_items[(page - 1) * LOG_PER_PAGE: page * LOG_PER_PAGE]
+            items = all_items[(page - 1) * per_page: page * per_page]
         else:
             total = q.count()
-            items = q.offset((page - 1) * LOG_PER_PAGE).limit(LOG_PER_PAGE).all()
+            items = q.offset((page - 1) * per_page).limit(per_page).all()
 
-    total_pages = max(1, (total + LOG_PER_PAGE - 1) // LOG_PER_PAGE)
+    total_pages = max(1, (total + per_page - 1) // per_page)
     return render_template('partials/logistique_gestion_table.html',
                            items=items, page=page, total_pages=total_pages, total=total,
                            search=search, societe=societe,
@@ -1530,6 +1724,8 @@ def api_logistique_gestion_list():
                            date_debut=date_debut_raw, date_fin=date_fin_raw,
                            sort_col=sort_col, sort_dir=sort_dir,
                            today=date.today(),
+                           per_page_log=per_page,
+                           per_page_options=PER_PAGE_OPTIONS,
                            can_write=_current_role() in ('admin', 'saisie'),
                            is_admin=_current_role() == 'admin')
 
@@ -1547,10 +1743,103 @@ def api_logistique_frais_list():
     )
 
 
+@app.route('/api/logistique/frais/<int:item_id>/edit', methods=['POST'])
+@role_required('admin', 'saisie')
+def api_frais_edit(item_id):
+    frais = FraisLogistique.query.get_or_404(item_id)
+
+    def _f(v):
+        try:
+            return float(v)
+        except (TypeError, ValueError):
+            return None
+
+    # Configuration complète (taux éditables + surcharges par produit) au format JSON.
+    config = {}
+    raw_config = request.form.get('pr_config', '').strip()
+    if raw_config:
+        try:
+            config = json.loads(raw_config)
+        except (ValueError, TypeError):
+            config = {}
+
+    if config:
+        frais.pr_config = json.dumps(config, ensure_ascii=False)
+        # Synchronise les colonnes héritées (utilisées dans la table de synthèse).
+        rates   = config.get('rates', {}) or {}
+        charges = config.get('charges', {}) or {}
+        frais.rps         = _f(charges.get('rps'))
+        frais.echange     = _f(charges.get('echange'))
+        frais.honoraires_transitaire = _f(charges.get('honoraires'))
+        frais.magasinage  = _f(charges.get('magasinage'))
+        frais.surestaries = _f(charges.get('surestaries'))
+        frais.taux_douane = _f(rates.get('douane'))
+    else:
+        # Repli : ancienne saisie simple par champs de formulaire.
+        def ff(k):
+            v = request.form.get(k, '').strip()
+            try:
+                return float(v) if v else None
+            except ValueError:
+                return None
+        taux_douane = ff('taux_douane')
+        if taux_douane is not None:
+            taux_douane = taux_douane / 100 if taux_douane > 1 else taux_douane
+        frais.taux_douane            = taux_douane
+        frais.rps                    = ff('rps')
+        frais.echange                = ff('echange')
+        frais.honoraires_transitaire = ff('honoraires_transitaire')
+        frais.magasinage             = ff('magasinage')
+        frais.surestaries            = ff('surestaries')
+
+    frais.remarque = request.form.get('remarque', '').strip() or None
+    db.session.commit()
+    return redirect(url_for('logistique_gestion', section='frais'))
+
+
+@app.route('/logistique/prix-revient')
+@login_required
+def logistique_prix_revient():
+    societe = request.args.get('societe', '').strip()
+
+    q = FraisLogistique.query
+    if societe:
+        q = q.filter(FraisLogistique.societe == societe)
+    q = q.order_by(FraisLogistique.date_creation.desc().nullslast(), FraisLogistique.id.desc())
+
+    bons_pr = []
+    for frais in q.all():
+        if not frais.bon_id or not frais.charges_saisies:
+            continue
+        bon = BonCommande.query.get(frais.bon_id)
+        cours = _cours_du_bon(frais.bon_id)
+        if not bon or not cours:
+            continue
+        pr_lignes = _calculer_pr_bon(bon, frais, cours)
+        if not pr_lignes:
+            continue
+        bons_pr.append({
+            'bon': bon,
+            'frais': frais,
+            'cours': cours,
+            'lignes': pr_lignes,
+            'pr_ttc_total': sum(r['pr_ttc'] for r in pr_lignes),
+            'pr_ht_total': sum(r['pr_ht'] for r in pr_lignes),
+        })
+
+    return render_template(
+        'logistique_prix_revient.html',
+        bons_pr=bons_pr,
+        societe=societe,
+        can_write=_current_role() in ('admin', 'saisie'),
+    )
+
+
 @app.route('/logistique/gestion')
 @login_required
 def logistique_gestion():
     page     = request.args.get('page', 1, type=int)
+    per_page = _get_per_page(request.args, 'per_page_log', LOG_PER_PAGE)
     search   = request.args.get('search', '').strip()
     societe  = request.args.get('societe', '').strip()
     statut_f = request.args.get('statut', '').strip()
@@ -1602,12 +1891,12 @@ def logistique_gestion():
         all_items        = q.all()
         items_filtered   = [c for c in all_items if c.statut == statut_f]
         total            = len(items_filtered)
-        items            = items_filtered[(page - 1) * LOG_PER_PAGE: page * LOG_PER_PAGE]
+        items            = items_filtered[(page - 1) * per_page: page * per_page]
     else:
         total = q.count()
-        items = q.offset((page - 1) * LOG_PER_PAGE).limit(LOG_PER_PAGE).all()
+        items = q.offset((page - 1) * per_page).limit(per_page).all()
 
-    total_pages  = max(1, (total + LOG_PER_PAGE - 1) // LOG_PER_PAGE)
+    total_pages  = max(1, (total + per_page - 1) // per_page)
 
     frais_data = _build_frais_query(request.args)
 
@@ -1620,6 +1909,7 @@ def logistique_gestion():
                            notifications=_get_logistique_notifications(),
                            today=date.today(),
                            log_statuts=LOG_STATUTS,
+                           per_page_log=per_page,
                            can_write=_current_role() in ('admin', 'saisie'),
                            is_admin=_current_role() == 'admin',
                            selected_section=selected_section,
@@ -1671,6 +1961,7 @@ def _log_form_fields(c):
     c.montant_eur   = ff('montant_eur')
     c.cours         = ff('cours')
     c.date_facture  = fd('date_facture')
+    c.date_etd      = fd('date_etd')
     c.code_paiement = request.form.get('code_paiement', '').strip() or None
     c.nb_jours      = fi('nb_jours')
     # Point 12 : date d'échéance calculée automatiquement = date facture/BL + délai (jours)
@@ -1751,6 +2042,7 @@ def api_products_search():
 @login_required
 def logistique_bons():
     page     = request.args.get('page', 1, type=int)
+    per_page = _get_per_page(request.args, 'per_page_bons', BON_PER_PAGE)
     search   = request.args.get('search', '').strip()
     societe  = request.args.get('societe', '').strip()
     statut_f = request.args.get('statut', '').strip()
@@ -1769,8 +2061,8 @@ def logistique_bons():
 
     q = q.order_by(BonCommande.date_commande.desc(), BonCommande.id.desc())
     total       = q.count()
-    bons        = q.offset((page - 1) * BON_PER_PAGE).limit(BON_PER_PAGE).all()
-    total_pages = max(1, (total + BON_PER_PAGE - 1) // BON_PER_PAGE)
+    bons        = q.offset((page - 1) * per_page).limit(per_page).all()
+    total_pages = max(1, (total + per_page - 1) // per_page)
 
     can_write = _current_role() in ('admin', 'saisie')
 
@@ -1791,6 +2083,8 @@ def logistique_bons():
                            search=search, societe=societe, statut_f=statut_f,
                            bon_statuts=BON_STATUTS, fournisseurs_json=fournisseurs_json,
                            products_json=products_json,
+                           per_page_bons=per_page,
+                           per_page_options=PER_PAGE_OPTIONS,
                            can_write=can_write,
                            is_admin=_current_role() == 'admin')
 
@@ -1911,14 +2205,13 @@ def api_bon_add():
     )
     db.session.add(log_entry)
 
-    # Créer automatiquement l'entrée miroir dans Frais
+    # Créer automatiquement l'entrée Frais associée (charges à saisir manuellement ensuite)
     frais_entry = FraisLogistique(
         bon_id      = bon.id,
         ref_log     = numero,
         societe     = bon.societe,
         annee       = str(date.today().year),
         fournisseur = bon.fournisseur,
-        montant_eur = total_montant if total_montant else None,
         cree_par    = session.get('username', ''),
     )
     db.session.add(frais_entry)
@@ -2041,7 +2334,6 @@ def api_bon_update(bon_id):
     if frais_entry:
         frais_entry.societe     = bon.societe
         frais_entry.fournisseur = bon.fournisseur
-        frais_entry.montant_eur = total_montant or None
     else:
         db.session.add(FraisLogistique(
             bon_id      = bon.id,
@@ -2049,7 +2341,6 @@ def api_bon_update(bon_id):
             societe     = bon.societe,
             annee       = str(date.today().year),
             fournisseur = bon.fournisseur,
-            montant_eur = total_montant or None,
             cree_par    = session.get('username', ''),
         ))
 
@@ -2101,7 +2392,7 @@ def delete_operation(op_id):
     if request.headers.get('HX-Request'):
         return '<div class="alert alert-info fade-in"><i class="fas fa-trash mr-2"></i>Opération supprimée.</div>'
     flash('Opération supprimée.', 'info')
-    return redirect(url_for('consultation'))
+    return redirect(url_for('operations'))
 
 
 # --- Consultation ---
@@ -2132,6 +2423,10 @@ def _build_operations_query(args):
     societe = args.get('societe', '').strip()
     if societe:
         query = query.filter(Operation.societe == societe)
+
+    remettant = args.get('remettant', '').strip()
+    if remettant:
+        query = query.filter(Operation.remettant.ilike(f'%{remettant}%'))
 
     statut = args.get('statut', '').strip()
     if statut:
@@ -2193,7 +2488,7 @@ def _build_operations_query(args):
     total_count = query.count()
 
     page = int(args.get('page', 1) or 1)
-    per_page = 25
+    per_page = _get_per_page(args, 'per_page', REF_PER_PAGE)
     offset = (page - 1) * per_page
 
     if sort_col == 'statut':
@@ -2221,24 +2516,30 @@ def _build_operations_query(args):
         'total_count': total_count,
         'page': page,
         'total_pages': total_pages,
+        'per_page': per_page,
+        'per_page_options': PER_PAGE_OPTIONS,
         'sort_col': sort_col,
         'sort_dir': sort_dir,
     }
 
 
-@app.route('/consultation')
+@app.route('/operations')
 @login_required
-def consultation():
+def operations():
     _auto_update_echeance_statuts()
     notifications = _get_echeance_notifications()
     role = _current_role()
     rejections = _get_recent_rejections() if role != 'admin' else {'rejections': [], 'total': 0}
     ops_data = _build_operations_query(request.args)
     return render_template(
-        'consultation.html',
+        'operations.html',
         notifications=notifications,
         rejections=rejections,
         is_admin=(role == 'admin'),
+        bank_options=_get_bank_suggestions(),
+        client_options=_get_client_suggestions(),
+        remettant_options=_get_remettant_suggestions(),
+        check_type_options=CHECK_TYPE_CHOICES,
         **ops_data,
     )
 
@@ -2278,8 +2579,8 @@ def api_notifications_badge():
     rejections_count = 0 if _current_role() == 'admin' else _get_recent_rejections()['total']
     consultation_total = (notifications.get('total_alerts', 0) if notifications else 0) + rejections_count
     logistique_total = log_notifications.get('total_alerts', 0) if log_notifications else 0
-    target_url = url_for('consultation') if consultation_total > 0 else (
-        url_for('logistique_gestion') if logistique_total > 0 else url_for('consultation')
+    target_url = url_for('operations') if consultation_total > 0 else (
+        url_for('logistique_gestion') if logistique_total > 0 else url_for('operations')
     )
     return render_template(
         'partials/global_notifications_badge.html',
@@ -2534,6 +2835,29 @@ def _parse_excel_row(row, sheet_name):
 # --- Initialisation ---
 with app.app_context():
     db.create_all()
+
+    # Migration légère : ajoute la colonne date_etd si absente (DB déjà existante).
+    with db.engine.connect() as _conn:
+        _cols = [row[1] for row in _conn.exec_driver_sql("PRAGMA table_info(commandes_logistique)").fetchall()]
+        if 'date_etd' not in _cols:
+            _conn.exec_driver_sql("ALTER TABLE commandes_logistique ADD COLUMN date_etd DATE")
+            _conn.commit()
+
+        # Migration : refonte de frais_logistique pour le calcul du prix de revient.
+        _frais_cols = [row[1] for row in _conn.exec_driver_sql("PRAGMA table_info(frais_logistique)").fetchall()]
+        _new_frais_cols = {
+            'taux_douane': 'FLOAT',
+            'rps': 'FLOAT',
+            'echange': 'FLOAT',
+            'honoraires_transitaire': 'FLOAT',
+            'magasinage': 'FLOAT',
+            'surestaries': 'FLOAT',
+            'pr_config': 'TEXT',
+        }
+        for _col, _type in _new_frais_cols.items():
+            if _col not in _frais_cols:
+                _conn.exec_driver_sql(f"ALTER TABLE frais_logistique ADD COLUMN {_col} {_type}")
+        _conn.commit()
 
     # Normalise legacy roles to the new 3-role model.
     for u in User.query.all():

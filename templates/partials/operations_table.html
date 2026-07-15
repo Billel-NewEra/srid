@@ -3,11 +3,24 @@
     <div class="text-sm opacity-70">
         <span class="font-semibold">{{ total_count }}</span> résultat(s)
     </div>
-    {% if is_admin %}
-    <div class="badge badge-lg bg-emerald-600 text-white border-emerald-700">
-        <i class="fas fa-coins mr-1"></i> Total : {{ total_montant|currency }}
+    <div class="flex items-center gap-2">
+        <label class="text-xs opacity-60">Entrées</label>
+        <select name="per_page" class="select select-bordered select-xs"
+                hx-get="{{ url_for('api_operations') }}"
+                hx-trigger="change"
+                hx-target="#results-table"
+                hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']"
+                hx-vals='{"page": 1}'>
+            {% for size in per_page_options %}
+            <option value="{{ size }}" {% if per_page == size %}selected{% endif %}>{{ size }}</option>
+            {% endfor %}
+        </select>
+        {% if is_admin %}
+        <div class="badge badge-lg bg-emerald-600 text-white border-emerald-700">
+            <i class="fas fa-coins mr-1"></i> Total : {{ total_montant|currency }}
+        </div>
+        {% endif %}
     </div>
-    {% endif %}
 </div>
 
 <!-- Tableau -->
@@ -88,9 +101,9 @@
                 {% if can_write or can_delete %}
                 <div class="flex gap-1 justify-end" onclick="event.stopPropagation()">
                     {% if can_write %}
-                    <a href="{{ url_for('edit_operation', op_id=op.id) }}" class="btn btn-ghost btn-xs tooltip" data-tip="Modifier">
+                    <button type="button" class="btn btn-ghost btn-xs tooltip" data-tip="Modifier" onclick="openEditOperation({{ op.id }})">
                         <i class="fas fa-edit text-warning"></i>
-                    </a>
+                    </button>
                     {% endif %}
                     {% if can_delete %}
                     <button class="btn btn-ghost btn-xs tooltip" data-tip="Supprimer"
@@ -120,16 +133,15 @@
 {% else %}<i class="fas fa-sort ml-1 opacity-30"></i>{% endif %}
 {% endmacro %}
 
-<table class="table table-sm w-full min-w-[1150px]" id="operations-table">
+<table class="table table-sm w-full" id="operations-table">
     <thead>
         <tr class="bg-base-200">
             <th class="cursor-pointer select-none" onclick="sortOpsTable('client')">Client{{ sort_icon('client', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th>Type</th>
-            <th class="cursor-pointer select-none" onclick="sortOpsTable('banque')">Banque{{ sort_icon('banque', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="cursor-pointer select-none" onclick="sortOpsTable('montant')">Montant{{ sort_icon('montant', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="cursor-pointer select-none" onclick="sortOpsTable('date_operation')">Date dép/vir{{ sort_icon('date_operation', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="cursor-pointer select-none" onclick="sortOpsTable('date_reception')">Date réc{{ sort_icon('date_reception', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="cursor-pointer select-none" onclick="sortOpsTable('date_encaissement')">Date échéance{{ sort_icon('date_encaissement', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortOpsTable('date_operation')">Dép/Vir{{ sort_icon('date_operation', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortOpsTable('date_reception')">Réception{{ sort_icon('date_reception', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortOpsTable('date_encaissement')">Échéance{{ sort_icon('date_encaissement', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="cursor-pointer select-none" onclick="sortOpsTable('statut')">Statut{{ sort_icon('statut', sort_col|default(''), sort_dir|default('asc')) }}</th>
             {% if can_write or can_delete %}<th class="text-center">Actions</th>{% endif %}
         </tr>
@@ -141,13 +153,12 @@
             {% if op.statut == 'Encaissé' %}style="background-color: rgba(34,197,94,0.13) !important;"{% endif %}
             hx-get="{{ url_for('api_operation_detail', op_id=op.id) }}"
             hx-target="#modal-content" hx-swap="innerHTML">
-            <td class="truncate">{{ op.client }}</td>
-            <td class="text-sm truncate">{{ op.type_operation }}</td>
-            <td class="text-sm truncate">{{ op.banque or '-' }}</td>
-            <td class="whitespace-nowrap font-semibold">{{ op.montant|currency }}</td>
-            <td class="whitespace-nowrap">{{ op.date_operation.strftime('%d/%m/%Y') if op.date_operation else '-' }}</td>
-            <td class="whitespace-nowrap text-xs opacity-70">{{ op.date_reception.strftime('%d/%m/%Y') if op.type_operation == 'Chèque' and op.date_reception else '-' }}</td>
-            <td class="whitespace-nowrap text-xs {% if op.statut not in ['Arrive à échéance', 'Échu'] %}opacity-70{% endif %}">
+            <td class="text-xs truncate max-w-[160px]">{{ op.client }}</td>
+            <td class="text-xs">{% if op.type_operation == 'Chèque' %}CHQ{% elif op.type_operation == 'Virement' %}VIR{% elif op.type_operation == 'Versement' %}VRS{% elif op.type_operation == 'Transfer' %}TRF{% else %}AUT{% endif %}</td>
+            <td class="text-xs whitespace-nowrap font-semibold">{{ op.montant|currency }}</td>
+            <td class="text-xs whitespace-nowrap">{{ op.date_operation.strftime('%d/%m/%Y') if op.date_operation else '-' }}</td>
+            <td class="text-xs whitespace-nowrap">{{ op.date_reception.strftime('%d/%m/%Y') if op.type_operation == 'Chèque' and op.date_reception else '-' }}</td>
+            <td class="text-xs whitespace-nowrap">
                 {% if op.type_operation == 'Chèque' and op.type_detail == 'À échéance' and op.date_encaissement %}
                     {% if op.statut == 'Arrive à échéance' %}
                         <span class="text-amber-700 font-semibold"><i class="fas fa-triangle-exclamation text-amber-500 mr-1"></i>{{ op.date_encaissement.strftime('%d/%m/%Y') }}</span>
@@ -182,11 +193,6 @@
             {% if can_write or can_delete %}
             <td class="text-center" onclick="event.stopPropagation()">
                 <div class="flex gap-1 justify-center">
-                    {% if can_write %}
-                    <a href="{{ url_for('edit_operation', op_id=op.id) }}" class="btn btn-ghost btn-xs tooltip" data-tip="Modifier">
-                        <i class="fas fa-edit text-warning"></i>
-                    </a>
-                    {% endif %}
                     {% if can_delete %}
                     <button class="btn btn-ghost btn-xs tooltip" data-tip="Supprimer"
                             hx-delete="{{ url_for('delete_operation', op_id=op.id) }}"
@@ -201,7 +207,7 @@
         </tr>
         {% else %}
         <tr>
-            <td colspan="11" class="text-center py-12 opacity-50">
+            <td colspan="{{ 8 if (can_write or can_delete) else 7 }}" class="text-center py-12 opacity-50">
                 <i class="fas fa-inbox text-4xl mb-2 block"></i>
                 Aucune opération trouvée
             </td>
@@ -218,7 +224,7 @@
         {% if page > 1 %}
         <button class="join-item btn btn-sm"
                 hx-get="{{ url_for('api_operations') }}?page={{ page - 1 }}"
-                hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']">
+                hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='per_page']">
             <i class="fas fa-chevron-left"></i>
         </button>
         {% endif %}
@@ -229,7 +235,7 @@
             {% elif p <= 3 or p >= total_pages - 1 or (p >= page - 1 and p <= page + 1) %}
             <button class="join-item btn btn-sm"
                     hx-get="{{ url_for('api_operations') }}?page={{ p }}"
-                    hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']">
+                    hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='per_page']">
                 {{ p }}
             </button>
             {% elif p == 4 or p == total_pages - 2 %}
@@ -240,7 +246,7 @@
         {% if page < total_pages %}
         <button class="join-item btn btn-sm"
                 hx-get="{{ url_for('api_operations') }}?page={{ page + 1 }}"
-                hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']">
+                hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='per_page']">
             <i class="fas fa-chevron-right"></i>
         </button>
         {% endif %}
