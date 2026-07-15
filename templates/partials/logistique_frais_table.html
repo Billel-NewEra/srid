@@ -268,28 +268,28 @@ function _fmtNum(x) {
 
 function buildFraisGrid() {
     var prods = (_fraisCurrent && _fraisCurrent.produits) ? _fraisCurrent.produits : [];
-    var head = '<tr><th class="text-left">Produit</th>';
-    prods.forEach(function (p) { head += '<th class="text-right">' + (p.nom || '-') + '</th>'; });
-    head += '</tr>';
+    var head = '<tr>' +
+        '<th class="text-left">Produit</th>' +
+        '<th class="text-right">Prix achat $ C&F</th>' +
+        '<th class="text-right">Quantité</th>' +
+        '<th class="text-right">TVA (%)</th>' +
+        '</tr>';
     document.getElementById('frais-in-head').innerHTML = head;
 
     var body = '';
-    // Prix achat $ C&F (lecture seule)
-    body += '<tr><td class="font-medium">Prix achat $ C&F</td>';
-    prods.forEach(function (p) { body += '<td class="text-right opacity-70">' + _fmtNum(p.prix) + '</td>'; });
-    body += '</tr>';
-    // Quantité (lecture seule)
-    body += '<tr><td class="font-medium">Quantité</td>';
-    prods.forEach(function (p) { body += '<td class="text-right opacity-70">' + _fmtNum(p.qte) + '</td>'; });
-    body += '</tr>';
-    // TVA (%) par produit (modifiable)
-    body += '<tr><td class="font-medium">TVA (%)</td>';
     prods.forEach(function (p, i) {
-        var v = (p.tva === null || p.tva === undefined) ? '' : p.tva * 100;
-        body += '<td class="text-right"><input type="number" step="0.01" id="pa_tva_' + i +
-                '" value="' + v + '" class="input input-bordered input-xs w-20 text-right" oninput="recomputePR()"></td>';
+        var tva = (p.tva === null || p.tva === undefined) ? '' : p.tva * 100;
+        body += '<tr>' +
+            '<td class="font-medium">' + (p.nom || '-') + '</td>' +
+            '<td class="text-right opacity-70">' + _fmtNum(p.prix) + '</td>' +
+            '<td class="text-right opacity-70">' + _fmtNum(p.qte) + '</td>' +
+            '<td class="text-right"><input type="number" step="0.01" id="pa_tva_' + i +
+            '" value="' + tva + '" class="input input-bordered input-xs w-20 text-right" oninput="recomputePR()"></td>' +
+            '</tr>';
     });
-    body += '</tr>';
+    if (!prods.length) {
+        body = '<tr><td colspan="4" class="text-center opacity-50 py-3">Aucun produit sur ce bon</td></tr>';
+    }
     document.getElementById('frais-in-body').innerHTML = body;
 }
 
