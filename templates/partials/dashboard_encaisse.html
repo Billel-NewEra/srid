@@ -1,0 +1,44 @@
+<!-- Carte Encaissé (filtre indépendant) -->
+<div class="card bg-base-100 shadow-sm border border-base-300 h-full">
+    <div class="card-body p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2">
+                <div class="status-dot status-encaisse"></div>
+                <span class="font-bold text-sm">Encaissé</span>
+            </div>
+            <div class="flex items-center gap-1 kpi-filter">
+                <select name="year" data-year-filter class="select select-bordered select-xs"
+                        hx-get="{{ url_for('api_dashboard_encaisse') }}"
+                        hx-trigger="change"
+                        hx-target="#dashboard-encaisse"
+                        hx-include="closest .kpi-filter">
+                    {% for y in available_years %}
+                    <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+                <select name="month" data-month-filter data-no-scroll="1" class="select select-bordered select-xs"
+                        hx-get="{{ url_for('api_dashboard_encaisse') }}"
+                        hx-trigger="change"
+                        hx-target="#dashboard-encaisse"
+                        hx-include="closest .kpi-filter">
+                    <option value="">Tous</option>
+                    {% set mois_labels = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'] %}
+                    {% for m in range(1, 13) %}
+                    <option value="{{ m }}" {% if selected_month == m %}selected{% endif %}>{{ mois_labels[m-1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <p class="font-bold text-2xl status-encaisse mb-2 dashboard-money">{{ statuts_info['Encaissé'].montant|currency(0) }} DA</p>
+        <div class="space-y-1 text-xs border-t border-base-300 pt-2">
+            <div class="flex justify-between">
+                <span class="societe-srid">SRID</span>
+                <span class="font-semibold societe-srid dashboard-money">{{ statuts_info['Encaissé'].srid_montant|currency(0) }} DA</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="societe-genetics">Genetics</span>
+                <span class="font-semibold societe-genetics dashboard-money">{{ statuts_info['Encaissé'].genetics_montant|currency(0) }} DA</span>
+            </div>
+        </div>
+    </div>
+</div>

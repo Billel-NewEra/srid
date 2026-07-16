@@ -22,40 +22,80 @@
         </div>
     </div>
     {% else %}
+    <div class="flex flex-wrap items-center gap-2 mb-4">
+        <div class="form-control relative">
+            <input type="text" id="pr-filter" autocomplete="off"
+                   placeholder="Filtrer par produit"
+                   class="input input-bordered input-sm w-72 pr-8"
+                   data-filter-produit-input>
+            <button type="button" id="pr-filter-clear"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 hidden text-base-content/40 hover:text-base-content"
+                    tabindex="-1" aria-label="Effacer le filtre">
+                <i class="fas fa-times-circle"></i>
+            </button>
+            <div class="absolute left-0 right-0 top-full mt-1 z-40 hidden max-h-72 overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-lg" data-filter-produit-list>
+                {% for produit in produit_options %}
+                <button type="button" class="block w-full px-3 py-2 text-left text-sm hover:bg-base-200" data-filter-produit-option="{{ produit }}">{{ produit }}</button>
+                {% endfor %}
+            </div>
+        </div>
+        <span id="pr-filter-count" class="text-xs opacity-60"></span>
+        <div class="flex items-center gap-1">
+            <label class="text-xs opacity-60" for="pr-date-debut">Du</label>
+            <input type="date" id="pr-date-debut" class="input input-bordered input-sm">
+            <label class="text-xs opacity-60" for="pr-date-fin">au</label>
+            <input type="date" id="pr-date-fin" class="input input-bordered input-sm">
+            <button type="button" id="pr-date-clear" class="btn btn-ghost btn-sm btn-square hidden" aria-label="Effacer les dates">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+        <div class="ml-auto flex items-center gap-2">
+            <label class="text-xs opacity-60" for="pr-per-page">Bons par page</label>
+            <select id="pr-per-page" class="select select-bordered select-sm">
+                <option value="10">10</option>
+                <option value="25" selected>25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="all">Tous</option>
+            </select>
+        </div>
+    </div>
     <div class="card bg-base-100 shadow-md overflow-hidden">
         <div class="overflow-x-auto">
-            <table class="table w-full min-w-[940px] align-middle">
+            <table class="table table-sm w-full min-w-[860px] align-middle">
                 <thead>
-                    <tr class="bg-base-200 text-xs uppercase tracking-wide text-base-content/60">
-                        <th class="py-3">N° Bon</th>
-                        <th class="py-3">Produit</th>
-                        <th class="py-3 text-right">Quantité</th>
-                        <th class="py-3 text-right">Montant DA</th>
-                        <th class="py-3 text-right bg-primary/5">PR TTC</th>
-                        <th class="py-3 text-right bg-primary/5">PR HT</th>
-                        <th class="py-3 text-right">PR/u TTC</th>
-                        <th class="py-3 text-right">PR/u HT</th>
+                    <tr class="bg-base-200 text-[11px] uppercase tracking-wide text-base-content/60">
+                        <th class="py-2">N° Bon</th>
+                        <th class="py-2">Produit</th>
+                        <th class="py-2 text-right">Qté</th>
+                        <th class="py-2 text-right bg-amber-500/15">PR unitaire HT</th>
+                        <th class="py-2 text-right bg-orange-500/15">PR unitaire TTC</th>
+                        <th class="py-2 text-right bg-amber-500/15">PR total HT</th>
+                        <th class="py-2 text-right bg-orange-500/15">PR total TTC</th>
                     </tr>
                 </thead>
                 {% for entry in bons_pr %}
-                <tbody class="border-t-4 border-base-200 {% if loop.index0 % 2 == 1 %}bg-base-200/20{% endif %}">
+                <tbody data-bon data-date="{{ entry.bon.date_commande.strftime('%Y-%m-%d') if entry.bon.date_commande else '' }}" class="border-t-2 border-base-300 {% if loop.index0 % 2 == 1 %}bg-base-200/20{% endif %}">
                     {% for r in entry.lignes %}
-                    <tr class="hover:bg-base-300/40 transition-colors">
+                    <tr data-produit="{{ (r.nom or r.ligne.designation)|e }}" class="hover:bg-base-300/40 transition-colors">
                         {% if loop.first %}
-                        <td rowspan="{{ entry.lignes|length }}"
+                        <td data-bon-cell rowspan="{{ entry.lignes|length }}"
                             class="align-middle text-center border-r border-base-200">
-                            <span class="badge badge-neutral badge-lg font-mono font-semibold">{{ entry.bon.numero }}</span>
+                            <span class="badge badge-neutral badge-sm font-mono font-semibold">{{ entry.bon.numero }}</span>
                         </td>
                         {% endif %}
                         <td class="font-medium">{{ r.nom or r.ligne.designation }}</td>
-                        <td class="text-right tabular-nums whitespace-nowrap">
-                            {{ '%.2f'|format(r.qte or 0) }} <span class="text-xs opacity-50">{{ r.ligne.unite or '' }}</span>
+                        <td class="text-right tabular-nums whitespace-nowrap text-xs opacity-60">
+                            {{ '%.2f'|format(r.qte or 0) }} {{ r.ligne.unite or '' }}
                         </td>
-                        <td class="text-right tabular-nums whitespace-nowrap">{{ r.montant_da|currency }}</td>
-                        <td class="text-right tabular-nums whitespace-nowrap font-semibold text-primary bg-primary/5">{{ r.pr_ttc|currency }}</td>
-                        <td class="text-right tabular-nums whitespace-nowrap bg-primary/5">{{ r.pr_ht|currency }}</td>
-                        <td class="text-right tabular-nums whitespace-nowrap opacity-80">{{ r.pr_unit_ttc|currency if r.pr_unit_ttc is not none else '—' }}</td>
-                        <td class="text-right tabular-nums whitespace-nowrap opacity-80">{{ r.pr_unit_ht|currency if r.pr_unit_ht is not none else '—' }}</td>
+                        <td class="text-right whitespace-nowrap bg-amber-500/15">
+                            <span class="badge badge-sm border-transparent bg-amber-500 text-amber-950 font-semibold tabular-nums text-sm shadow-sm">{{ r.pr_unit_ht|currency if r.pr_unit_ht is not none else '—' }}</span>
+                        </td>
+                        <td class="text-right whitespace-nowrap bg-orange-500/15">
+                            <span class="badge badge-sm border-transparent bg-orange-600 text-white font-semibold tabular-nums text-sm shadow-sm">{{ r.pr_unit_ttc|currency if r.pr_unit_ttc is not none else '—' }}</span>
+                        </td>
+                        <td class="text-right tabular-nums whitespace-nowrap font-medium text-amber-700 bg-amber-500/15">{{ r.pr_ht|currency }}</td>
+                        <td class="text-right tabular-nums whitespace-nowrap font-medium text-orange-700 bg-orange-500/15">{{ r.pr_ttc|currency }}</td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -63,6 +103,219 @@
             </table>
         </div>
     </div>
+    <div id="pr-no-result" class="hidden text-center py-8 opacity-60 text-sm">
+        <i class="fas fa-filter-circle-xmark mr-1"></i>Aucun produit ne correspond à ce filtre.
+    </div>
+    <div id="pr-pagination" class="flex flex-wrap items-center justify-between gap-3 mt-4">
+        <span id="pr-page-info" class="text-xs opacity-60"></span>
+        <div class="join">
+            <button type="button" id="pr-prev" class="join-item btn btn-sm">
+                <i class="fas fa-chevron-left"></i>
+            </button>
+            <span id="pr-page-label" class="join-item btn btn-sm btn-ghost no-animation pointer-events-none"></span>
+            <button type="button" id="pr-next" class="join-item btn btn-sm">
+                <i class="fas fa-chevron-right"></i>
+            </button>
+        </div>
+    </div>
     {% endif %}
 </div>
+
+<script>
+(function () {
+    var input = document.querySelector('[data-filter-produit-input]');
+    if (!input) return;
+    var list = document.querySelector('[data-filter-produit-list]');
+    var options = list ? Array.prototype.slice.call(list.querySelectorAll('[data-filter-produit-option]')) : [];
+    var clearBtn = document.getElementById('pr-filter-clear');
+    var countEl = document.getElementById('pr-filter-count');
+    var noResult = document.getElementById('pr-no-result');
+    var perPageSel = document.getElementById('pr-per-page');
+    var prevBtn = document.getElementById('pr-prev');
+    var nextBtn = document.getElementById('pr-next');
+    var pageLabel = document.getElementById('pr-page-label');
+    var pageInfo = document.getElementById('pr-page-info');
+    var pagination = document.getElementById('pr-pagination');
+    var dateDebut = document.getElementById('pr-date-debut');
+    var dateFin = document.getElementById('pr-date-fin');
+    var dateClear = document.getElementById('pr-date-clear');
+
+    var currentPage = 1;
+
+    var groups = Array.prototype.slice.call(document.querySelectorAll('tbody[data-bon]')).map(function (tb) {
+        return {
+            tb: tb,
+            rows: Array.prototype.slice.call(tb.querySelectorAll('tr')),
+            bonCell: tb.querySelector('td[data-bon-cell]'),
+            date: tb.getAttribute('data-date') || ''
+        };
+    });
+
+    // ── Liste déroulante : filtrage des suggestions (style opérations) ──────────
+    function filterOptions() {
+        var query = input.value.trim().toUpperCase();
+        var visible = 0;
+        options.forEach(function (btn) {
+            var value = (btn.getAttribute('data-filter-produit-option') || '').toUpperCase();
+            var show = !query || value.indexOf(query) !== -1;
+            btn.classList.toggle('hidden', !show);
+            if (show) visible += 1;
+        });
+        if (list) list.classList.toggle('hidden', visible === 0);
+    }
+
+    // ── Filtre + pagination du tableau ──────────────────────────────────────────
+    function render() {
+        var q = (input.value || '').trim().toLowerCase();
+        var dDebut = dateDebut ? dateDebut.value : '';
+        var dFin = dateFin ? dateFin.value : '';
+        var isFiltering = !!(q || dDebut || dFin);
+
+        function dateOk(d) {
+            if (dDebut || dFin) {
+                if (!d) return false;
+                if (dDebut && d < dDebut) return false;
+                if (dFin && d > dFin) return false;
+            }
+            return true;
+        }
+
+        // 1) Filtre : détermine les bons correspondants + les lignes visibles.
+        var matched = [];
+        groups.forEach(function (g) {
+            if (g.bonCell && g.bonCell.parentNode) {
+                g.bonCell.parentNode.removeChild(g.bonCell);
+            }
+            var okDate = dateOk(g.date);
+            var rowsOk = [];
+            g.rows.forEach(function (tr) {
+                var p = (tr.getAttribute('data-produit') || '').toLowerCase();
+                var ok = !q || p.indexOf(q) !== -1;
+                tr.style.display = ok ? '' : 'none';
+                if (ok) rowsOk.push(tr);
+            });
+            if (rowsOk.length && okDate) {
+                if (g.bonCell) {
+                    rowsOk[0].insertBefore(g.bonCell, rowsOk[0].firstChild);
+                    g.bonCell.rowSpan = rowsOk.length;
+                }
+                matched.push(g);
+            } else {
+                g.tb.style.display = 'none';
+            }
+        });
+
+        // 2) Pagination sur les bons correspondants.
+        var perPage = perPageSel && perPageSel.value === 'all'
+            ? matched.length
+            : parseInt(perPageSel ? perPageSel.value : '25', 10) || 25;
+        var totalBons = matched.length;
+        var totalPages = perPage > 0 ? Math.max(1, Math.ceil(totalBons / perPage)) : 1;
+        if (currentPage > totalPages) currentPage = totalPages;
+        if (currentPage < 1) currentPage = 1;
+        var start = (currentPage - 1) * perPage;
+        var end = perPageSel && perPageSel.value === 'all' ? totalBons : start + perPage;
+
+        matched.forEach(function (g, i) {
+            g.tb.style.display = (i >= start && i < end) ? '' : 'none';
+        });
+
+        // 3) UI.
+        if (countEl) {
+            countEl.textContent = isFiltering ? (totalBons + ' bon' + (totalBons !== 1 ? 's' : '')) : '';
+        }
+        if (noResult) {
+            noResult.classList.toggle('hidden', !(isFiltering && totalBons === 0));
+        }
+        if (clearBtn) {
+            clearBtn.classList.toggle('hidden', !q);
+        }
+        if (dateClear) {
+            dateClear.classList.toggle('hidden', !(dDebut || dFin));
+        }
+        if (pagination) {
+            pagination.classList.toggle('hidden', totalBons === 0);
+        }
+        if (pageLabel) {
+            pageLabel.textContent = 'Page ' + currentPage + ' / ' + totalPages;
+        }
+        if (pageInfo) {
+            if (totalBons === 0) {
+                pageInfo.textContent = '';
+            } else {
+                var from = start + 1;
+                var to = Math.min(end, totalBons);
+                pageInfo.textContent = 'Bons ' + from + '\u2013' + to + ' sur ' + totalBons;
+            }
+        }
+        if (prevBtn) prevBtn.disabled = currentPage <= 1;
+        if (nextBtn) nextBtn.disabled = currentPage >= totalPages;
+    }
+
+    input.addEventListener('focus', filterOptions);
+    input.addEventListener('input', function () {
+        filterOptions();
+        currentPage = 1;
+        render();
+    });
+
+    options.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            input.value = btn.getAttribute('data-filter-produit-option') || '';
+            if (list) list.classList.add('hidden');
+            currentPage = 1;
+            render();
+        });
+    });
+
+    document.addEventListener('click', function (event) {
+        if (list && !list.contains(event.target) && event.target !== input) {
+            list.classList.add('hidden');
+        }
+    });
+
+    if (clearBtn) {
+        clearBtn.addEventListener('click', function () {
+            input.value = '';
+            if (list) list.classList.add('hidden');
+            currentPage = 1;
+            render();
+        });
+    }
+
+    if (perPageSel) {
+        perPageSel.addEventListener('change', function () {
+            currentPage = 1;
+            render();
+        });
+    }
+    if (dateDebut) {
+        dateDebut.addEventListener('change', function () { currentPage = 1; render(); });
+    }
+    if (dateFin) {
+        dateFin.addEventListener('change', function () { currentPage = 1; render(); });
+    }
+    if (dateClear) {
+        dateClear.addEventListener('click', function () {
+            if (dateDebut) dateDebut.value = '';
+            if (dateFin) dateFin.value = '';
+            currentPage = 1;
+            render();
+        });
+    }
+    if (prevBtn) {
+        prevBtn.addEventListener('click', function () {
+            if (currentPage > 1) { currentPage--; render(); }
+        });
+    }
+    if (nextBtn) {
+        nextBtn.addEventListener('click', function () {
+            currentPage++;
+            render();
+        });
+    }
+
+    render();
+})();
+</script>
 {% endblock %}

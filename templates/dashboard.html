@@ -95,9 +95,17 @@
         </div>
     </div>
 
-    <!-- KPIs (section filtrée via HTMX) -->
-    <div id="dashboard-kpis">
-        {% include 'partials/dashboard_kpis.html' %}
+    <!-- KPIs (sections filtrées indépendamment via HTMX) -->
+    <div id="dashboard-overview" class="mb-6">
+        {% include 'partials/dashboard_overview.html' %}
+    </div>
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+        <div id="dashboard-encaisse">
+            {% include 'partials/dashboard_encaisse.html' %}
+        </div>
+        <div id="dashboard-encours">
+            {% include 'partials/dashboard_encours.html' %}
+        </div>
     </div>
 
     <!-- Types avec montants par société -->
@@ -510,9 +518,10 @@
     document.getElementById('topMonthFilter').addEventListener('change', refreshTopClients);
 
     // === 6. Menus année/mois scrollables ===
-    function initScrollableYearFilter(selectId) {
-        const select = document.getElementById(selectId);
+    function initScrollableYearFilter(target) {
+        const select = typeof target === 'string' ? document.getElementById(target) : target;
         if (!select || select.dataset.enhanced === '1') return;
+        const selectId = select.id;
 
         const wrapper = document.createElement('div');
         wrapper.className = 'year-dropdown';
@@ -535,7 +544,7 @@
         menu.hidden = true;
 
         // For months, keep the exact same style but show all 12 options without scrolling.
-        if (selectId === 'topMonthFilter') {
+        if (selectId === 'topMonthFilter' || select.dataset.noScroll === '1') {
             menu.style.maxHeight = 'none';
             menu.style.overflowY = 'visible';
         }
@@ -585,6 +594,16 @@
     }
 
     ['yearFilterMonthly', 'yearFilterStatuts', 'yearFilterSocietes', 'topYearFilter', 'topMonthFilter'].forEach(initScrollableYearFilter);
+
+    // Filtres année/mois des cartes KPI (Vue d'ensemble / Encaissé / En cours) :
+    // même menu scrollable, re-appliqué après chaque swap HTMX de la section.
+    function enhanceKpiFilters(root) {
+        (root || document).querySelectorAll('[data-year-filter], [data-month-filter]').forEach(initScrollableYearFilter);
+    }
+    enhanceKpiFilters(document);
+    document.body.addEventListener('htmx:afterSwap', function(e) {
+        enhanceKpiFilters(e.target);
+    });
 
     // Rend les séparateurs de milliers plus visibles dans les montants statiques du dashboard.
     document.querySelectorAll('.dashboard-money').forEach(el => {

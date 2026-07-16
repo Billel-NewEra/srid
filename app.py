@@ -493,6 +493,74 @@ def delete_user(user_id):
 
 # --- Dashboard ---
 
+def _dashboard_available_years():
+    years_raw = db.session.query(
+        extract('year', Operation.date_operation)
+    ).distinct().order_by(extract('year', Operation.date_operation).desc()).all()
+    return [int(y[0]) for y in years_raw if y[0]]
+
+
+def _dashboard_kpi_block(year, month):
+    """Calcule les montants (Vue d'ensemble + statuts) pour une année/mois donnés.
+
+    Utilisé par le dashboard initial et par les partiels filtrés indépendamment
+    (Vue d'ensemble, carte Encaissé, carte En cours d'encaissement).
+    """
+    _excluded_types = ['Autre', 'Transfer']
+    _excluded_statuts = ['Rejeté']
+
+    base_filter = []
+    if year:
+        base_filter.append(extract('year', Operation.date_operation) == year)
+    if month:
+        base_filter.append(extract('month', Operation.date_operation) == month)
+
+    # KPIs globaux (Vue d'ensemble)
+    kpi_lookup = {s: float(m) for s, m in db.session.query(
+        Operation.societe,
+        func.coalesce(func.sum(Operation.montant), 0)
+    ).filter(
+        ~Operation.type_operation.in_(_excluded_types),
+        ~Operation.statut.in_(_excluded_statuts),
+        *base_filter
+    ).group_by(Operation.societe).all()}
+    total_montant = sum(kpi_lookup.values())
+
+    # Statuts avec ventilation par société
+    status_labels = STATUS_CHOICES
+    statuts_info = {s: {'count': 0, 'montant': 0.0, 'srid_count': 0, 'srid_montant': 0.0,
+                        'genetics_count': 0, 'genetics_montant': 0.0} for s in status_labels}
+    for statut, societe, count, montant in db.session.query(
+        Operation.statut,
+        Operation.societe,
+        func.count(Operation.id),
+        func.coalesce(func.sum(Operation.montant), 0)
+    ).filter(*base_filter).group_by(Operation.statut, Operation.societe).all():
+        if statut in statuts_info:
+            statuts_info[statut]['count'] += count
+            statuts_info[statut]['montant'] += float(montant)
+            if societe == 'SRID':
+                statuts_info[statut]['srid_count'] += count
+                statuts_info[statut]['srid_montant'] += float(montant)
+            elif societe == 'Genetics':
+                statuts_info[statut]['genetics_count'] += count
+                statuts_info[statut]['genetics_montant'] += float(montant)
+
+    # La carte "En cours d'encaissement" regroupe Échéance, Arrive à échéance et Échu.
+    for _s in ['Échéance', 'Arrive à échéance', 'Échu']:
+        if _s in statuts_info:
+            for k in ('count', 'montant', 'srid_count', 'srid_montant',
+                      'genetics_count', 'genetics_montant'):
+                statuts_info['En cours'][k] += statuts_info[_s][k]
+
+    return {
+        'total_montant': float(total_montant),
+        'montant_srid': kpi_lookup.get('SRID', 0.0),
+        'montant_genetics': kpi_lookup.get('Genetics', 0.0),
+        'statuts_info': statuts_info,
+    }
+
+
 @app.route('/')
 @login_required
 def dashboard():
@@ -793,6 +861,50 @@ def api_dashboard_kpis():
                            montant_genetics=float(montant_genetics),
                            statuts_info=statuts_info,
                            available_years=available_years,
+                           selected_year=year,
+                           selected_month=month)
+
+
+@app.route('/api/dashboard/overview')
+@login_required
+def api_dashboard_overview():
+    """HTMX partial: Vue d'ensemble filtrée (année/mois indépendants)."""
+    year = request.args.get('year', date.today().year, type=int)
+    month = request.args.get('month', 0, type=int)
+    block = _dashboard_kpi_block(year, month)
+    return render_template('partials/dashboard_overview.html',
+                           total_montant=block['total_montant'],
+                           montant_srid=block['montant_srid'],
+                           montant_genetics=block['montant_genetics'],
+                           available_years=_dashboard_available_years(),
+                           selected_year=year,
+                           selected_month=month)
+
+
+@app.route('/api/dashboard/encaisse')
+@login_required
+def api_dashboard_encaisse():
+    """HTMX partial: carte Encaissé filtrée (année/mois indépendants)."""
+    year = request.args.get('year', date.today().year, type=int)
+    month = request.args.get('month', 0, type=int)
+    block = _dashboard_kpi_block(year, month)
+    return render_template('partials/dashboard_encaisse.html',
+                           statuts_info=block['statuts_info'],
+                           available_years=_dashboard_available_years(),
+                           selected_year=year,
+                           selected_month=month)
+
+
+@app.route('/api/dashboard/encours')
+@login_required
+def api_dashboard_encours():
+    """HTMX partial: carte En cours d'encaissement filtrée (année/mois indépendants)."""
+    year = request.args.get('year', date.today().year, type=int)
+    month = request.args.get('month', 0, type=int)
+    block = _dashboard_kpi_block(year, month)
+    return render_template('partials/dashboard_encours.html',
+                           statuts_info=block['statuts_info'],
+                           available_years=_dashboard_available_years(),
                            selected_year=year,
                            selected_month=month)
 
@@ -1864,12 +1976,13 @@ def api_frais_edit(item_id):
 def logistique_prix_revient():
     societe = request.args.get('societe', '').strip()
 
-    q = FraisLogistique.query
-    if societe:
-        q = q.filter(FraisLogistique.societe == societe)
-    q = q.order_by(FraisLogistique.date_creation.desc().nullslast(), FraisLogistique.id.desc())
+    # On calcule le PR de tous les bons (toutes sociétés) : la liste des produits
+    # proposée dans le filtre doit regrouper les produits des 2 sociétés.
+    q = FraisLogistique.query.order_by(
+        FraisLogistique.date_creation.desc().nullslast(), FraisLogistique.id.desc()
+    )
 
-    bons_pr = []
+    all_entries = []
     for frais in q.all():
         if not frais.bon_id or not frais.charges_saisies:
             continue
@@ -1880,7 +1993,7 @@ def logistique_prix_revient():
         pr_lignes = _calculer_pr_bon(bon, frais, cours)
         if not pr_lignes:
             continue
-        bons_pr.append({
+        all_entries.append({
             'bon': bon,
             'frais': frais,
             'cours': cours,
@@ -1889,9 +2002,24 @@ def logistique_prix_revient():
             'pr_ht_total': sum(r['pr_ht'] for r in pr_lignes),
         })
 
+    # Liste complète des produits (toutes sociétés confondues).
+    produit_options = sorted(
+        {(r['nom'] or (r['ligne'].designation if r['ligne'] else '')).strip()
+         for e in all_entries for r in e['lignes']
+         if (r['nom'] or (r['ligne'].designation if r['ligne'] else '')).strip()},
+        key=lambda s: s.upper()
+    )
+
+    # Le tableau lui-même reste filtrable par société.
+    if societe:
+        bons_pr = [e for e in all_entries if e['frais'].societe == societe]
+    else:
+        bons_pr = all_entries
+
     return render_template(
         'logistique_prix_revient.html',
         bons_pr=bons_pr,
+        produit_options=produit_options,
         societe=societe,
         can_write=_current_role() in ('admin', 'saisie'),
     )

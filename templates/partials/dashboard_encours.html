@@ -1,0 +1,61 @@
+<!-- Carte En cours d'encaissement (filtre indépendant, sous-sections Échéance / Arrive à échéance / Échu) -->
+<div class="card bg-base-100 shadow-sm border border-base-300 h-full">
+    <div class="card-body p-4">
+        <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+            <div class="flex items-center gap-2">
+                <div class="status-dot status-encours"></div>
+                <span class="font-bold text-sm">En cours d'encaissement</span>
+            </div>
+            <div class="flex items-center gap-1 kpi-filter">
+                <select name="year" data-year-filter class="select select-bordered select-xs"
+                        hx-get="{{ url_for('api_dashboard_encours') }}"
+                        hx-trigger="change"
+                        hx-target="#dashboard-encours"
+                        hx-include="closest .kpi-filter">
+                    {% for y in available_years %}
+                    <option value="{{ y }}" {% if selected_year == y %}selected{% endif %}>{{ y }}</option>
+                    {% endfor %}
+                </select>
+                <select name="month" data-month-filter data-no-scroll="1" class="select select-bordered select-xs"
+                        hx-get="{{ url_for('api_dashboard_encours') }}"
+                        hx-trigger="change"
+                        hx-target="#dashboard-encours"
+                        hx-include="closest .kpi-filter">
+                    <option value="">Tous</option>
+                    {% set mois_labels = ['Jan','Fév','Mar','Avr','Mai','Juin','Juil','Août','Sep','Oct','Nov','Déc'] %}
+                    {% for m in range(1, 13) %}
+                    <option value="{{ m }}" {% if selected_month == m %}selected{% endif %}>{{ mois_labels[m-1] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+        <p class="font-bold text-2xl status-encours mb-2 dashboard-money">{{ statuts_info['En cours'].montant|currency(0) }} DA</p>
+
+        <div class="space-y-1 text-xs border-t border-base-300 pt-2 mb-2">
+            <div class="flex justify-between">
+                <span class="societe-srid">SRID</span>
+                <span class="font-semibold societe-srid dashboard-money">{{ statuts_info['En cours'].srid_montant|currency(0) }} DA</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="societe-genetics">Genetics</span>
+                <span class="font-semibold societe-genetics dashboard-money">{{ statuts_info['En cours'].genetics_montant|currency(0) }} DA</span>
+            </div>
+        </div>
+
+        <div class="space-y-2 text-xs border-t border-base-300 pt-2">
+            <p class="uppercase tracking-wide opacity-50 text-[10px]">Dont</p>
+            <div class="flex items-center justify-between">
+                <span class="flex items-center gap-2"><span class="status-dot status-echeance"></span>Échéance</span>
+                <span class="font-semibold status-echeance dashboard-money">{{ statuts_info['Échéance'].montant|currency(0) }} DA</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="flex items-center gap-2"><span class="status-dot status-arriveecheance"></span>Arrive à échéance</span>
+                <span class="font-semibold status-arriveecheance dashboard-money">{{ statuts_info['Arrive à échéance'].montant|currency(0) }} DA</span>
+            </div>
+            <div class="flex items-center justify-between">
+                <span class="flex items-center gap-2"><span class="status-dot status-echu"></span>Échu</span>
+                <span class="font-semibold status-echu dashboard-money">{{ statuts_info['Échu'].montant|currency(0) }} DA</span>
+            </div>
+        </div>
+    </div>
+</div>

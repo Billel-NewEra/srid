@@ -80,8 +80,13 @@
                     <div class="form-control relative">
                         <input type="text" name="remettant" id="remettant-filter-input"
                                placeholder="Remettant / Commercial" autocomplete="off"
-                               class="input input-bordered input-sm w-full"
+                               class="input input-bordered input-sm w-full pr-8"
                                data-filter-remettant-input>
+                        <button type="button"
+                                class="absolute right-2 top-1/2 -translate-y-1/2 hidden text-base-content/40 hover:text-base-content"
+                                tabindex="-1" aria-label="Effacer le filtre" data-filter-remettant-clear>
+                            <i class="fas fa-times-circle"></i>
+                        </button>
                         <div class="absolute left-0 right-0 top-full mt-1 z-40 hidden max-h-72 overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-lg" data-filter-remettant-list>
                             {% for remettant in remettant_options %}
                             <button type="button" class="block w-full px-3 py-2 text-left text-sm hover:bg-base-200" data-filter-remettant-option="{{ remettant }}">{{ remettant }}</button>
@@ -149,7 +154,7 @@
         <h3 class="font-bold text-lg mb-3">
             <i class="fas fa-plus-circle text-primary mr-2"></i><span id="modal-operation-title-text">Nouvelle opération</span>
         </h3>
-        <form method="POST" action="{{ url_for('api_operation_add') }}" id="form-add-operation" class="space-y-4" data-edit-url-template="{{ url_for('edit_operation', op_id=0) }}">
+        <form method="POST" action="{{ url_for('api_operation_add') }}" id="form-add-operation" class="space-y-4" data-edit-url-template="{{ url_for('edit_operation', op_id=0) }}" data-detail-url-template="{{ url_for('api_operation_detail', op_id=0) }}">
             <!-- Section: Type et Société -->
             <div class="divider divider-start text-sm font-semibold opacity-70">
                 <i class="fas fa-tag mr-1"></i> Type d'opération
@@ -289,6 +294,11 @@
         const list = document.querySelector('[data-filter-remettant-list]');
         if (!input || !list) return;
         const options = Array.from(list.querySelectorAll('[data-filter-remettant-option]'));
+        const clearBtn = document.querySelector('[data-filter-remettant-clear]');
+
+        function toggleClear() {
+            if (clearBtn) clearBtn.classList.toggle('hidden', !input.value.trim());
+        }
 
         function filterOptions() {
             const query = input.value.trim().toUpperCase();
@@ -303,22 +313,35 @@
         }
 
         input.addEventListener('focus', filterOptions);
-        input.addEventListener('input', filterOptions);
+        input.addEventListener('input', () => { filterOptions(); toggleClear(); });
 
         options.forEach((btn) => {
             btn.addEventListener('click', () => {
                 input.value = btn.getAttribute('data-filter-remettant-option') || '';
                 list.classList.add('hidden');
+                toggleClear();
                 input.dispatchEvent(new Event('change', { bubbles: true }));
                 refreshResultsTable();
             });
         });
+
+        if (clearBtn) {
+            clearBtn.addEventListener('click', () => {
+                input.value = '';
+                list.classList.add('hidden');
+                toggleClear();
+                input.dispatchEvent(new Event('change', { bubbles: true }));
+                refreshResultsTable();
+            });
+        }
 
         document.addEventListener('click', (event) => {
             if (!list.contains(event.target) && event.target !== input) {
                 list.classList.add('hidden');
             }
         });
+
+        toggleClear();
     })();
 
     // ── Tri colonnes opérations ───────────────────────────────────────────────
@@ -545,7 +568,8 @@
         const form = document.getElementById('form-add-operation');
         if (!modal || !form) return;
 
-        const response = await fetch(`/api/operations/${opId}`, {
+        const detailUrl = (form.dataset.detailUrlTemplate || '').replace(/\/0$/, `/${opId}`);
+        const response = await fetch(detailUrl, {
             headers: { 'Accept': 'application/json' },
             credentials: 'same-origin'
         });
