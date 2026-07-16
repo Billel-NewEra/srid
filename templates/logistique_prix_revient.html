@@ -21,61 +21,48 @@
             <p class="text-xs mt-1">Renseignez le cours dans « Gestion des commandes » et les charges dans « Frais » pour un bon.</p>
         </div>
     </div>
-    {% endif %}
-
-    <div class="space-y-4">
-    {% for entry in bons_pr %}
-        <div class="card bg-base-100 shadow">
-            <div class="card-body p-4">
-                <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-                    <div>
-                        <span class="font-mono font-semibold">{{ entry.bon.numero }}</span>
-                        <span class="opacity-60 text-sm ml-2">{{ entry.bon.fournisseur or '-' }} · {{ entry.bon.societe or '-' }}</span>
-                    </div>
-                    <div class="text-sm opacity-70">Cours : <span class="font-semibold">{{ '%.4f'|format(entry.cours) }}</span></div>
-                </div>
-
-                <div class="overflow-x-auto">
-                    <table class="table table-sm w-full min-w-[900px]">
-                        <thead>
-                            <tr class="bg-base-200">
-                                <th>Produit</th>
-                                <th class="text-right">Quantité</th>
-                                <th class="text-right">Montant DA</th>
-                                <th class="text-right">Part du bon</th>
-                                <th class="text-right">PR TTC</th>
-                                <th class="text-right">PR HT</th>
-                                <th class="text-right">PR/unité TTC</th>
-                                <th class="text-right">PR/unité HT</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                        {% for r in entry.lignes %}
-                            <tr>
-                                <td>{{ r.nom or r.ligne.designation }}</td>
-                                <td class="text-right">{{ '%.2f'|format(r.qte or 0) }} {{ r.ligne.unite or '' }}</td>
-                                <td class="text-right">{{ r.montant_da|currency }}</td>
-                                <td class="text-right">{{ '%.1f%%'|format(r.part * 100) }}</td>
-                                <td class="text-right font-semibold">{{ r.pr_ttc|currency }}</td>
-                                <td class="text-right">{{ r.pr_ht|currency }}</td>
-                                <td class="text-right">{{ r.pr_unit_ttc|currency if r.pr_unit_ttc is not none else '-' }}</td>
-                                <td class="text-right">{{ r.pr_unit_ht|currency if r.pr_unit_ht is not none else '-' }}</td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                        <tfoot>
-                            <tr class="font-semibold bg-base-200">
-                                <td colspan="4" class="text-right">Total</td>
-                                <td class="text-right">{{ entry.pr_ttc_total|currency }}</td>
-                                <td class="text-right">{{ entry.pr_ht_total|currency }}</td>
-                                <td colspan="2"></td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
-            </div>
+    {% else %}
+    <div class="card bg-base-100 shadow-md overflow-hidden">
+        <div class="overflow-x-auto">
+            <table class="table w-full min-w-[940px] align-middle">
+                <thead>
+                    <tr class="bg-base-200 text-xs uppercase tracking-wide text-base-content/60">
+                        <th class="py-3">N° Bon</th>
+                        <th class="py-3">Produit</th>
+                        <th class="py-3 text-right">Quantité</th>
+                        <th class="py-3 text-right">Montant DA</th>
+                        <th class="py-3 text-right bg-primary/5">PR TTC</th>
+                        <th class="py-3 text-right bg-primary/5">PR HT</th>
+                        <th class="py-3 text-right">PR/u TTC</th>
+                        <th class="py-3 text-right">PR/u HT</th>
+                    </tr>
+                </thead>
+                {% for entry in bons_pr %}
+                <tbody class="border-t-4 border-base-200 {% if loop.index0 % 2 == 1 %}bg-base-200/20{% endif %}">
+                    {% for r in entry.lignes %}
+                    <tr class="hover:bg-base-300/40 transition-colors">
+                        {% if loop.first %}
+                        <td rowspan="{{ entry.lignes|length }}"
+                            class="align-middle text-center border-r border-base-200">
+                            <span class="badge badge-neutral badge-lg font-mono font-semibold">{{ entry.bon.numero }}</span>
+                        </td>
+                        {% endif %}
+                        <td class="font-medium">{{ r.nom or r.ligne.designation }}</td>
+                        <td class="text-right tabular-nums whitespace-nowrap">
+                            {{ '%.2f'|format(r.qte or 0) }} <span class="text-xs opacity-50">{{ r.ligne.unite or '' }}</span>
+                        </td>
+                        <td class="text-right tabular-nums whitespace-nowrap">{{ r.montant_da|currency }}</td>
+                        <td class="text-right tabular-nums whitespace-nowrap font-semibold text-primary bg-primary/5">{{ r.pr_ttc|currency }}</td>
+                        <td class="text-right tabular-nums whitespace-nowrap bg-primary/5">{{ r.pr_ht|currency }}</td>
+                        <td class="text-right tabular-nums whitespace-nowrap opacity-80">{{ r.pr_unit_ttc|currency if r.pr_unit_ttc is not none else '—' }}</td>
+                        <td class="text-right tabular-nums whitespace-nowrap opacity-80">{{ r.pr_unit_ht|currency if r.pr_unit_ht is not none else '—' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                {% endfor %}
+            </table>
         </div>
-    {% endfor %}
     </div>
+    {% endif %}
 </div>
 {% endblock %}
