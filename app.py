@@ -2016,10 +2016,14 @@ def logistique_prix_revient():
     else:
         bons_pr = all_entries
 
+    # Liste des numéros de bons affichés (pour le filtre « bon »).
+    bon_options = [e['bon'].numero for e in bons_pr if e['bon'].numero]
+
     return render_template(
         'logistique_prix_revient.html',
         bons_pr=bons_pr,
         produit_options=produit_options,
+        bon_options=bon_options,
         societe=societe,
         can_write=_current_role() in ('admin', 'saisie'),
     )
@@ -2480,21 +2484,66 @@ def api_bon_update(bon_id):
     bon.date_commande = fd('date_commande') or bon.date_commande
     bon.notes         = request.form.get('notes', '').strip() or None
 
+    # Préserver les surcharges TVA du PR avant de recréer les lignes.
+    # Les lignes sont recréées avec de nouveaux id ; on mémorise la TVA
+    # personnalisée par (référence, désignation) pour la ré-appliquer ensuite,
+    # sinon frais.pr_config (indexé par id de ligne) deviendrait obsolète.
+    frais_entry = FraisLogistique.query.filter_by(bon_id=bon.id).first()
+    old_pr_config = None
+    if frais_entry and frais_entry.pr_config:
+        try:
+            old_pr_config = json.loads(frais_entry.pr_config)
+        except (ValueError, TypeError):
+            old_pr_config = None
+    tva_overrides = []  # [ref_norm, desig_norm, tva, consumed]
+    if old_pr_config and isinstance(old_pr_config.get('produits'), dict):
+        prod_cfg = old_pr_config['produits']
+        for l in bon.lignes:
+            tva = (prod_cfg.get(str(l.id)) or {}).get('tva')
+            if tva is not None:
+                tva_overrides.append([
+                    (l.reference or '').strip().upper(),
+                    (l.designation or '').strip().upper(),
+                    tva, False,
+                ])
+
     # Remplacer les lignes existantes
     LigneCommande.query.filter_by(bon_id=bon.id).delete()
     db.session.flush()
 
     total_montant = 0.0
+    nouvelles_lignes = []
     for l in parsed_lines:
-        db.session.add(LigneCommande(
+        nl = LigneCommande(
             bon_id=bon.id,
             reference=l['reference'] or None,
             designation=l['designation'],
             quantite=l['quantite'],
             prix_unitaire=l['prix_unitaire'],
             devise=l['devise'],
-        ))
+        )
+        db.session.add(nl)
+        nouvelles_lignes.append(nl)
         total_montant += l['quantite'] * l['prix_unitaire']
+
+    # Ré-appliquer les surcharges TVA aux nouvelles lignes (matching ref+désignation,
+    # repli sur la désignation seule), puis réindexer frais.pr_config par nouveaux id.
+    if old_pr_config is not None and tva_overrides:
+        db.session.flush()  # pour obtenir les nouveaux id
+        new_produits = {}
+        for nl in nouvelles_lignes:
+            ref_n = (nl.reference or '').strip().upper()
+            des_n = (nl.designation or '').strip().upper()
+            match = next((o for o in tva_overrides
+                          if not o[3] and o[0] == ref_n and o[1] == des_n), None)
+            if match is None:
+                match = next((o for o in tva_overrides
+                              if not o[3] and o[1] == des_n), None)
+            if match is not None:
+                match[3] = True
+                new_produits[str(nl.id)] = {'tva': match[2]}
+        old_pr_config['produits'] = new_produits
+        frais_entry.pr_config = json.dumps(old_pr_config, ensure_ascii=False)
 
     # Mettre à jour l'entrée CommandeLogistique associée
     log_entry = CommandeLogistique.query.filter_by(bon_id=bon.id).first()

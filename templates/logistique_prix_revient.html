@@ -24,6 +24,22 @@
     {% else %}
     <div class="flex flex-wrap items-center gap-2 mb-4">
         <div class="form-control relative">
+            <input type="text" id="pr-bon-filter" autocomplete="off"
+                   placeholder="Filtrer par bon"
+                   class="input input-bordered input-sm w-56 pr-8"
+                   data-filter-bon-input>
+            <button type="button" id="pr-bon-filter-clear"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 hidden text-base-content/40 hover:text-base-content"
+                    tabindex="-1" aria-label="Effacer le filtre">
+                <i class="fas fa-times-circle"></i>
+            </button>
+            <div class="absolute left-0 right-0 top-full mt-1 z-40 hidden max-h-72 overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-lg" data-filter-bon-list>
+                {% for numero in bon_options %}
+                <button type="button" class="block w-full px-3 py-2 text-left text-sm hover:bg-base-200" data-filter-bon-option="{{ numero }}">{{ numero }}</button>
+                {% endfor %}
+            </div>
+        </div>
+        <div class="form-control relative">
             <input type="text" id="pr-filter" autocomplete="off"
                    placeholder="Filtrer par produit"
                    class="input input-bordered input-sm w-72 pr-8"
@@ -75,7 +91,7 @@
                     </tr>
                 </thead>
                 {% for entry in bons_pr %}
-                <tbody data-bon data-date="{{ entry.bon.date_commande.strftime('%Y-%m-%d') if entry.bon.date_commande else '' }}" class="border-t-2 border-base-300 {% if loop.index0 % 2 == 1 %}bg-base-200/20{% endif %}">
+                <tbody data-bon data-numero="{{ entry.bon.numero|e }}" data-date="{{ entry.bon.date_commande.strftime('%Y-%m-%d') if entry.bon.date_commande else '' }}" class="border-t-2 border-base-300 {% if loop.index0 % 2 == 1 %}bg-base-200/20{% endif %}">
                     {% for r in entry.lignes %}
                     <tr data-produit="{{ (r.nom or r.ligne.designation)|e }}" class="hover:bg-base-300/40 transition-colors">
                         {% if loop.first %}
@@ -128,6 +144,10 @@
     var list = document.querySelector('[data-filter-produit-list]');
     var options = list ? Array.prototype.slice.call(list.querySelectorAll('[data-filter-produit-option]')) : [];
     var clearBtn = document.getElementById('pr-filter-clear');
+    var bonInput = document.querySelector('[data-filter-bon-input]');
+    var bonList = document.querySelector('[data-filter-bon-list]');
+    var bonOptions = bonList ? Array.prototype.slice.call(bonList.querySelectorAll('[data-filter-bon-option]')) : [];
+    var bonClearBtn = document.getElementById('pr-bon-filter-clear');
     var countEl = document.getElementById('pr-filter-count');
     var noResult = document.getElementById('pr-no-result');
     var perPageSel = document.getElementById('pr-per-page');
@@ -147,9 +167,24 @@
             tb: tb,
             rows: Array.prototype.slice.call(tb.querySelectorAll('tr')),
             bonCell: tb.querySelector('td[data-bon-cell]'),
+            numero: tb.getAttribute('data-numero') || '',
             date: tb.getAttribute('data-date') || ''
         };
     });
+
+    // ── Liste déroulante « bon » : filtrage des suggestions ─────────────────────
+    function filterBonOptions() {
+        if (!bonList) return;
+        var query = bonInput.value.trim().toUpperCase();
+        var visible = 0;
+        bonOptions.forEach(function (btn) {
+            var value = (btn.getAttribute('data-filter-bon-option') || '').toUpperCase();
+            var show = !query || value.indexOf(query) !== -1;
+            btn.classList.toggle('hidden', !show);
+            if (show) visible += 1;
+        });
+        bonList.classList.toggle('hidden', visible === 0);
+    }
 
     // ── Liste déroulante : filtrage des suggestions (style opérations) ──────────
     function filterOptions() {
@@ -167,9 +202,10 @@
     // ── Filtre + pagination du tableau ──────────────────────────────────────────
     function render() {
         var q = (input.value || '').trim().toLowerCase();
+        var qBon = (bonInput && bonInput.value || '').trim().toLowerCase();
         var dDebut = dateDebut ? dateDebut.value : '';
         var dFin = dateFin ? dateFin.value : '';
-        var isFiltering = !!(q || dDebut || dFin);
+        var isFiltering = !!(q || qBon || dDebut || dFin);
 
         function dateOk(d) {
             if (dDebut || dFin) {
@@ -187,6 +223,7 @@
                 g.bonCell.parentNode.removeChild(g.bonCell);
             }
             var okDate = dateOk(g.date);
+            var okBon = !qBon || g.numero.toLowerCase().indexOf(qBon) !== -1;
             var rowsOk = [];
             g.rows.forEach(function (tr) {
                 var p = (tr.getAttribute('data-produit') || '').toLowerCase();
@@ -194,7 +231,7 @@
                 tr.style.display = ok ? '' : 'none';
                 if (ok) rowsOk.push(tr);
             });
-            if (rowsOk.length && okDate) {
+            if (rowsOk.length && okDate && okBon) {
                 if (g.bonCell) {
                     rowsOk[0].insertBefore(g.bonCell, rowsOk[0].firstChild);
                     g.bonCell.rowSpan = rowsOk.length;
@@ -229,6 +266,9 @@
         }
         if (clearBtn) {
             clearBtn.classList.toggle('hidden', !q);
+        }
+        if (bonClearBtn) {
+            bonClearBtn.classList.toggle('hidden', !qBon);
         }
         if (dateClear) {
             dateClear.classList.toggle('hidden', !(dDebut || dFin));
@@ -268,9 +308,30 @@
         });
     });
 
+    if (bonInput) {
+        bonInput.addEventListener('focus', filterBonOptions);
+        bonInput.addEventListener('input', function () {
+            filterBonOptions();
+            currentPage = 1;
+            render();
+        });
+    }
+
+    bonOptions.forEach(function (btn) {
+        btn.addEventListener('click', function () {
+            if (bonInput) bonInput.value = btn.getAttribute('data-filter-bon-option') || '';
+            if (bonList) bonList.classList.add('hidden');
+            currentPage = 1;
+            render();
+        });
+    });
+
     document.addEventListener('click', function (event) {
         if (list && !list.contains(event.target) && event.target !== input) {
             list.classList.add('hidden');
+        }
+        if (bonList && !bonList.contains(event.target) && event.target !== bonInput) {
+            bonList.classList.add('hidden');
         }
     });
 
@@ -278,6 +339,15 @@
         clearBtn.addEventListener('click', function () {
             input.value = '';
             if (list) list.classList.add('hidden');
+            currentPage = 1;
+            render();
+        });
+    }
+
+    if (bonClearBtn) {
+        bonClearBtn.addEventListener('click', function () {
+            if (bonInput) bonInput.value = '';
+            if (bonList) bonList.classList.add('hidden');
             currentPage = 1;
             render();
         });
