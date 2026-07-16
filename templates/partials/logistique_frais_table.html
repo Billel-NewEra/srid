@@ -88,7 +88,7 @@
 
 {% if can_write %}
 <dialog id="modal-frais-edit" class="modal">
-    <div class="modal-box max-w-5xl">
+    <div class="modal-box max-w-7xl">
         <h3 class="font-bold text-lg">Prix de revient du bon <span id="frais-modal-numero" class="text-primary"></span></h3>
         <p class="text-xs opacity-60 mb-3">Toutes les valeurs et pourcentages sont modifiables. Le calcul se met à jour en direct.</p>
 
@@ -120,26 +120,26 @@
                     <input type="number" step="0.01" id="pg_tcs" class="input input-bordered input-xs" oninput="recomputePR()"></label>
                 <label class="form-control"><span class="label-text text-xs">Précompte IBS (%)</span>
                     <input type="number" step="0.01" id="pg_precompte" class="input input-bordered input-xs" oninput="recomputePR()"></label>
-                <label class="form-control"><span class="label-text text-xs">RPS (DA, réparti)</span>
-                    <input type="number" step="0.01" id="pc_rps" class="input input-bordered input-xs" oninput="recomputePR()"></label>
+                <label class="form-control"><span class="label-text text-xs">RPS</span>
+                    <input type="text" inputmode="decimal" id="pc_rps" class="input input-bordered input-xs text-right" oninput="_fmtAmountInput(this); recomputePR()"></label>
             </div>
 
             <div class="divider text-xs my-2 font-semibold text-warning">Frais transitaire</div>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                <label class="form-control"><span class="label-text text-xs">Fret ($, réparti)</span>
-                    <input type="number" step="0.01" id="pc_fret" class="input input-bordered input-xs" oninput="recomputePR()"></label>
+                <label class="form-control"><span class="label-text text-xs">Fret (<span id="fret-devise">€</span>)</span>
+                    <input type="text" inputmode="decimal" id="pc_fret" class="input input-bordered input-xs text-right" oninput="_fmtAmountInput(this); recomputePR()"></label>
                 <label class="form-control"><span class="label-text text-xs">Taxe domiciliation (%)</span>
                     <input type="number" step="0.001" id="pg_taxedom" class="input input-bordered input-xs" oninput="recomputePR()"></label>
                 <label class="form-control"><span class="label-text text-xs">Frais transfert (%)</span>
                     <input type="number" step="0.001" id="pg_transfert" class="input input-bordered input-xs" oninput="recomputePR()"></label>
-                <label class="form-control"><span class="label-text text-xs">Échange (DA, réparti)</span>
-                    <input type="number" step="0.01" id="pc_echange" class="input input-bordered input-xs" oninput="recomputePR()"></label>
-                <label class="form-control"><span class="label-text text-xs">Honoraires transitaire (DA, réparti)</span>
-                    <input type="number" step="0.01" id="pc_honoraires" class="input input-bordered input-xs" oninput="recomputePR()"></label>
-                <label class="form-control"><span class="label-text text-xs">Magasinage (DA, réparti)</span>
-                    <input type="number" step="0.01" id="pc_magasinage" class="input input-bordered input-xs" oninput="recomputePR()"></label>
-                <label class="form-control"><span class="label-text text-xs">Surestaries (DA, réparti)</span>
-                    <input type="number" step="0.01" id="pc_surestaries" class="input input-bordered input-xs" oninput="recomputePR()"></label>
+                <label class="form-control"><span class="label-text text-xs">Échange</span>
+                    <input type="text" inputmode="decimal" id="pc_echange" class="input input-bordered input-xs text-right" oninput="_fmtAmountInput(this); recomputePR()"></label>
+                <label class="form-control"><span class="label-text text-xs">Honoraires transitaire</span>
+                    <input type="text" inputmode="decimal" id="pc_honoraires" class="input input-bordered input-xs text-right" oninput="_fmtAmountInput(this); recomputePR()"></label>
+                <label class="form-control"><span class="label-text text-xs">Magasinage</span>
+                    <input type="text" inputmode="decimal" id="pc_magasinage" class="input input-bordered input-xs text-right" oninput="_fmtAmountInput(this); recomputePR()"></label>
+                <label class="form-control"><span class="label-text text-xs">Surestaries</span>
+                    <input type="text" inputmode="decimal" id="pc_surestaries" class="input input-bordered input-xs text-right" oninput="_fmtAmountInput(this); recomputePR()"></label>
                 <label class="form-control"><span class="label-text text-xs">Remarque</span>
                     <input type="text" name="remarque" id="frais-remarque" class="input input-bordered input-xs"></label>
             </div>
@@ -219,12 +219,40 @@ var _fraisCurrent = null;
 function _numv(id) {
     var el = document.getElementById(id);
     if (!el) return 0;
-    var v = parseFloat(el.value);
+    var raw = ('' + el.value).replace(/[\s\u00A0\u202F]/g, '').replace(',', '.');
+    var v = parseFloat(raw);
     return isNaN(v) ? 0 : v;
 }
 function _setv(id, val) {
     var el = document.getElementById(id);
     if (el) el.value = (val === null || val === undefined) ? '' : val;
+}
+// Renseigne un champ montant avec groupement des milliers (fr-FR)
+function _setMoney(id, val) {
+    var el = document.getElementById(id);
+    if (!el) return;
+    if (val === null || val === undefined || val === '') { el.value = ''; return; }
+    var n = (typeof val === 'number') ? val : parseFloat(val);
+    el.value = isNaN(n) ? '' : n.toLocaleString('fr-FR', {maximumFractionDigits: 2});
+}
+// Groupe les milliers en direct pendant la saisie (épargne la position du curseur)
+function _fmtAmountInput(el) {
+    var caret = el.selectionStart || 0;
+    var digitsBefore = el.value.slice(0, caret).replace(/[^0-9]/g, '').length;
+    var cleaned = el.value.replace(/[^0-9.,]/g, '').replace(/\./g, ',');
+    var parts = cleaned.split(',');
+    var intPart = (parts[0] || '').replace(/^0+(?=\d)/, '');
+    var hasSep = parts.length > 1;
+    var decPart = hasSep ? parts.slice(1).join('').slice(0, 2) : '';
+    var grouped = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '\u202F');
+    var out = grouped + (hasSep ? ',' + decPart : '');
+    el.value = out;
+    var pos = 0, seen = 0;
+    while (pos < out.length && seen < digitsBefore) {
+        if (out.charCodeAt(pos) >= 48 && out.charCodeAt(pos) <= 57) seen++;
+        pos++;
+    }
+    try { el.setSelectionRange(pos, pos); } catch (e) {}
 }
 function _fmtDA(x) {
     if (x === null || x === undefined) return '-';
@@ -234,6 +262,8 @@ function _fmtPct(x) {
     if (x === null || x === undefined) return '-';
     return (x * 100).toLocaleString('fr-FR', {minimumFractionDigits: 0, maximumFractionDigits: 2}) + ' %';
 }
+// Symbole d'affichage normalisé : Euro -> €, Dollar US -> $
+function devSym(d) { return d === 'USD' ? '$' : ((d === 'EUR' || !d) ? '€' : d); }
 
 function openFraisEdit(id) {
     _fraisCurrent = FRAIS_PR_MAP[id] || null;
@@ -243,17 +273,19 @@ function openFraisEdit(id) {
 
     var cfg = _fraisCurrent || {rates: {}, charges: {}, produits: [], remarque: ''};
     var r = cfg.rates || {}, c = cfg.charges || {};
+    var fd = document.getElementById('fret-devise');
+    if (fd) fd.textContent = devSym(cfg.devise);
     _setv('pg_douane',     r.douane     != null ? Math.round(r.douane * 100) : '0');
     _setv('pg_tcs',        r.tcs        != null ? r.tcs * 100 : '');
     _setv('pg_precompte',  r.precompte  != null ? r.precompte * 100 : '');
     _setv('pg_taxedom',    r.taxe_dom   != null ? r.taxe_dom * 100 : '');
     _setv('pg_transfert',  r.frais_transfert != null ? r.frais_transfert * 100 : '');
-    _setv('pc_rps',         c.rps         != null ? c.rps : '');
-    _setv('pc_fret',        c.fret        != null ? c.fret : '');
-    _setv('pc_echange',     c.echange     != null ? c.echange : '');
-    _setv('pc_honoraires',  c.honoraires  != null ? c.honoraires : '');
-    _setv('pc_magasinage',  c.magasinage  != null ? c.magasinage : '');
-    _setv('pc_surestaries', c.surestaries != null ? c.surestaries : '');
+    _setMoney('pc_rps',         c.rps);
+    _setMoney('pc_fret',        c.fret);
+    _setMoney('pc_echange',     c.echange);
+    _setMoney('pc_honoraires',  c.honoraires);
+    _setMoney('pc_magasinage',  c.magasinage);
+    _setMoney('pc_surestaries', c.surestaries);
     _setv('frais-remarque', cfg.remarque || '');
 
     buildFraisGrid();
@@ -268,9 +300,10 @@ function _fmtNum(x) {
 
 function buildFraisGrid() {
     var prods = (_fraisCurrent && _fraisCurrent.produits) ? _fraisCurrent.produits : [];
+    var sym = devSym(_fraisCurrent && _fraisCurrent.devise);
     var head = '<tr>' +
         '<th class="text-left">Produit</th>' +
-        '<th class="text-right">Prix achat $ C&F</th>' +
+        '<th class="text-right">Prix achat ' + sym + ' C&F</th>' +
         '<th class="text-right">Quantité</th>' +
         '<th class="text-right">TVA (%)</th>' +
         '</tr>';
@@ -294,13 +327,13 @@ function buildFraisGrid() {
 }
 
 var _fraisOutRows = [
-    {label: 'Prix achat $ (total)', g: 'info', get: function (r) { return r.prix_usd_total; }, money: true},
-    {label: 'Fret réparti ($)',     g: 'info', get: function (r) { return r.fret_usd; }, money: true, total: true},
+    {label: 'Prix achat {DEV} (total)', g: 'info', get: function (r) { return r.prix_usd_total; }, money: true},
+    {label: 'Fret ({DEV})',     g: 'info', get: function (r) { return r.fret_usd; }, money: true, total: true},
     {label: 'Montant DA',           g: 'info', get: function (r) { return r.montant_da; }, money: true, total: true},
     {label: 'Fret (DA)',            g: 'info', get: function (r) { return r.fret_da; }, money: true, total: true},
     {label: 'Valeur en douane (DA)', g: 'info', strong: true, get: function (r) { return r.valeur_douane; }, money: true, total: true},
     {label: 'Part du bon',          g: 'info', get: function (r) { return r.part; }, pct: true},
-    {label: 'RPS (réparti)',        g: 'douane', get: function (r) { return r.rps; }, money: true, total: true},
+    {label: 'RPS',        g: 'douane', get: function (r) { return r.rps; }, money: true, total: true},
     {label: 'TCS',                  g: 'douane', get: function (r) { return r.tcs; }, money: true, total: true},
     {label: 'Droits de douane (D.D.)', g: 'douane', get: function (r) { return r.douane; }, money: true, total: true},
     {label: 'TVA',                  g: 'douane', get: function (r) { return r.tva; }, money: true, total: true},
@@ -308,10 +341,10 @@ var _fraisOutRows = [
     {label: 'Total Douanes',        g: 'douane', isTotal: true, get: function (r) { return r.total_douanes; }, money: true, total: true},
     {label: 'Taxe domiciliation',   g: 'transit', get: function (r) { return r.taxe_dom; }, money: true, total: true},
     {label: 'Frais transfert',      g: 'transit', get: function (r) { return r.frais_transfert; }, money: true, total: true},
-    {label: 'Échange (réparti)',    g: 'transit', get: function (r) { return r.echange; }, money: true, total: true},
-    {label: 'Honoraires (réparti)', g: 'transit', get: function (r) { return r.honoraires; }, money: true, total: true},
-    {label: 'Magasinage (réparti)', g: 'transit', get: function (r) { return r.magasinage; }, money: true, total: true},
-    {label: 'Surestaries (réparti)', g: 'transit', get: function (r) { return r.surestaries; }, money: true, total: true},
+    {label: 'Échange',    g: 'transit', get: function (r) { return r.echange; }, money: true, total: true},
+    {label: 'Honoraires', g: 'transit', get: function (r) { return r.honoraires; }, money: true, total: true},
+    {label: 'Magasinage', g: 'transit', get: function (r) { return r.magasinage; }, money: true, total: true},
+    {label: 'Surestaries', g: 'transit', get: function (r) { return r.surestaries; }, money: true, total: true},
     {label: 'Total Transitaire',    g: 'transit', isTotal: true, get: function (r) { return r.total_transitaire; }, money: true, total: true},
     {label: 'Prix de revient TTC',  g: 'result', strong: true, get: function (r) { return r.pr_ttc; }, money: true, total: true},
     {label: 'PR / unité TTC',       g: 'result', get: function (r) { return r.pr_unit_ttc; }, money: true},
@@ -389,22 +422,24 @@ function recomputePR() {
         };
     });
 
-    var head = '<tr><th class="text-left">Détail (DA)</th>';
-    inputs.forEach(function (p) { head += '<th class="text-right">' + (p.nom || '-') + '</th>'; });
-    head += '<th class="text-right">Total bon</th></tr>';
+    var head = '<tr><th class="text-left sticky left-0 bg-base-100 z-10 min-w-44">Détail (DA)</th>';
+    inputs.forEach(function (p) { head += '<th class="text-right min-w-28">' + (p.nom || '-') + '</th>'; });
+    head += '<th class="text-right min-w-28">Total bon</th></tr>';
     outHead.innerHTML = head;
 
+    var symOut = devSym(_fraisCurrent.devise);
     var body = '';
     _fraisOutRows.forEach(function (row) {
         var cls = _rowClass(row);
-        body += '<tr' + (cls ? ' class="' + cls + '"' : '') + '><td>' + row.label + '</td>';
+        body += '<tr' + (cls ? ' class="' + cls + '"' : '') + '>' +
+                '<td class="sticky left-0 bg-base-100 z-10 font-medium">' + row.label.replace('{DEV}', symOut) + '</td>';
         var sum = 0;
         res.forEach(function (r) {
             var v = row.get(r);
-            body += '<td class="text-right">' + (row.pct ? _fmtPct(v) : _fmtDA(v)) + '</td>';
+            body += '<td class="text-right whitespace-nowrap">' + (row.pct ? _fmtPct(v) : _fmtDA(v)) + '</td>';
             if (row.money && v != null) sum += v;
         });
-        body += '<td class="text-right font-semibold">' + (row.total ? _fmtDA(sum) : '') + '</td>';
+        body += '<td class="text-right font-semibold whitespace-nowrap">' + (row.total ? _fmtDA(sum) : '') + '</td>';
         body += '</tr>';
     });
     outBody.innerHTML = body;

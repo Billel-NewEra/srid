@@ -87,7 +87,7 @@
             <th class="cursor-pointer select-none" onclick="sortBonsTable('fournisseur')">Fournisseur{{ sort_icon('fournisseur', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="cursor-pointer select-none" onclick="sortBonsTable('date_commande')">Date{{ sort_icon('date_commande', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="cursor-pointer select-none" onclick="sortBonsTable('statut')">Statut{{ sort_icon('statut', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="text-right">Total €</th>
+            <th class="text-right">Total</th>
             {% if can_write %}<th class="text-center">Actions</th>{% endif %}
         </tr>
     </thead>

@@ -241,18 +241,21 @@ function sortGestionTable(col) {
 // ── Mécanique detail → edit (comme bons de commandes) ──────────────────────
 var _detailLogEl = null;
 
+function devSym(d) { return d === 'USD' ? '$' : ((d === 'EUR' || !d) ? '€' : d); }
+
 function openLogDetail(el) {
     _detailLogEl = el;
     const d = el.dataset;
     const dateFmt = s => s ? new Date(s + 'T12:00:00').toLocaleDateString('fr-FR') : '—';
+    const sym = devSym(d.devise);
 
     document.getElementById('detail-log-titre').textContent = d.fournisseur || '—';
     document.getElementById('detail-log-meta').textContent =
         (d.societe || '') + (d.refLog ? ' · ' + d.refLog : '');
 
     const rows = [
-        ['Montant €',      d.montantEur ? parseFloat(d.montantEur).toLocaleString('fr-FR', {minimumFractionDigits:2}) + ' €' : '—'],
-        ['Cours (€→DA)',   d.cours ? parseFloat(d.cours).toFixed(4) : '—'],
+        ['Montant ' + sym,      d.montantEur ? parseFloat(d.montantEur).toLocaleString('fr-FR', {minimumFractionDigits:2}) + ' ' + sym : '—'],
+        ['Cours (' + sym + '→DA)',   d.cours ? parseFloat(d.cours).toFixed(4) : '—'],
         ['Date Facture / BL',   dateFmt(d.dateFacture)],
         ['Date ETD',       dateFmt(d.dateEtd)],
         ["Date d'arrivée au port",   dateFmt(d.dateArrivee)],
@@ -298,6 +301,7 @@ function openLogDetail(el) {
                 }
                 var total = 0;
                 var euroFmtDl = new Intl.NumberFormat('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2});
+                var dlSym = devSym(lignes[0] ? lignes[0].devise : d.devise);
                 var esc = function(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
                 var trs = lignes.map(function(l) {
                     var t = (Number(l.quantite)||0) * (Number(l.prix_unitaire)||0);
@@ -307,7 +311,7 @@ function openLogDetail(el) {
                         '<td class="text-sm">' + esc(l.designation || '—') + '</td>' +
                         '<td class="text-right text-sm">' + (l.quantite || '—') + '</td>' +
                         '<td class="text-right font-mono text-sm">' + (l.prix_unitaire ? euroFmtDl.format(l.prix_unitaire) : '—') + '</td>' +
-                        '<td class="text-right font-mono font-semibold text-sm">' + (t ? t.toLocaleString('fr-FR',{minimumFractionDigits:2}) + ' €' : '—') + '</td>' +
+                        '<td class="text-right font-mono font-semibold text-sm">' + (t ? t.toLocaleString('fr-FR',{minimumFractionDigits:2}) + ' ' + dlSym : '—') + '</td>' +
                         '</tr>';
                 }).join('');
                 bonLignes.innerHTML =
@@ -315,8 +319,8 @@ function openLogDetail(el) {
                     '<thead><tr class="bg-base-200">' +
                     '<th>Réf.</th><th>Désignation</th>' +
                     '<th class="text-right">Quantité</th>' +
-                    '<th class="text-right">Prix unit. €</th>' +
-                    '<th class="text-right">Total €</th>' +
+                    '<th class="text-right">Prix unit. ' + dlSym + '</th>' +
+                    '<th class="text-right">Total ' + dlSym + '</th>' +
                     '</tr></thead><tbody>' + trs + '</tbody></table>';
             })
             .catch(function(err) {
@@ -361,6 +365,12 @@ function _fillAndShowEditLog(d) {
     set('date_paiement', d.datePaiement);
     set('date_valeur',   d.dateValeur);
     set('remarque',      d.remarque);
+    // Libellés devise (le "montant" est saisi dans la devise du bon, pas forcément €)
+    var sym = devSym(d.devise);
+    var mLbl = f.querySelector('[name="montant_eur"]')?.closest('.form-control')?.querySelector('.label-text');
+    if (mLbl) mLbl.textContent = 'Montant ' + sym;
+    var cLbl = f.querySelector('[name="cours"]')?.closest('.form-control')?.querySelector('.label-text');
+    if (cLbl) cLbl.textContent = 'Cours (' + sym + '→DA)';
     updateMontantDA('modal-edit-log');
 
     // Verrouillage société + fournisseur si lié à un bon de commande
@@ -411,6 +421,7 @@ function openBonViewer(bonId, event) {
                 container.innerHTML = '<p class="opacity-50 text-sm">Aucune ligne</p>';
             } else {
                 var total = 0;
+                var bvSym = devSym(lignes[0] ? lignes[0].devise : (bon.devise || 'EUR'));
                 var rows = lignes.map(function(l) {
                     var t = (Number(l.quantite)||0) * (Number(l.prix_unitaire)||0);
                     total += t;
@@ -419,15 +430,15 @@ function openBonViewer(bonId, event) {
                         '<td>' + escHtml(l.designation || '—') + '</td>' +
                         '<td class="text-right">' + (l.quantite || '—') + '</td>' +
                         '<td class="text-right font-mono">' + (l.prix_unitaire ? euroFmtBv.format(parseFloat(l.prix_unitaire)) : '—') + '</td>' +
-                        '<td class="text-right font-mono font-semibold">' + (t ? t.toLocaleString('fr-FR',{minimumFractionDigits:2}) + ' €' : '—') + '</td>' +
+                        '<td class="text-right font-mono font-semibold">' + (t ? t.toLocaleString('fr-FR',{minimumFractionDigits:2}) + ' ' + bvSym : '—') + '</td>' +
                         '</tr>';
                 }).join('');
                 container.innerHTML =
                     '<table class="table table-xs w-full mb-2">' +
-                    '<thead><tr class="bg-base-200"><th>Réf.</th><th>Désignation</th><th class="text-right">Quantité</th><th class="text-right">Prix unit. €</th><th class="text-right">Total €</th></tr></thead>' +
+                    '<thead><tr class="bg-base-200"><th>Réf.</th><th>Désignation</th><th class="text-right">Quantité</th><th class="text-right">Prix unit. ' + bvSym + '</th><th class="text-right">Total ' + bvSym + '</th></tr></thead>' +
                     '<tbody>' + rows + '</tbody></table>' +
                     '<div class="flex justify-end">' +
-                    '<div class="bg-base-200 rounded-lg px-4 py-2 font-bold font-mono text-lg text-primary">Total : ' + euroFmtBv.format(total) + ' €</div>' +
+                    '<div class="bg-base-200 rounded-lg px-4 py-2 font-bold font-mono text-lg text-primary">Total : ' + euroFmtBv.format(total) + ' ' + bvSym + '</div>' +
                     '</div>' +
                     (bon.notes ? '<div class="mt-3 p-3 border-l-4 border-primary bg-base-100 rounded text-sm"><span class="text-xs font-semibold opacity-60 block mb-1">REMARQUE</span>' + escHtml(bon.notes) + '</div>' : '');
             }
@@ -444,7 +455,7 @@ function updateMontantDA(modalId) {
     const eur   = parseFloat(modal.querySelector('[name="montant_eur"]')?.value) || 0;
     const cours = parseFloat(modal.querySelector('[name="cours"]')?.value) || 0;
     const el    = modal.querySelector('.montant-da-preview');
-    if (el) el.textContent = (eur && cours) ? (eur * cours).toLocaleString('fr-DZ', {maximumFractionDigits:0}) + ' DA' : '—';
+    if (el) el.textContent = (eur && cours) ? (eur * cours).toLocaleString('fr-FR', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' DA' : '—';
 }
 
 function recalcLogEcheance(formEl) {

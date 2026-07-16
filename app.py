@@ -1312,6 +1312,24 @@ def _cours_du_bon(bon_id):
     return log_entry.cours if log_entry else None
 
 
+def _attach_devise(items):
+    """Attache la devise du bon (item.devise_bon) à chaque entrée logistique.
+
+    La devise est portée par les lignes du bon (LigneCommande.devise). Une seule
+    requête groupée est faite pour tous les bons de la page.
+    """
+    bon_ids = [it.bon_id for it in items if getattr(it, 'bon_id', None)]
+    devise_map = {}
+    if bon_ids:
+        rows = (db.session.query(LigneCommande.bon_id, LigneCommande.devise)
+                .filter(LigneCommande.bon_id.in_(bon_ids)).all())
+        for bid, dev in rows:
+            devise_map.setdefault(bid, dev or 'EUR')
+    for it in items:
+        it.devise_bon = devise_map.get(getattr(it, 'bon_id', None), 'EUR')
+    return items
+
+
 def _pr_config(frais, bon):
     """Construit la configuration de calcul du PR pour un bon.
 
@@ -1507,6 +1525,7 @@ def _build_frais_query(args):
         frais_pr_map[item.id] = {
             'numero': bon.numero if bon else None,
             'cours':  item.cours_bon,
+            'devise': (bon.lignes[0].devise if (bon and bon.lignes) else None) or 'EUR',
             'remarque': item.remarque or '',
             'rates':  cfg['rates'],
             'charges': cfg['charges'],
@@ -1717,6 +1736,7 @@ def api_logistique_gestion_list():
             items = q.offset((page - 1) * per_page).limit(per_page).all()
 
     total_pages = max(1, (total + per_page - 1) // per_page)
+    _attach_devise(items)
     return render_template('partials/logistique_gestion_table.html',
                            items=items, page=page, total_pages=total_pages, total=total,
                            search=search, societe=societe,
@@ -1897,6 +1917,7 @@ def logistique_gestion():
         items = q.offset((page - 1) * per_page).limit(per_page).all()
 
     total_pages  = max(1, (total + per_page - 1) // per_page)
+    _attach_devise(items)
 
     frais_data = _build_frais_query(request.args)
 

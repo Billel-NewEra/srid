@@ -119,8 +119,8 @@
                 <div class="form-control w-44">
                     <label class="label py-1"><span class="label-text text-xs font-semibold">Devise du bon</span></label>
                     <select id="bon-devise-global" class="select select-bordered select-sm w-full">
-                        <option value="EUR">EURO</option>
-                        <option value="USD">USD</option>
+                        <option value="EUR">Euro (€)</option>
+                        <option value="USD">Dollar US ($)</option>
                     </select>
                 </div>
             </div>
@@ -335,8 +335,10 @@ const FOURNISSEURS_MAP = {{ fournisseurs_json | safe }};
 })();
 
 // ─── Lignes de commande ───────────────────────────────────────────────────────
+// Symbole d'affichage normalisé : Euro -> €, Dollar US -> $
+function devSym(d) { return d === 'USD' ? '$' : ((d === 'EUR' || !d) ? '€' : d); }
 function fmtAmount(n, devise) {
-    return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + (devise || 'EUR');
+    return n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + devSym(devise);
 }
 
 function getCurrentDevise() {
