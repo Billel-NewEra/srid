@@ -67,7 +67,6 @@
                 </div>
                 <div><span class="opacity-50">D10</span><br>{{ item.date_d10.strftime('%d/%m/%Y') if item.date_d10 else '—' }}</div>
                 <div><span class="opacity-50">DAD</span><br>{{ item.date_arrivee_depot.strftime('%d/%m/%Y') if item.date_arrivee_depot else '—' }}</div>
-                <div><span class="opacity-50">PR TTC</span><br>{% if item.pr_ttc_total is not none %}<span class="font-semibold">{{ item.pr_ttc_total|currency }}</span>{% elif item.frais_saisis %}<span class="badge badge-warning badge-xs">cours ?</span>{% else %}<span class="opacity-30">—</span>{% endif %}</div>
             </div>
             {% if can_write and is_admin %}
             <div class="flex justify-end pt-1" onclick="event.stopPropagation()"></div>
@@ -100,7 +99,6 @@
             <th class="whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_paiement')">Paiement{{ sort_icon('date_paiement', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_valeur')">Val. Date{{ sort_icon('date_valeur', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="cursor-pointer select-none" onclick="sortGestionTable('statut')">Statut{{ sort_icon('statut', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="whitespace-nowrap text-right">PR TTC</th>
         </tr>
     </thead>
     <tbody>
@@ -153,14 +151,9 @@
             {% if s %}<span class="badge badge-sm font-semibold whitespace-nowrap {{ badge_cls(s) }}">{{ s }}</span>
             {% else %}<span class="opacity-30">—</span>{% endif %}
         </td>
-        <td class="text-sm whitespace-nowrap text-right" style="{{ row_style }}">
-            {% if item.pr_ttc_total is not none %}<span class="font-semibold">{{ item.pr_ttc_total|currency }}</span>
-            {% elif item.frais_saisis %}<span class="badge badge-warning badge-xs">cours ?</span>
-            {% else %}<span class="opacity-30">—</span>{% endif %}
-        </td>
     </tr>
     {% else %}
-    <tr><td colspan="11" class="text-center py-12 opacity-50">
+    <tr><td colspan="10" class="text-center py-12 opacity-50">
         <i class="fas fa-inbox text-4xl mb-2 block"></i>
         Aucune entrée{% if search or societe or statut_f or date_filter or date_debut or date_fin %} pour ces filtres{% endif %}
     </td></tr>
