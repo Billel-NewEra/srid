@@ -1330,6 +1330,44 @@ def _attach_devise(items):
     return items
 
 
+def _attach_pr(items):
+    """Attache l'état des frais et le PR TTC total à chaque entrée logistique.
+
+    - item.frais_saisis : True si des frais/charges ont été enregistrés pour le bon.
+    - item.pr_ttc_total : prix de revient TTC total (None si frais non saisis ou cours manquant).
+    """
+    bon_ids = [it.bon_id for it in items if getattr(it, 'bon_id', None)]
+    frais_map = {}
+    if bon_ids:
+        for f in FraisLogistique.query.filter(FraisLogistique.bon_id.in_(bon_ids)).all():
+            frais_map.setdefault(f.bon_id, f)
+    for it in items:
+        f = frais_map.get(getattr(it, 'bon_id', None))
+        it.frais_saisis = bool(f and f.charges_saisies)
+        it.pr_ttc_total = None
+        if it.frais_saisis and it.bon_id and it.cours:
+            bon = BonCommande.query.get(it.bon_id)
+            if bon:
+                pr = _calculer_pr_bon(bon, f, it.cours)
+                if pr:
+                    it.pr_ttc_total = sum(r['pr_ttc'] for r in pr)
+    return items
+
+
+def _frais_config_payload(frais, bon, cours):
+    """Construit le payload JSON de configuration PR d'un bon (utilisé par la modale)."""
+    cfg = _pr_config(frais, bon)
+    return {
+        'numero': bon.numero if bon else None,
+        'cours':  cours,
+        'devise': (bon.lignes[0].devise if (bon and bon.lignes) else None) or 'EUR',
+        'remarque': frais.remarque or '',
+        'rates':  cfg['rates'],
+        'charges': cfg['charges'],
+        'produits': [dict(id=lid, **vals) for lid, vals in cfg['produits'].items()],
+    }
+
+
 def _pr_config(frais, bon):
     """Construit la configuration de calcul du PR pour un bon.
 
@@ -1521,18 +1559,7 @@ def _build_frais_query(args):
     for item in items:
         item.cours_bon = _cours_du_bon(item.bon_id) if item.bon_id else None
         bon = BonCommande.query.get(item.bon_id) if item.bon_id else None
-        cfg = _pr_config(item, bon)
-        frais_pr_map[item.id] = {
-            'numero': bon.numero if bon else None,
-            'cours':  item.cours_bon,
-            'devise': (bon.lignes[0].devise if (bon and bon.lignes) else None) or 'EUR',
-            'remarque': item.remarque or '',
-            'rates':  cfg['rates'],
-            'charges': cfg['charges'],
-            'produits': [
-                dict(id=lid, **vals) for lid, vals in cfg['produits'].items()
-            ],
-        }
+        frais_pr_map[item.id] = _frais_config_payload(item, bon, item.cours_bon)
         if item.bon_id and item.cours_bon and bon:
             pr_lignes = _calculer_pr_bon(bon, item, item.cours_bon)
             item.pr_ttc_total = sum(r['pr_ttc'] for r in pr_lignes) if pr_lignes else None
@@ -1737,6 +1764,7 @@ def api_logistique_gestion_list():
 
     total_pages = max(1, (total + per_page - 1) // per_page)
     _attach_devise(items)
+    _attach_pr(items)
     return render_template('partials/logistique_gestion_table.html',
                            items=items, page=page, total_pages=total_pages, total=total,
                            search=search, societe=societe,
@@ -1761,6 +1789,20 @@ def api_logistique_frais_list():
         can_write=_current_role() in ('admin', 'saisie'),
         **data,
     )
+
+
+@app.route('/api/logistique/frais/config/<int:bon_id>')
+@login_required
+def api_frais_config(bon_id):
+    """Configuration PR d'un bon, pour la modale de calcul depuis Gestion des commandes."""
+    frais = FraisLogistique.query.filter_by(bon_id=bon_id).first()
+    if not frais:
+        return jsonify({'error': 'Aucun frais associé à ce bon'}), 404
+    bon = BonCommande.query.get(bon_id)
+    cours = _cours_du_bon(bon_id)
+    payload = _frais_config_payload(frais, bon, cours)
+    payload['frais_id'] = frais.id
+    return jsonify(payload)
 
 
 @app.route('/api/logistique/frais/<int:item_id>/edit', methods=['POST'])
@@ -1814,7 +1856,7 @@ def api_frais_edit(item_id):
 
     frais.remarque = request.form.get('remarque', '').strip() or None
     db.session.commit()
-    return redirect(url_for('logistique_gestion', section='frais'))
+    return redirect(url_for('logistique_gestion'))
 
 
 @app.route('/logistique/prix-revient')
@@ -1863,9 +1905,6 @@ def logistique_gestion():
     search   = request.args.get('search', '').strip()
     societe  = request.args.get('societe', '').strip()
     statut_f = request.args.get('statut', '').strip()
-    selected_section = request.args.get('section', 'gestion').strip().lower()
-    if selected_section not in ('gestion', 'frais'):
-        selected_section = 'gestion'
     date_filter = request.args.get('date_filter', '').strip()
     date_debut_raw = request.args.get('date_debut', '').strip()
     date_fin_raw = request.args.get('date_fin', '').strip()
@@ -1918,8 +1957,7 @@ def logistique_gestion():
 
     total_pages  = max(1, (total + per_page - 1) // per_page)
     _attach_devise(items)
-
-    frais_data = _build_frais_query(request.args)
+    _attach_pr(items)
 
     return render_template('logistique_gestion.html',
                            items=items, page=page, total_pages=total_pages, total=total,
@@ -1932,9 +1970,7 @@ def logistique_gestion():
                            log_statuts=LOG_STATUTS,
                            per_page_log=per_page,
                            can_write=_current_role() in ('admin', 'saisie'),
-                           is_admin=_current_role() == 'admin',
-                           selected_section=selected_section,
-                           **frais_data)
+                           is_admin=_current_role() == 'admin')
 
 
 @app.route('/api/logistique/notifications')

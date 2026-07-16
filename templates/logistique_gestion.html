@@ -128,15 +128,9 @@
     <!-- Section active -->
     <div class="card bg-base-100 shadow">
         <div class="card-body p-4">
-            {% if selected_section == 'frais' %}
-            <div id="frais-table" class="overflow-x-auto">
-                {% include 'partials/logistique_frais_table.html' %}
-            </div>
-            {% else %}
             <div id="gestion-table" class="overflow-x-auto">
                 {% include 'partials/logistique_gestion_table.html' %}
             </div>
-            {% endif %}
         </div>
     </div>
 
@@ -172,6 +166,9 @@
             </div>
         </div>
         <div class="modal-action">
+            <button type="button" id="calc-frais-btn" class="btn btn-info btn-sm">
+                <i class="fas fa-calculator mr-1"></i>Calcul frais / PR
+            </button>
             <button type="button" id="edit-log-btn" class="btn btn-warning btn-sm">
                 <i class="fas fa-edit mr-1"></i>Modifier
             </button>
@@ -181,6 +178,9 @@
     <form method="dialog" class="modal-backdrop"><button>close</button></form>
 </dialog>
 {% endif %}
+
+{# Calculateur de prix de revient, ouvert à la demande depuis le détail d'une commande #}
+{% include 'partials/frais_modal.html' %}
 
 <!-- ═══════ MODAL ÉDITION ═══════ -->
 {% if can_write %}
@@ -281,6 +281,25 @@ function openLogDetail(el) {
         _fillAndShowEditLog(d);
     };
 
+    // Bouton Calcul frais / PR : nécessite un bon associé ET un cours renseigné
+    var calcBtn = document.getElementById('calc-frais-btn');
+    if (calcBtn) {
+        var hasBon = !!d.bonId;
+        var hasCours = !!(d.cours && parseFloat(d.cours));
+        if (hasBon && hasCours) {
+            calcBtn.disabled = false;
+            calcBtn.removeAttribute('title');
+            calcBtn.onclick = function() {
+                document.getElementById('modal-detail-log').close();
+                openFraisForBon(d.bonId);
+            };
+        } else {
+            calcBtn.disabled = true;
+            calcBtn.title = !hasBon ? 'Aucun bon associé' : 'Renseignez le cours pour calculer le prix de revient';
+            calcBtn.onclick = null;
+        }
+    }
+
     // Lignes du bon associé
     var bonSection  = document.getElementById('detail-log-bon-section');
     var bonLignes   = document.getElementById('detail-log-bon-lignes');
@@ -339,6 +358,27 @@ function cancelEditLog() {
     if (_detailLogEl) {
         openLogDetail(_detailLogEl);
     }
+}
+
+// Réouvre le modal de détail après fermeture du calculateur de frais.
+function reopenDetailLog() {
+    if (_detailLogEl) {
+        openLogDetail(_detailLogEl);
+    }
+}
+
+// Rafraîchit le tableau de gestion (ex. après enregistrement des frais → colonne PR TTC).
+function refreshGestionTable() {
+    if (typeof htmx === 'undefined') return;
+    var params = new URLSearchParams();
+    ['search', 'societe', 'statut', 'date_filter', 'date_debut', 'date_fin', 'per_page_log'].forEach(function(n) {
+        var el = document.querySelector('[name="' + n + '"]');
+        if (el && el.value) params.set(n, el.value);
+    });
+    var pageEl = document.querySelector('[data-current-page]');
+    if (pageEl) params.set('page', pageEl.getAttribute('data-current-page'));
+    htmx.ajax('GET', SCRIPT_ROOT + '/api/logistique/gestion?' + params.toString(),
+              {target: '#gestion-table', swap: 'innerHTML'});
 }
 
 function _fillAndShowEditLog(d) {

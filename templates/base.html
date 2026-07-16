@@ -689,15 +689,10 @@
                         <span>Bons de commande</span>
                     </a>
                     <a href="{{ url_for('logistique_gestion') }}"
-                              class="nav-link nav-link-logistique {% if request.endpoint == 'logistique_gestion' and request.args.get('section', 'gestion') == 'gestion' %}active{% endif %}">
+                              class="nav-link nav-link-logistique {% if request.endpoint == 'logistique_gestion' %}active{% endif %}">
                         <i class="nav-icon fas fa-truck"></i>
                         <span>Gestion des commandes</span>
                     </a>
-                          <a href="{{ url_for('logistique_gestion', section='frais') }}"
-                              class="nav-link nav-link-logistique {% if request.endpoint == 'logistique_gestion' and request.args.get('section') == 'frais' %}active{% endif %}">
-                                <i class="nav-icon fas fa-receipt"></i>
-                                <span>Frais</span>
-                          </a>
                     <a href="{{ url_for('logistique_prix_revient') }}"
                        class="nav-link nav-link-logistique {% if request.endpoint == 'logistique_prix_revient' %}active{% endif %}">
                         <i class="nav-icon fas fa-calculator"></i>
