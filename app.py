@@ -1970,6 +1970,10 @@ def api_frais_edit(item_id):
 
     frais.remarque = request.form.get('remarque', '').strip() or None
     db.session.commit()
+    # Revient sur la page d'origine (gestion des commandes ou prix de revient).
+    ref = request.referrer or ''
+    if 'prix-revient' in ref:
+        return redirect(url_for('logistique_prix_revient'))
     return redirect(url_for('logistique_gestion'))
 
 

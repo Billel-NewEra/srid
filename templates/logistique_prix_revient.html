@@ -91,9 +91,9 @@
                     </tr>
                 </thead>
                 {% for entry in bons_pr %}
-                <tbody data-bon data-numero="{{ entry.bon.numero|e }}" data-date="{{ entry.bon.date_commande.strftime('%Y-%m-%d') if entry.bon.date_commande else '' }}" class="border-t-2 border-base-300 {% if loop.index0 % 2 == 1 %}bg-base-200/20{% endif %}">
+                <tbody data-bon data-bon-id="{{ entry.bon.id }}" data-numero="{{ entry.bon.numero|e }}" data-date="{{ entry.bon.date_commande.strftime('%Y-%m-%d') if entry.bon.date_commande else '' }}" class="border-t-2 border-base-300 {% if loop.index0 % 2 == 1 %}bg-base-200/20{% endif %}">
                     {% for r in entry.lignes %}
-                    <tr data-produit="{{ (r.nom or r.ligne.designation)|e }}" class="hover:bg-base-300/40 transition-colors">
+                    <tr data-produit="{{ (r.nom or r.ligne.designation)|e }}" class="hover:bg-base-300/40 transition-colors{% if can_write %} cursor-pointer{% endif %}"{% if can_write %} onclick="openFraisForBon({{ entry.bon.id }})" title="Ouvrir le calcul frais / PR de ce bon"{% endif %}>
                         {% if loop.first %}
                         <td data-bon-cell rowspan="{{ entry.lignes|length }}"
                             class="align-middle text-center border-r border-base-200">
@@ -136,6 +136,17 @@
     </div>
     {% endif %}
 </div>
+
+{# Calculateur de prix de revient, ouvert au clic sur une entrée du tableau #}
+{% include 'partials/frais_modal.html' %}
+
+<script>
+// Dépendances globales requises par le modal « Calcul frais / PR ».
+var SCRIPT_ROOT = {{ request.script_root|tojson }};
+function devSym(d) { return d === 'USD' ? '$' : ((d === 'EUR' || !d) ? '€' : d); }
+// Recharge la page après enregistrement pour recalculer le prix de revient.
+function refreshPrixRevient() { window.location.reload(); }
+</script>
 
 <script>
 (function () {

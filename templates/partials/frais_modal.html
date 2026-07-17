@@ -359,6 +359,7 @@ document.addEventListener('submit', function (e) {
         .then(function () {
             _closeFraisReturn();
             if (typeof refreshGestionTable === 'function') refreshGestionTable();
+            else if (typeof refreshPrixRevient === 'function') refreshPrixRevient();
         })
         .catch(function (err) {
             console.error('Frais save error:', err);
