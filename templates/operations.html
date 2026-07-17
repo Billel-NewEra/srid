@@ -289,16 +289,20 @@
 {% block scripts %}
 <style>
     @keyframes opFlash {
-        0%   { background-color: color-mix(in srgb, var(--ui-primary) 38%, transparent); }
-        70%  { background-color: color-mix(in srgb, var(--ui-primary) 22%, transparent); }
-        100% { background-color: transparent; }
+        0%   { box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--ui-primary) 32%, transparent); }
+        70%  { box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--ui-primary) 16%, transparent); }
+        100% { box-shadow: inset 0 0 0 9999px transparent; }
     }
-    .op-flash { animation: opFlash 3s ease-out; }
+    /* Overlay via box-shadow plutôt que background-color : reste visible même sur une
+       ligne déjà colorée en !important (ex. statut Encaissé en vert). */
+    .op-flash > td { animation: opFlash 3s ease-out; }
+    .card.op-flash { animation: opFlash 3s ease-out; }
     .op-new-badge {
         display: inline-flex; align-items: center; gap: .25rem;
         font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
         padding: 1px 7px; border-radius: 999px;
         background: var(--ui-primary); color: #fff;
+        box-shadow: 0 0 0 1px color-mix(in srgb, #000 14%, transparent);
         margin-left: .45rem; vertical-align: middle;
         animation: opBadgeIn .25s ease-out, opBadgeOut .5s ease 3.3s forwards;
     }
@@ -468,7 +472,12 @@
         if (!els.length) return;
         els.forEach(function(el) {
             el.classList.add('op-flash');
-            var host = el.matches('tr') ? el.querySelector('td') : (el.querySelector('.font-semibold') || el.querySelector('.card-body'));
+            // Vue tableau : la 1re cellule (client) est tronquée (overflow:hidden) et couperait
+            // le badge → on l'insère plutôt dans la cellule du statut (conteneur flex non tronqué).
+            // Vue carte (mobile) : on l'ajoute après le nom du client.
+            var host = el.matches('tr')
+                ? (el.querySelector('td .flex.items-center') || el.querySelector('td'))
+                : (el.querySelector('.font-semibold') || el.querySelector('.card-body'));
             if (host && !host.querySelector('.op-new-badge')) {
                 var badge = document.createElement('span');
                 badge.className = 'op-new-badge';

@@ -225,16 +225,20 @@
 {% block scripts %}
 <style>
     @keyframes bonFlash {
-        0%   { background-color: color-mix(in srgb, var(--ui-primary) 38%, transparent); }
-        70%  { background-color: color-mix(in srgb, var(--ui-primary) 22%, transparent); }
-        100% { background-color: transparent; }
+        0%   { box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--ui-primary) 32%, transparent); }
+        70%  { box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--ui-primary) 16%, transparent); }
+        100% { box-shadow: inset 0 0 0 9999px transparent; }
     }
-    .bon-flash { animation: bonFlash 3s ease-out; }
+    /* Overlay via box-shadow plutôt que background-color : reste visible même sur une
+       ligne déjà colorée en !important (ex. statut Annulé en rouge). */
+    .bon-flash > td { animation: bonFlash 3s ease-out; }
+    .card.bon-flash { animation: bonFlash 3s ease-out; }
     .bon-new-badge {
         display: inline-flex; align-items: center; gap: .25rem;
         font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
         padding: 1px 7px; border-radius: 999px;
         background: var(--ui-primary); color: #fff;
+        box-shadow: 0 0 0 1px color-mix(in srgb, #000 14%, transparent);
         margin-left: .45rem; vertical-align: middle;
         animation: bonBadgeIn .25s ease-out, bonBadgeOut .5s ease 3.3s forwards;
     }
