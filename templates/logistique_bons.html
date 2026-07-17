@@ -223,6 +223,59 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+    @keyframes bonFlash {
+        0%   { background-color: color-mix(in srgb, var(--ui-primary) 38%, transparent); }
+        70%  { background-color: color-mix(in srgb, var(--ui-primary) 22%, transparent); }
+        100% { background-color: transparent; }
+    }
+    .bon-flash { animation: bonFlash 3s ease-out; }
+    .bon-new-badge {
+        display: inline-flex; align-items: center; gap: .25rem;
+        font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+        padding: 1px 7px; border-radius: 999px;
+        background: var(--ui-primary); color: #fff;
+        margin-left: .45rem; vertical-align: middle;
+        animation: bonBadgeIn .25s ease-out, bonBadgeOut .5s ease 3.3s forwards;
+    }
+    .bon-new-badge i { font-size: .55rem; }
+    @keyframes bonBadgeIn { from { opacity: 0; transform: scale(.8); } to { opacity: 1; transform: scale(1); } }
+    @keyframes bonBadgeOut { to { opacity: 0; } }
+</style>
+<script>
+// ── Surbrillance d'un bon fraîchement créé (?new=<id>) ───────────────────
+(function() {
+    function highlightNewBon() {
+        var params = new URLSearchParams(window.location.search);
+        var id = params.get('new');
+        if (!id) return;
+        var sel = '#bons-table tr[data-bon-id="' + id + '"], #bons-table .card[data-bon-id="' + id + '"]';
+        var els = document.querySelectorAll(sel);
+        els.forEach(function(el) {
+            el.classList.add('bon-flash');
+            var host = el.matches('tr') ? el.querySelector('td') : (el.querySelector('.font-semibold') || el.querySelector('.card-body'));
+            if (host && !host.querySelector('.bon-new-badge')) {
+                var badge = document.createElement('span');
+                badge.className = 'bon-new-badge';
+                badge.innerHTML = '<i class="fas fa-star"></i> Nouveau';
+                host.appendChild(badge);
+                setTimeout(function() { if (badge.parentNode) badge.parentNode.removeChild(badge); }, 4000);
+            }
+            setTimeout(function() { el.classList.remove('bon-flash'); }, 3200);
+        });
+        var visible = Array.prototype.find.call(els, function(e) { return e.offsetParent !== null; }) || els[0];
+        if (visible) visible.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        params.delete('new');
+        var clean = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+        window.history.replaceState({}, '', clean);
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', highlightNewBon);
+    } else {
+        highlightNewBon();
+    }
+})();
+</script>
 <script>
 // ── Tri colonnes bons ─────────────────────────────────────────────────────────
 var _bonsSort = '';

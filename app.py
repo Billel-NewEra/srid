@@ -1039,7 +1039,7 @@ def api_operation_add():
         date_sortie = _parse_date(request.form.get('date_sortie'))
         if type_cheque == 'À échéance':
             date_echeance = _parse_date(request.form.get('date_echeance') or request.form.get('date_encaissement'))
-        date_operation = date_sortie
+        date_operation = date_sortie or date_reception or date_echeance
     else:
         date_operation = _parse_date(request.form.get('date_operation'))
 
@@ -1069,6 +1069,8 @@ def api_operation_add():
     db.session.commit()
     _log_audit(op.id, 'création', f"{op.type_operation} - {op.client} - {op.montant}")
 
+    if request.headers.get('X-Requested-With') == 'fetch':
+        return jsonify({'id': op.id})
     if request.headers.get('HX-Request'):
         return render_template('partials/success_message.html', operation=op)
     flash('Opération enregistrée !', 'success')
@@ -1096,7 +1098,7 @@ def edit_operation(op_id):
             date_sortie = _parse_date(request.form.get('date_sortie'))
             if type_cheque == 'À échéance':
                 date_echeance = _parse_date(request.form.get('date_echeance') or request.form.get('date_encaissement'))
-            date_operation = date_sortie
+            date_operation = date_sortie or date_reception or date_echeance
         else:
             date_operation = _parse_date(request.form.get('date_operation'))
 
@@ -2406,7 +2408,7 @@ def api_bon_add():
     db.session.add(frais_entry)
     db.session.commit()
 
-    return redirect(url_for('logistique_bons'))
+    return redirect(url_for('logistique_bons', new=bon.id))
 
 
 @app.route('/api/logistique/bons/<int:bon_id>/statut', methods=['POST'])

@@ -29,6 +29,7 @@
     {% elif bon.statut == 'Annulé' %}{% set bon_badge = 'badge-error' %}
     {% else %}{% set bon_badge = 'badge-neutral' %}{% endif %}
     <div class="card bg-base-100 border border-base-300 shadow-sm cursor-pointer {% if bon.statut == 'Annulé' %}!bg-rose-500/10{% endif %}"
+         data-bon-id="{{ bon.id }}"
          data-bon='{{ bon.to_dict() | tojson }}'
          onclick="openBonDetail(this)">
         <div class="card-body p-3">
@@ -100,6 +101,7 @@
     {% elif bon.statut == 'Annulé' %}{% set bon_badge = 'badge-error' %}
     {% else %}{% set bon_badge = 'badge-neutral' %}{% endif %}
     <tr class="cursor-pointer {% if bon.statut == 'Annulé' %}!bg-red-500/15 hover:!bg-red-500/25{% else %}hover:bg-base-200{% endif %}"
+        data-bon-id="{{ bon.id }}"
         data-bon='{{ bon.to_dict() | tojson }}'
         onclick="openBonDetail(this)">
         <td class="text-sm {% if bon.statut == 'Annulé' %}border-l-4 border-red-400{% endif %}">

@@ -287,6 +287,25 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+    @keyframes opFlash {
+        0%   { background-color: color-mix(in srgb, var(--ui-primary) 38%, transparent); }
+        70%  { background-color: color-mix(in srgb, var(--ui-primary) 22%, transparent); }
+        100% { background-color: transparent; }
+    }
+    .op-flash { animation: opFlash 3s ease-out; }
+    .op-new-badge {
+        display: inline-flex; align-items: center; gap: .25rem;
+        font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+        padding: 1px 7px; border-radius: 999px;
+        background: var(--ui-primary); color: #fff;
+        margin-left: .45rem; vertical-align: middle;
+        animation: opBadgeIn .25s ease-out, opBadgeOut .5s ease 3.3s forwards;
+    }
+    .op-new-badge i { font-size: .55rem; }
+    @keyframes opBadgeIn { from { opacity: 0; transform: scale(.8); } to { opacity: 1; transform: scale(1); } }
+    @keyframes opBadgeOut { to { opacity: 0; } }
+</style>
 <script>
     // ── Filtre Remettant/Commercial : saisie + liste filtrée ───────────────────
     (function() {
@@ -438,7 +457,29 @@
 
     function refreshResultsTable() {
         const params = buildQueryParams({ page: currentPageFromTable() });
-        htmx.ajax('GET', `{{ url_for('api_operations') }}?${params.toString()}`, { target: '#results-table', swap: 'innerHTML' });
+        return htmx.ajax('GET', `{{ url_for('api_operations') }}?${params.toString()}`, { target: '#results-table', swap: 'innerHTML' });
+    }
+
+    // Attire l'attention sur une opération fraîchement créée : flash + badge « Nouveau » + scroll.
+    function highlightNewOperation(id) {
+        if (!id) return;
+        var sel = '#results-table tr[data-op-id="' + id + '"], #results-table .card[data-op-id="' + id + '"]';
+        var els = document.querySelectorAll(sel);
+        if (!els.length) return;
+        els.forEach(function(el) {
+            el.classList.add('op-flash');
+            var host = el.matches('tr') ? el.querySelector('td') : (el.querySelector('.font-semibold') || el.querySelector('.card-body'));
+            if (host && !host.querySelector('.op-new-badge')) {
+                var badge = document.createElement('span');
+                badge.className = 'op-new-badge';
+                badge.innerHTML = '<i class="fas fa-star"></i> Nouveau';
+                host.appendChild(badge);
+                setTimeout(function() { if (badge.parentNode) badge.parentNode.removeChild(badge); }, 4000);
+            }
+            setTimeout(function() { el.classList.remove('op-flash'); }, 3200);
+        });
+        var visible = Array.prototype.find.call(els, function(e) { return e.offsetParent !== null; }) || els[0];
+        if (visible) visible.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
     function renderStatusOptions(currentStatus) {
@@ -624,6 +665,7 @@
                 montantInput.value = (montantInput.value || '').replace(/\s+/g, '').replace(/,/g, '.');
             }
 
+            const isCreate = !editingOperationId;
             const formData = new FormData(form);
             const editUrlTemplate = form.dataset.editUrlTemplate;
             const url = editingOperationId
@@ -632,14 +674,21 @@
             const response = await fetch(url, {
                 method: 'POST',
                 body: formData,
-                credentials: 'same-origin'
+                credentials: 'same-origin',
+                headers: { 'X-Requested-With': 'fetch' }
             });
 
             if (response.ok) {
+                let newId = null;
+                if (isCreate) {
+                    try { const data = await response.json(); newId = data && data.id; } catch (_) {}
+                }
                 document.getElementById('modal-add-operation').close();
                 editingOperationId = null;
                 resetModalToCreateMode();
-                refreshResultsTable();
+                Promise.resolve(refreshResultsTable()).then(function() {
+                    if (newId) highlightNewOperation(newId);
+                });
                 htmx.trigger(document.body, 'refreshGlobalAlert');
             } else {
                 alert("Erreur lors de l'enregistrement de l'opération.");

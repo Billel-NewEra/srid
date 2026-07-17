@@ -369,7 +369,7 @@ function reopenDetailLog() {
 
 // Rafraîchit le tableau de gestion (ex. après enregistrement des frais → colonne PR TTC).
 function refreshGestionTable() {
-    if (typeof htmx === 'undefined') return;
+    if (typeof htmx === 'undefined') return Promise.resolve();
     var params = new URLSearchParams();
     ['search', 'societe', 'statut', 'date_filter', 'date_debut', 'date_fin', 'per_page_log'].forEach(function(n) {
         var el = document.querySelector('[name="' + n + '"]');
@@ -377,7 +377,7 @@ function refreshGestionTable() {
     });
     var pageEl = document.querySelector('[data-current-page]');
     if (pageEl) params.set('page', pageEl.getAttribute('data-current-page'));
-    htmx.ajax('GET', SCRIPT_ROOT + '/api/logistique/gestion?' + params.toString(),
+    return htmx.ajax('GET', SCRIPT_ROOT + '/api/logistique/gestion?' + params.toString(),
               {target: '#gestion-table', swap: 'innerHTML'});
 }
 
@@ -530,6 +530,33 @@ if (formEditLog) {
     var joursInput = formEditLog.querySelector('[name="nb_jours"]');
     if (factureInput) factureInput.addEventListener('input', function() { recalcLogEcheance(formEditLog); });
     if (joursInput) joursInput.addEventListener('input', function() { recalcLogEcheance(formEditLog); });
+
+    // Enregistrement en AJAX : à la réussite, rafraîchir le tableau puis rouvrir le modal détail de la ligne éditée.
+    formEditLog.addEventListener('submit', function(e) {
+        e.preventDefault();
+        var m = (formEditLog.action || '').match(/\/(\d+)\/edit/);
+        var editId = m ? m[1] : null;
+        var submitBtn = formEditLog.querySelector('button[type="submit"]');
+        if (submitBtn) submitBtn.disabled = true;
+        fetch(formEditLog.action, { method: 'POST', body: new FormData(formEditLog), credentials: 'same-origin' })
+            .then(function(r) {
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                document.getElementById('modal-edit-log').close();
+                return refreshGestionTable();
+            })
+            .then(function() {
+                if (editId) {
+                    var row = document.querySelector('#gestion-table [data-id="' + editId + '"]');
+                    if (row) openLogDetail(row);
+                }
+            })
+            .catch(function(err) {
+                alert("Erreur lors de l'enregistrement : " + err.message);
+            })
+            .finally(function() {
+                if (submitBtn) submitBtn.disabled = false;
+            });
+    });
 }
 
 // Calcul en temps réel dans les deux modales
