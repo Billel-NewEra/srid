@@ -102,7 +102,7 @@
                         {% endif %}
                         <td class="font-medium">{{ r.nom or r.ligne.designation }}</td>
                         <td class="text-right tabular-nums whitespace-nowrap text-xs opacity-60">
-                            {{ '%.2f'|format(r.qte or 0) }} {{ r.ligne.unite or '' }}
+                            {{ r.qte|currency if r.qte is not none else '0,00' }} {{ r.ligne.unite or '' }}
                         </td>
                         <td class="text-right whitespace-nowrap bg-amber-500/15">
                             <span class="badge badge-sm border-transparent bg-amber-500 text-amber-950 font-semibold tabular-nums text-sm shadow-sm">{{ r.pr_unit_ht|currency if r.pr_unit_ht is not none else '—' }}</span>

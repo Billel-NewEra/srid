@@ -37,6 +37,7 @@
                  data-date-arrivee-depot="{{ item.date_arrivee_depot.strftime('%Y-%m-%d') if item.date_arrivee_depot else '' }}"
                  data-fournisseur="{{ item.fournisseur or '' }}"
                  data-montant-eur="{{ item.montant_eur or '' }}"
+                 data-montant-eur-fmt="{{ item.montant_eur|currency if item.montant_eur is not none else '' }}"
                  data-cours="{{ item.cours or '' }}"
                  data-date-facture="{{ item.date_facture.strftime('%Y-%m-%d') if item.date_facture else '' }}"
                  data-code-paiement="{{ item.code_paiement or '' }}"

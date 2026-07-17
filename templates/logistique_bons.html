@@ -132,7 +132,7 @@
                             <th>Désignation *</th>
                             <th class="text-right w-24">Qté</th>
                             <th class="text-right w-28">Prix unit.</th>
-                            <th class="text-right w-28">Total</th>
+                            <th class="text-right w-32 whitespace-nowrap">Total</th>
                             <th class="w-8"></th>
                         </tr>
                     </thead>
@@ -148,7 +148,7 @@
                             </td>
                             <td><input type="number" name="quantite[]" step="any" min="0" class="input input-bordered input-sm w-full text-right line-qty" value="1"></td>
                             <td><input type="number" name="prix_unitaire[]" step="any" min="0" class="input input-bordered input-sm w-full text-right line-price" placeholder="0.00"></td>
-                            <td class="line-total text-right font-mono text-sm font-semibold">0,00 EUR</td>
+                            <td class="line-total text-right font-mono text-sm font-semibold whitespace-nowrap">0,00 EUR</td>
                             <td><button type="button" class="btn btn-ghost btn-sm text-error" onclick="removeBonLine(this)">×</button></td>
                         </tr>
                     </tbody>
@@ -463,7 +463,7 @@ function addBonLine() {
         '</td>' +
         '<td><input type="number" name="quantite[]" step="any" min="0" class="input input-bordered input-sm w-full text-right line-qty" value="1"></td>' +
         '<td><input type="number" name="prix_unitaire[]" step="any" min="0" class="input input-bordered input-sm w-full text-right line-price" placeholder="0.00"></td>' +
-        '<td class="line-total text-right font-mono text-sm font-semibold">0,00 EUR</td>' +
+        '<td class="line-total text-right font-mono text-sm font-semibold whitespace-nowrap">0,00 EUR</td>' +
         '<td><button type="button" class="btn btn-ghost btn-sm text-error" onclick="removeBonLine(this)">×</button></td>';
     tbody.appendChild(tr);
     syncDeviseAcrossLines(getCurrentDevise());

@@ -254,7 +254,7 @@ function openLogDetail(el) {
         (d.societe || '') + (d.refLog ? ' · ' + d.refLog : '');
 
     const rows = [
-        ['Montant ' + sym,      d.montantEur ? parseFloat(d.montantEur).toLocaleString('fr-FR', {minimumFractionDigits:2}) + ' ' + sym : '—'],
+        ['Montant ' + sym,      d.montantEurFmt ? d.montantEurFmt + ' ' + sym : '—'],
         ['Cours (' + sym + '→DA)',   d.cours ? parseFloat(d.cours).toFixed(4) : '—'],
         ['Date Facture / BL',   dateFmt(d.dateFacture)],
         ['Date ETD',       dateFmt(d.dateEtd)],
@@ -330,7 +330,7 @@ function openLogDetail(el) {
                         '<td class="text-sm">' + esc(l.designation || '—') + '</td>' +
                         '<td class="text-right text-sm">' + (l.quantite || '—') + '</td>' +
                         '<td class="text-right font-mono text-sm">' + (l.prix_unitaire ? euroFmtDl.format(l.prix_unitaire) : '—') + '</td>' +
-                        '<td class="text-right font-mono font-semibold text-sm">' + (t ? t.toLocaleString('fr-FR',{minimumFractionDigits:2}) + ' ' + dlSym : '—') + '</td>' +
+                        '<td class="text-right font-mono font-semibold text-sm">' + (t ? t.toLocaleString('fr-FR',{minimumFractionDigits:2, maximumFractionDigits:2}) + ' ' + dlSym : '—') + '</td>' +
                         '</tr>';
                 }).join('');
                 bonLignes.innerHTML =
@@ -470,7 +470,7 @@ function openBonViewer(bonId, event) {
                         '<td>' + escHtml(l.designation || '—') + '</td>' +
                         '<td class="text-right">' + (l.quantite || '—') + '</td>' +
                         '<td class="text-right font-mono">' + (l.prix_unitaire ? euroFmtBv.format(parseFloat(l.prix_unitaire)) : '—') + '</td>' +
-                        '<td class="text-right font-mono font-semibold">' + (t ? t.toLocaleString('fr-FR',{minimumFractionDigits:2}) + ' ' + bvSym : '—') + '</td>' +
+                        '<td class="text-right font-mono font-semibold">' + (t ? t.toLocaleString('fr-FR',{minimumFractionDigits:2, maximumFractionDigits:2}) + ' ' + bvSym : '—') + '</td>' +
                         '</tr>';
                 }).join('');
                 container.innerHTML =
