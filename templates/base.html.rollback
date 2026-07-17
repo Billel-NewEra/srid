@@ -165,7 +165,8 @@
         .user-menu a.logout { color: #ef4444; font-weight: 600; border-top: 1px solid var(--ui-border); }
         .user-menu a.logout:hover { background: rgba(239, 68, 68, .1); }
         /* ===== Footer 1 ===== */
-        .app-footer { border-top: 1px solid var(--ui-border); background: color-mix(in srgb, var(--ui-surface) 95%, transparent); color: var(--ui-text-muted); display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 14px 18px; font-size: 12px; flex-wrap: wrap; margin-top: auto; }
+        .app-footer { position: fixed; left: 0; right: 0; bottom: 0; z-index: 40; border-top: 1px solid var(--ui-border); background: color-mix(in srgb, var(--ui-surface) 92%, transparent); backdrop-filter: blur(8px); color: var(--ui-text-muted); display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding: 12px 18px; font-size: 12px; flex-wrap: wrap; }
+        .app-main > main { padding-bottom: 4.5rem; }
         .app-footer .foot-brand { display: flex; align-items: center; gap: .5rem; color: var(--ui-text-soft); font-weight: 600; }
         .app-footer .foot-links { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
         .app-footer a { color: var(--ui-text-muted); text-decoration: none; }
@@ -246,6 +247,10 @@
 
             .mobile-sidebar-backdrop {
                 display: none;
+            }
+
+            .app-footer {
+                left: 16rem;
             }
         }
 
