@@ -297,6 +297,10 @@
        ligne déjà colorée en !important (ex. statut Encaissé en vert). */
     .op-flash > td { animation: opFlash 3s ease-out; }
     .card.op-flash { animation: opFlash 3s ease-out; }
+    /* Pendant le flash, la 1re cellule (client) est normalement tronquée (overflow:hidden,
+       nowrap) et couperait le badge : on laisse le contenu passer à la ligne dans la cellule
+       (sans déborder sur les colonnes voisines, la largeur max reste appliquée). */
+    .op-flash > td:first-child { overflow: visible; white-space: normal; }
     .op-new-badge {
         display: inline-flex; align-items: center; gap: .25rem;
         font-size: .6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
@@ -472,11 +476,9 @@
         if (!els.length) return;
         els.forEach(function(el) {
             el.classList.add('op-flash');
-            // Vue tableau : la 1re cellule (client) est tronquée (overflow:hidden) et couperait
-            // le badge → on l'insère plutôt dans la cellule du statut (conteneur flex non tronqué).
-            // Vue carte (mobile) : on l'ajoute après le nom du client.
+            // Vue tableau : cellule client (1re cellule). Vue carte (mobile) : après le nom du client.
             var host = el.matches('tr')
-                ? (el.querySelector('td .flex.items-center') || el.querySelector('td'))
+                ? el.querySelector('td')
                 : (el.querySelector('.font-semibold') || el.querySelector('.card-body'));
             if (host && !host.querySelector('.op-new-badge')) {
                 var badge = document.createElement('span');
