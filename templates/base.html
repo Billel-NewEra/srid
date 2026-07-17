@@ -178,6 +178,10 @@
             border-right: 1px solid var(--ui-sidebar-border) !important;
         }
 
+        .sidebar-foot { border-top: 1px solid var(--ui-sidebar-border); padding: 12px 20px; }
+        .sidebar-ver { font-size: 11px; color: var(--ui-sidebar-muted); letter-spacing: .02em; display: inline-flex; align-items: center; gap: .4rem; }
+        .sidebar-ver i { font-size: 10px; opacity: .8; }
+
         .app-shell {
             min-height: 100vh;
         }
@@ -764,6 +768,11 @@
 
                 </nav>
 
+                <!-- Pied de sidebar : version (informatif, sans lien) -->
+                <div class="sidebar-foot">
+                    <span class="sidebar-ver"><i class="fas fa-code-branch"></i>SRID COM · v{{ app_version if app_version is defined else '2.4.0' }}</span>
+                </div>
+
             </aside>
         </div>
 
@@ -779,7 +788,7 @@
                     </label>
                     <div class="min-w-0">
                         <div class="topbar-title truncate">{% block page_title %}SRID COM{% endblock %}</div>
-                        <div class="topbar-sub truncate">{% block page_subtitle %}Gestion des opérations financières{% endblock %}</div>
+                        <div class="topbar-sub truncate">{% block page_subtitle %}Gestion Financière{% endblock %}</div>
                     </div>
                 </div>
 
@@ -833,7 +842,7 @@
 
             <!-- Footer 1 -->
             <footer class="app-footer">
-                <span class="foot-brand"><i class="fas fa-building-columns"></i> SRID COM — Gestion des opérations financières</span>
+                <span class="foot-brand"><i class="fas fa-building"></i> SRID COM — Gestion Financière</span>
                 <span class="foot-links">
                     <span class="ver-chip">v{{ app_version if app_version is defined else '2.4.0' }}</span>
                     <span>© {{ now().year if now is defined else 2026 }} <a href="https://mobibenz.dz/fr" target="_blank" rel="noopener">MobiBenz</a> — Tous droits réservés</span>
