@@ -47,12 +47,12 @@
                     <div class="input-group flex">
                         <span class="bg-primary text-primary-content px-3 flex items-center rounded-l-lg"><i class="fas fa-search"></i></span>
                         <input type="text" id="search-input" name="search"
-                               placeholder="Rechercher un client, banque, n° pièce..."
+                               placeholder="Rechercher un client, banque, n° pièce, montant..."
                                class="input input-bordered flex-1"
                                hx-get="{{ url_for('api_operations') }}"
                                hx-trigger="keyup changed delay:300ms"
                                hx-target="#results-table"
-                               hx-include="[name='type_operation'],[name='societe'],[name='remettant'],[name='statut'],[name='echeance'],[name='montant_min'],[name='montant_max'],[name='per_page']">
+                               hx-include="[name='type_operation'],[name='societe'],[name='remettant'],[name='statut'],[name='echeance'],[name='per_page']">
                     </div>
                 </div>
 
@@ -62,7 +62,7 @@
                             hx-get="{{ url_for('api_operations') }}"
                             hx-trigger="change"
                             hx-target="#results-table"
-                            hx-include="[name='search'],[name='societe'],[name='remettant'],[name='statut'],[name='echeance'],[name='montant_min'],[name='montant_max'],[name='per_page']"
+                            hx-include="[name='search'],[name='societe'],[name='remettant'],[name='statut'],[name='echeance'],[name='per_page']"
                             data-type-operation-filter>
                         {% set tof = type_operation_f if type_operation_f is defined else '' %}
                         <option value="">Tous les types</option>
@@ -76,7 +76,7 @@
                             hx-get="{{ url_for('api_operations') }}"
                             hx-trigger="change"
                             hx-target="#results-table"
-                            hx-include="[name='search'],[name='type_operation'],[name='remettant'],[name='statut'],[name='echeance'],[name='montant_min'],[name='montant_max'],[name='per_page']">
+                            hx-include="[name='search'],[name='type_operation'],[name='remettant'],[name='statut'],[name='echeance'],[name='per_page']">
                         {% set socf = societe_f if societe_f is defined else '' %}
                         <option value="">Toutes les sociétés</option>
                         <option value="SRID" {% if socf == 'SRID' %}selected{% endif %}>SRID</option>
@@ -103,7 +103,7 @@
                             hx-get="{{ url_for('api_operations') }}"
                             hx-trigger="change"
                             hx-target="#results-table"
-                            hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='remettant'],[name='echeance'],[name='montant_min'],[name='montant_max'],[name='per_page']">
+                            hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='remettant'],[name='echeance'],[name='per_page']">
                         {% set stf = statut_f if statut_f is defined else '' %}
                         <option value="">Tous les statuts</option>
                         <option value="Encaissé" {% if stf == 'Encaissé' %}selected{% endif %}>Encaissé</option>
@@ -115,32 +115,6 @@
                         <option value="Garantie" {% if stf == 'Garantie' %}selected{% endif %}>Garantie</option>
                         <option value="Retour" {% if stf == 'Retour' %}selected{% endif %}>Retour</option>
                     </select>
-                </div>
-
-                <!-- Filtre montant (compact, même ligne) -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div class="form-control col-span-1 sm:col-span-2 lg:col-span-2">
-                        <div class="flex items-center gap-0">
-                            <span class="bg-base-200 border border-r-0 border-base-300 px-2 py-1.5 rounded-l-lg text-xs font-semibold opacity-70 whitespace-nowrap"><i class="fas fa-coins mr-1"></i>Montant</span>
-                            <input type="text" name="montant_min" inputmode="decimal" autocomplete="off"
-                                   value="{{ montant_min_f if montant_min_f is defined else '' }}"
-                                   placeholder="Min"
-                                   class="input input-bordered input-sm w-full rounded-none border-r-0"
-                                   hx-get="{{ url_for('api_operations') }}"
-                                   hx-trigger="keyup changed delay:400ms"
-                                   hx-target="#results-table"
-                                   hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='remettant'],[name='statut'],[name='echeance'],[name='montant_max'],[name='per_page']">
-                            <span class="bg-base-200 border-y border-base-300 px-2 py-1.5 text-xs opacity-50">—</span>
-                            <input type="text" name="montant_max" inputmode="decimal" autocomplete="off"
-                                   value="{{ montant_max_f if montant_max_f is defined else '' }}"
-                                   placeholder="Max"
-                                   class="input input-bordered input-sm w-full rounded-none rounded-r-lg border-l-0"
-                                   hx-get="{{ url_for('api_operations') }}"
-                                   hx-trigger="keyup changed delay:400ms"
-                                   hx-target="#results-table"
-                                   hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='remettant'],[name='statut'],[name='echeance'],[name='montant_min'],[name='per_page']">
-                        </div>
-                    </div>
                 </div>
             </div>
         </div>

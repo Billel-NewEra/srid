@@ -102,6 +102,7 @@ def main():
             if not client:
                 skipped.append((i, 'client manquant'))
                 continue
+            client = client.upper()
             try:
                 montant = abs(float(r[C_MONTANT]))
             except (TypeError, ValueError):

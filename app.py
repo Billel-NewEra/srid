@@ -2711,20 +2711,48 @@ def delete_operation(op_id):
 
 # --- Consultation ---
 
+def _parse_montant(v):
+    """Parse un montant saisi au format français (espaces, virgule, point millier)."""
+    import re as _re
+    v = (v or '').strip()
+    if not v:
+        return None
+    v = _re.sub(r'[\s\u00a0\u202f\u2009]+', '', v)
+    if ',' in v and '.' in v:
+        v = v.replace('.', '').replace(',', '.')
+    elif ',' in v:
+        v = v.replace(',', '.')
+    try:
+        return float(v)
+    except ValueError:
+        return None
+
 def _build_operations_query(args):
     """Construit et retourne la query + pagination à partir d'un dict de params."""
     query = Operation.query
 
     search = args.get('search', '').strip()
     if search:
-        query = query.filter(or_(
+        search_filters = [
             Operation.client.ilike(f'%{search}%'),
             Operation.remettant.ilike(f'%{search}%'),
             Operation.banque.ilike(f'%{search}%'),
             Operation.numero_piece.ilike(f'%{search}%'),
             Operation.remarque.ilike(f'%{search}%'),
             Operation.societe.ilike(f'%{search}%'),
-        ))
+        ]
+        # Si la saisie ressemble à un montant, chercher les opérations dont le
+        # montant contient cette séquence de chiffres (recherche partielle).
+        search_montant = _parse_montant(search)
+        if search_montant is not None:
+            # Extraire uniquement les chiffres et le point décimal pour le LIKE.
+            import re as _re
+            digits_only = _re.sub(r'[\s\u00a0\u202f\u2009.,]+', '', search)
+            if digits_only.isdigit():
+                search_filters.append(
+                    func.cast(Operation.montant, db.String).like(f'%{digits_only}%')
+                )
+        query = query.filter(or_(*search_filters))
 
     type_op = args.get('type_operation', '').strip()
     if type_op:
@@ -2745,37 +2773,6 @@ def _build_operations_query(args):
     statut = args.get('statut', '').strip()
     if statut:
         query = query.filter(Operation.statut == statut)
-
-    # Filtre montant (min / max). Nettoie tous les séparateurs de milliers possibles
-    # (espace normal, insécable \u00a0, fine insécable \u202f, point millier européen)
-    # et convertit la virgule décimale en point.
-    def _parse_montant(v):
-        v = (v or '').strip()
-        if not v:
-            return None
-        # Retirer tous les types d'espaces (séparateurs de milliers).
-        import re as _re
-        v = _re.sub(r'[\s\u00a0\u202f\u2009]+', '', v)
-        # Gérer le format européen 1.716.000,16 : si contient ',' ET '.' → le point
-        # est un séparateur de milliers et la virgule est le séparateur décimal.
-        if ',' in v and '.' in v:
-            v = v.replace('.', '').replace(',', '.')
-        elif ',' in v:
-            v = v.replace(',', '.')
-        # Sinon le point est déjà le séparateur décimal (ou pas de décimale).
-        try:
-            return float(v)
-        except ValueError:
-            return None
-
-    montant_min_raw = args.get('montant_min', '').strip()
-    montant_max_raw = args.get('montant_max', '').strip()
-    montant_min = _parse_montant(montant_min_raw)
-    montant_max = _parse_montant(montant_max_raw)
-    if montant_min is not None:
-        query = query.filter(Operation.montant >= montant_min)
-    if montant_max is not None:
-        query = query.filter(Operation.montant <= montant_max)
 
     # Filtre échéance dédié (cohérent avec le centre d'alertes) : même périmètre
     # que _get_echeance_notifications, indépendant des anomalies de statut.
@@ -2892,8 +2889,6 @@ def _build_operations_query(args):
         'societe_f': societe,
         'remettant_f': remettant,
         'echeance_f': echeance,
-        'montant_min_f': montant_min_raw,
-        'montant_max_f': montant_max_raw,
     }
 
 

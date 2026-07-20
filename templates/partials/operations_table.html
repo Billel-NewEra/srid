@@ -9,7 +9,7 @@
                 hx-get="{{ url_for('api_operations') }}"
                 hx-trigger="change"
                 hx-target="#results-table"
-                hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='echeance'],[name='montant_min'],[name='montant_max'],[name='date_filter'],[name='date_debut'],[name='date_fin']"
+                hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='echeance'],[name='date_filter'],[name='date_debut'],[name='date_fin']"
                 hx-vals='{"page": 1}'>
             {% for size in per_page_options %}
             <option value="{{ size }}" {% if per_page == size %}selected{% endif %}>{{ size }}</option>
@@ -232,7 +232,7 @@
         {% if page > 1 %}
         <button class="join-item btn btn-sm"
                 hx-get="{{ url_for('api_operations') }}?page={{ page - 1 }}"
-                hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='echeance'],[name='montant_min'],[name='montant_max'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='per_page']">
+                hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='echeance'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='per_page']">
             <i class="fas fa-chevron-left"></i>
         </button>
         {% endif %}
@@ -243,7 +243,7 @@
             {% elif p <= 3 or p >= total_pages - 1 or (p >= page - 1 and p <= page + 1) %}
             <button class="join-item btn btn-sm"
                     hx-get="{{ url_for('api_operations') }}?page={{ p }}"
-                    hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='echeance'],[name='montant_min'],[name='montant_max'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='per_page']">
+                    hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='echeance'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='per_page']">
                 {{ p }}
             </button>
             {% elif p == 4 or p == total_pages - 2 %}
@@ -254,7 +254,7 @@
         {% if page < total_pages %}
         <button class="join-item btn btn-sm"
                 hx-get="{{ url_for('api_operations') }}?page={{ page + 1 }}"
-                hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='echeance'],[name='montant_min'],[name='montant_max'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='per_page']">
+                hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='echeance'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='per_page']">
             <i class="fas fa-chevron-right"></i>
         </button>
         {% endif %}
