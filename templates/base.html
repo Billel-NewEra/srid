@@ -1099,26 +1099,27 @@
             }
         }, true);
 
-        // Changement de statut depuis le drawer : le capture handler existant
-        // (data-status-edit) fonctionne déjà puisque les badges portent les attributs.
-        // Après confirmation du statut, on recharge le drawer s'il est ouvert.
+        // Changement de statut depuis le drawer : après confirmation, recharger le drawer
+        // UNIQUEMENT si le changement de statut a été initié depuis le drawer.
         (function() {
-            var origStatusConfirmClick = null;
-            document.addEventListener('DOMContentLoaded', function() {
-                var statusConfirm = document.getElementById('status-confirm');
-                var statusModal = document.getElementById('status-modal');
-                if (!statusConfirm || !statusModal) return;
+            var _statusFromDrawer = false;
 
-                // Écouter la fermeture du modal statut : si le drawer était la source,
-                // recharger son contenu et le réouvrir.
+            // Détecter si le clic data-status-edit vient du drawer.
+            document.addEventListener('click', function(event) {
+                var trigger = event.target.closest('[data-status-edit]');
+                if (!trigger) return;
+                _statusFromDrawer = !!trigger.closest('#notif-drawer-content');
+            }, true);
+
+            document.addEventListener('DOMContentLoaded', function() {
+                var statusModal = document.getElementById('status-modal');
+                if (!statusModal) return;
+
                 statusModal.addEventListener('close', function() {
-                    var drawer = document.getElementById('notif-drawer');
-                    if (drawer) {
-                        // Recharger badge global + contenu drawer.
+                    if (_statusFromDrawer) {
+                        _statusFromDrawer = false;
                         htmx.trigger(document.body, 'refreshGlobalAlert');
-                        setTimeout(function() {
-                            openNotifDrawer();
-                        }, 200);
+                        setTimeout(function() { openNotifDrawer(); }, 200);
                     }
                 });
             });
