@@ -10,23 +10,7 @@
         </a>
     </div>
 
-    <!-- Notifications échéances -->
-    <div id="notifications-panel"
-         hx-get="{{ url_for('api_notifications') }}"
-         hx-trigger="refreshGlobalAlert from:body"
-         hx-swap="innerHTML"
-         class="mb-4">
-        {% include 'partials/notifications_panel.html' %}
-    </div>
-
-    <!-- Notifications rejets -->
-    <div id="rejections-panel"
-         hx-get="{{ url_for('api_rejections') }}"
-         hx-trigger="refreshGlobalAlert from:body"
-         hx-swap="innerHTML"
-         class="mb-4">
-        {% include 'partials/rejections_panel.html' %}
-    </div>
+    {# Notifications déplacées dans le centre d'alertes global (cloche → drawer). #}
 
     <!-- Barre de recherche -->
     <div class="card bg-base-100 shadow mb-4">

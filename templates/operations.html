@@ -17,23 +17,26 @@
         </div>
     </div>
 
-    <!-- Notifications échéances -->
-    <div id="notifications-panel"
-         hx-get="{{ url_for('api_notifications') }}"
-         hx-trigger="refreshGlobalAlert from:body"
-         hx-swap="innerHTML"
-         class="mb-4">
-        {% include 'partials/notifications_panel.html' %}
-    </div>
+    {# Notifications déplacées dans le centre d'alertes global (cloche → drawer). #}
 
-    <!-- Notifications rejets -->
-    <div id="rejections-panel"
-         hx-get="{{ url_for('api_rejections') }}"
-         hx-trigger="refreshGlobalAlert from:body"
-         hx-swap="innerHTML"
-         class="mb-4">
-        {% include 'partials/rejections_panel.html' %}
+    {# Champ caché : filtre échéance issu du centre d'alertes. Persisté dans le DOM
+       pour être transporté par la pagination HTMX (hx-include) page après page. #}
+    <input type="hidden" name="echeance" value="{{ echeance_f if echeance_f is defined else '' }}">
+
+    {% if echeance_f is defined and echeance_f in ['overdue', 'upcoming'] %}
+    <div class="alert py-2 px-3 flex items-center justify-between gap-2 mb-4"
+         style="background: color-mix(in srgb, var(--status-echeance) 12%, transparent); border: 1px solid color-mix(in srgb, var(--status-echeance) 35%, transparent);">
+        <span class="text-sm font-semibold">
+            <i class="fas fa-filter mr-1" style="color: var(--status-echeance)"></i>
+            Filtre actif :
+            {% if echeance_f == 'overdue' %}chèques échus{% else %}chèques arrivant à échéance (7 j){% endif %}
+            · <span class="font-mono">{{ total_count }}</span> résultat{{ 's' if total_count != 1 else '' }}
+        </span>
+        <a href="{{ url_for('operations') }}" class="btn btn-ghost btn-xs">
+            <i class="fas fa-times mr-1"></i>Réinitialiser
+        </a>
     </div>
+    {% endif %}
 
     <!-- Barre de recherche -->
     <div class="card bg-base-100 shadow mb-4">
@@ -49,37 +52,40 @@
                                hx-get="{{ url_for('api_operations') }}"
                                hx-trigger="keyup changed delay:300ms"
                                hx-target="#results-table"
-                               hx-include="[name='type_operation'],[name='societe'],[name='remettant'],[name='statut'],[name='per_page']">
+                               hx-include="[name='type_operation'],[name='societe'],[name='remettant'],[name='statut'],[name='echeance'],[name='montant_min'],[name='montant_max'],[name='per_page']">
                     </div>
                 </div>
 
                 <!-- Filtres -->
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                    <select name="type_operation" class="select select-bordered select-sm w-full"
+                    <select name="type_operation" class="select select-bordered select-sm w-full{% if type_operation_f is defined and type_operation_f %} selected{% endif %}"
                             hx-get="{{ url_for('api_operations') }}"
                             hx-trigger="change"
                             hx-target="#results-table"
-                            hx-include="[name='search'],[name='societe'],[name='remettant'],[name='statut'],[name='per_page']"
+                            hx-include="[name='search'],[name='societe'],[name='remettant'],[name='statut'],[name='echeance'],[name='montant_min'],[name='montant_max'],[name='per_page']"
                             data-type-operation-filter>
+                        {% set tof = type_operation_f if type_operation_f is defined else '' %}
                         <option value="">Tous les types</option>
-                        <option value="Chèque">Chèque</option>
-                        <option value="Virement">Virement</option>
-                        <option value="Versement">Versement</option>
-                        <option value="Transfer">Transfer</option>
-                        <option value="Autre">Autre</option>
+                        <option value="Chèque" {% if tof == 'Chèque' %}selected{% endif %}>Chèque</option>
+                        <option value="Virement" {% if tof == 'Virement' %}selected{% endif %}>Virement</option>
+                        <option value="Versement" {% if tof == 'Versement' %}selected{% endif %}>Versement</option>
+                        <option value="Transfer" {% if tof == 'Transfer' %}selected{% endif %}>Transfer</option>
+                        <option value="Autre" {% if tof == 'Autre' %}selected{% endif %}>Autre</option>
                     </select>
-                    <select name="societe" class="select select-bordered select-sm w-full"
+                    <select name="societe" class="select select-bordered select-sm w-full{% if societe_f is defined and societe_f %} selected{% endif %}"
                             hx-get="{{ url_for('api_operations') }}"
                             hx-trigger="change"
                             hx-target="#results-table"
-                            hx-include="[name='search'],[name='type_operation'],[name='remettant'],[name='statut'],[name='per_page']">
+                            hx-include="[name='search'],[name='type_operation'],[name='remettant'],[name='statut'],[name='echeance'],[name='montant_min'],[name='montant_max'],[name='per_page']">
+                        {% set socf = societe_f if societe_f is defined else '' %}
                         <option value="">Toutes les sociétés</option>
-                        <option value="SRID">SRID</option>
-                        <option value="Genetics">Genetics</option>
+                        <option value="SRID" {% if socf == 'SRID' %}selected{% endif %}>SRID</option>
+                        <option value="Genetics" {% if socf == 'Genetics' %}selected{% endif %}>Genetics</option>
                     </select>
                     <div class="form-control relative">
                         <input type="text" name="remettant" id="remettant-filter-input"
                                placeholder="Remettant / Commercial" autocomplete="off"
+                               value="{{ remettant_f if remettant_f is defined else '' }}"
                                class="input input-bordered input-sm w-full pr-8"
                                data-filter-remettant-input>
                         <button type="button"
@@ -93,19 +99,48 @@
                             {% endfor %}
                         </div>
                     </div>
-                    <select name="statut" class="select select-bordered select-sm w-full"
+                    <select name="statut" class="select select-bordered select-sm w-full{% if statut_f is defined and statut_f %} selected{% endif %}"
                             hx-get="{{ url_for('api_operations') }}"
                             hx-trigger="change"
                             hx-target="#results-table"
-                            hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='remettant'],[name='per_page']">
+                            hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='remettant'],[name='echeance'],[name='montant_min'],[name='montant_max'],[name='per_page']">
+                        {% set stf = statut_f if statut_f is defined else '' %}
                         <option value="">Tous les statuts</option>
-                        <option value="Encaissé">Encaissé</option>
-                        <option value="Rejeté">Rejeté</option>
-                        <option value="Échéance">Échéance</option>
-                        <option value="En cours">En cours d'encaissement</option>
-                        <option value="Arrive à échéance">Arrive à échéance</option>
-                        <option value="Échu">Échu</option>
+                        <option value="Encaissé" {% if stf == 'Encaissé' %}selected{% endif %}>Encaissé</option>
+                        <option value="Rejeté" {% if stf == 'Rejeté' %}selected{% endif %}>Rejeté</option>
+                        <option value="Échéance" {% if stf == 'Échéance' %}selected{% endif %}>Échéance</option>
+                        <option value="En cours" {% if stf == 'En cours' %}selected{% endif %}>En cours d'encaissement</option>
+                        <option value="Arrive à échéance" {% if stf == 'Arrive à échéance' %}selected{% endif %}>Arrive à échéance</option>
+                        <option value="Échu" {% if stf == 'Échu' %}selected{% endif %}>Échu</option>
+                        <option value="Garantie" {% if stf == 'Garantie' %}selected{% endif %}>Garantie</option>
+                        <option value="Retour" {% if stf == 'Retour' %}selected{% endif %}>Retour</option>
                     </select>
+                </div>
+
+                <!-- Filtre montant (compact, même ligne) -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div class="form-control col-span-1 sm:col-span-2 lg:col-span-2">
+                        <div class="flex items-center gap-0">
+                            <span class="bg-base-200 border border-r-0 border-base-300 px-2 py-1.5 rounded-l-lg text-xs font-semibold opacity-70 whitespace-nowrap"><i class="fas fa-coins mr-1"></i>Montant</span>
+                            <input type="text" name="montant_min" inputmode="decimal" autocomplete="off"
+                                   value="{{ montant_min_f if montant_min_f is defined else '' }}"
+                                   placeholder="Min"
+                                   class="input input-bordered input-sm w-full rounded-none border-r-0"
+                                   hx-get="{{ url_for('api_operations') }}"
+                                   hx-trigger="keyup changed delay:400ms"
+                                   hx-target="#results-table"
+                                   hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='remettant'],[name='statut'],[name='echeance'],[name='montant_max'],[name='per_page']">
+                            <span class="bg-base-200 border-y border-base-300 px-2 py-1.5 text-xs opacity-50">—</span>
+                            <input type="text" name="montant_max" inputmode="decimal" autocomplete="off"
+                                   value="{{ montant_max_f if montant_max_f is defined else '' }}"
+                                   placeholder="Max"
+                                   class="input input-bordered input-sm w-full rounded-none rounded-r-lg border-l-0"
+                                   hx-get="{{ url_for('api_operations') }}"
+                                   hx-trigger="keyup changed delay:400ms"
+                                   hx-target="#results-table"
+                                   hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='remettant'],[name='statut'],[name='echeance'],[name='montant_min'],[name='per_page']">
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -435,7 +470,9 @@
         { value: 'Échéance', cls: 'badge-warning' },
         { value: 'En cours', label: "En cours d'encaissement", cls: 'badge-primary' },
         { value: 'Arrive à échéance', cls: 'badge-accent' },
-        { value: 'Échu', cls: 'badge-secondary' }
+        { value: 'Échu', cls: 'badge-secondary' },
+        { value: 'Garantie', cls: 'badge-info' },
+        { value: 'Retour', cls: 'bg-pink-500 text-white border-pink-600' }
     ];
 
     let selectedStatus = '';

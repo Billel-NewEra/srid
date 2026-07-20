@@ -9,7 +9,7 @@
                 hx-get="{{ url_for('api_operations') }}"
                 hx-trigger="change"
                 hx-target="#results-table"
-                hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin']"
+                hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='echeance'],[name='montant_min'],[name='montant_max'],[name='date_filter'],[name='date_debut'],[name='date_fin']"
                 hx-vals='{"page": 1}'>
             {% for size in per_page_options %}
             <option value="{{ size }}" {% if per_page == size %}selected{% endif %}>{{ size }}</option>
@@ -89,6 +89,8 @@
                     {% elif op.statut in ['En cours', "En cours d'encaissement"] %}badge-primary
                     {% elif op.statut == 'Arrive à échéance' %}badge-accent
                     {% elif op.statut == 'Échu' %}badge-secondary
+                    {% elif op.statut == 'Garantie' %}badge-info
+                    {% elif op.statut == 'Retour' %}bg-pink-500 text-white border-pink-600
                     {% else %}badge-neutral{% endif %}"
                     {% if is_admin %}
                     data-tip="Changer statut"
@@ -137,11 +139,12 @@
 <table class="table table-sm w-full" id="operations-table">
     <thead>
         <tr class="bg-base-200">
+            <th class="cursor-pointer select-none" onclick="sortOpsTable('societe')">Société{{ sort_icon('societe', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="cursor-pointer select-none" onclick="sortOpsTable('client')">Client{{ sort_icon('client', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th>Type</th>
             <th class="cursor-pointer select-none" onclick="sortOpsTable('montant')">Montant{{ sort_icon('montant', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="cursor-pointer select-none" onclick="sortOpsTable('date_operation')">Dép/Vir{{ sort_icon('date_operation', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="cursor-pointer select-none" onclick="sortOpsTable('date_reception')">Réception{{ sort_icon('date_reception', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none" onclick="sortOpsTable('date_operation')">Dép/Vir{{ sort_icon('date_operation', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="cursor-pointer select-none" onclick="sortOpsTable('date_encaissement')">Échéance{{ sort_icon('date_encaissement', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="cursor-pointer select-none" onclick="sortOpsTable('statut')">Statut{{ sort_icon('statut', sort_col|default(''), sort_dir|default('asc')) }}</th>
             {% if can_write or can_delete %}<th class="text-center">Actions</th>{% endif %}
@@ -155,11 +158,12 @@
             {% if op.statut == 'Encaissé' %}style="background-color: rgba(34,197,94,0.13) !important;"{% endif %}
             hx-get="{{ url_for('api_operation_detail', op_id=op.id) }}"
             hx-target="#modal-content" hx-swap="innerHTML">
+            <td class="text-xs whitespace-nowrap">{{ op.societe or '-' }}</td>
             <td class="text-xs truncate max-w-[160px]">{{ op.client }}</td>
             <td class="text-xs">{% if op.type_operation == 'Chèque' %}CHQ{% elif op.type_operation == 'Virement' %}VIR{% elif op.type_operation == 'Versement' %}VRS{% elif op.type_operation == 'Transfer' %}TRF{% else %}AUT{% endif %}</td>
             <td class="text-xs whitespace-nowrap font-semibold">{{ op.montant|currency }}</td>
-            <td class="text-xs whitespace-nowrap">{{ op.date_operation.strftime('%d/%m/%Y') if op.date_operation else '-' }}</td>
             <td class="text-xs whitespace-nowrap">{{ op.date_reception.strftime('%d/%m/%Y') if op.type_operation == 'Chèque' and op.date_reception else '-' }}</td>
+            <td class="text-xs whitespace-nowrap">{{ op.date_operation.strftime('%d/%m/%Y') if op.date_operation else '-' }}</td>
             <td class="text-xs whitespace-nowrap">
                 {% if op.type_operation == 'Chèque' and op.type_detail == 'À échéance' and op.date_encaissement %}
                     {% if op.statut == 'Arrive à échéance' %}
@@ -180,6 +184,8 @@
                     {% elif op.statut in ['En cours', "En cours d'encaissement"] %}badge-primary
                     {% elif op.statut == 'Arrive à échéance' %}badge-accent
                     {% elif op.statut == 'Échu' %}badge-secondary
+                    {% elif op.statut == 'Garantie' %}badge-info
+                    {% elif op.statut == 'Retour' %}bg-pink-500 text-white border-pink-600
                     {% else %}badge-neutral{% endif %}"
                     {% if is_admin %}
                     data-tip="Changer statut"
@@ -209,7 +215,7 @@
         </tr>
         {% else %}
         <tr>
-            <td colspan="{{ 8 if (can_write or can_delete) else 7 }}" class="text-center py-12 opacity-50">
+            <td colspan="{{ 9 if (can_write or can_delete) else 8 }}" class="text-center py-12 opacity-50">
                 <i class="fas fa-inbox text-4xl mb-2 block"></i>
                 Aucune opération trouvée
             </td>
@@ -226,7 +232,7 @@
         {% if page > 1 %}
         <button class="join-item btn btn-sm"
                 hx-get="{{ url_for('api_operations') }}?page={{ page - 1 }}"
-                hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='per_page']">
+                hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='echeance'],[name='montant_min'],[name='montant_max'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='per_page']">
             <i class="fas fa-chevron-left"></i>
         </button>
         {% endif %}
@@ -237,7 +243,7 @@
             {% elif p <= 3 or p >= total_pages - 1 or (p >= page - 1 and p <= page + 1) %}
             <button class="join-item btn btn-sm"
                     hx-get="{{ url_for('api_operations') }}?page={{ p }}"
-                    hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='per_page']">
+                    hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='echeance'],[name='montant_min'],[name='montant_max'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='per_page']">
                 {{ p }}
             </button>
             {% elif p == 4 or p == total_pages - 2 %}
@@ -248,7 +254,7 @@
         {% if page < total_pages %}
         <button class="join-item btn btn-sm"
                 hx-get="{{ url_for('api_operations') }}?page={{ page + 1 }}"
-                hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='per_page']">
+                hx-target="#results-table" hx-include="[name='search'],[name='type_operation'],[name='type_cheque'],[name='societe'],[name='statut'],[name='echeance'],[name='montant_min'],[name='montant_max'],[name='date_filter'],[name='date_debut'],[name='date_fin'],[name='per_page']">
             <i class="fas fa-chevron-right"></i>
         </button>
         {% endif %}

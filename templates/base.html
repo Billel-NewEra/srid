@@ -606,6 +606,78 @@
             color: var(--ui-text-soft) !important;
         }
 
+        /* ===== Centre d'alertes (drawer latéral) ===== */
+        .notif-overlay {
+            position: fixed; inset: 0; z-index: 60;
+            background: var(--ui-overlay);
+            opacity: 0; pointer-events: none;
+            transition: opacity .25s ease; backdrop-filter: blur(2px);
+        }
+        .notif-overlay.open { opacity: 1; pointer-events: auto; }
+        .notif-drawer {
+            position: fixed; top: 0; right: 0; height: 100%;
+            width: 420px; max-width: 92vw; z-index: 61;
+            background: var(--ui-surface); border-left: 1px solid var(--ui-border);
+            box-shadow: var(--ui-shadow);
+            display: flex; flex-direction: column;
+            transform: translateX(100%);
+            transition: transform .28s cubic-bezier(.4, 0, .2, 1);
+        }
+        .notif-drawer.open { transform: translateX(0); }
+        .notif-drawer-header {
+            display: flex; align-items: center; justify-content: space-between; gap: .5rem;
+            padding: 14px 16px; border-bottom: 1px solid var(--ui-border); flex-shrink: 0;
+        }
+        .notif-drawer-header .title { font-family: Manrope, Inter, sans-serif; font-weight: 800; font-size: 15px; color: var(--ui-text); }
+        .notif-drawer-header .sub { font-size: 11px; color: var(--ui-text-muted); margin-top: 2px; }
+        .notif-drawer-content { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
+
+        .notif-drawer-tabs { display: flex; gap: 6px; padding: 10px 14px 0; flex-shrink: 0; }
+        .notif-drawer-tab {
+            flex: 1; display: flex; align-items: center; justify-content: center; gap: 6px;
+            border: 1px solid var(--ui-border); background: var(--ui-surface-2); color: var(--ui-text-muted);
+            border-radius: 10px; padding: 8px 6px; cursor: pointer; font-size: 12.5px; font-weight: 600;
+            transition: .15s;
+        }
+        .notif-drawer-tab:hover { color: var(--ui-text); }
+        .notif-drawer-tab.active { background: var(--ui-primary); color: #fff; border-color: var(--ui-primary); }
+        .notif-tab-count { border-radius: 999px; padding: 0 7px; font-size: 11px; font-weight: 700; background: var(--ui-primary-soft); color: var(--ui-primary); }
+        .notif-drawer-tab.active .notif-tab-count { background: rgba(255, 255, 255, .28); color: #fff; }
+
+        .notif-drawer-panes { flex: 1; overflow-y: auto; padding: 12px 14px; }
+        .notif-pane { display: none; }
+        .notif-pane.active { display: block; }
+
+        .notif-group { margin-bottom: 14px; }
+        .notif-group-head {
+            position: sticky; top: 0; z-index: 1;
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 6px 2px 8px; background: var(--ui-surface);
+        }
+        .notif-group-title { display: flex; align-items: center; gap: 7px; font-weight: 700; font-size: .82rem; color: var(--ui-text); }
+        .notif-dot { width: 9px; height: 9px; border-radius: 999px; display: inline-block; }
+        .notif-dot-late { background: var(--status-rejete); }
+        .notif-dot-soon { background: var(--status-echeance); }
+        .notif-group-count { font-size: .72rem; font-weight: 800; padding: 1px 9px; border-radius: 999px; }
+        .notif-group-count-late { background: color-mix(in srgb, var(--status-rejete) 16%, transparent); color: var(--status-rejete); }
+        .notif-group-count-soon { background: color-mix(in srgb, var(--status-echeance) 18%, transparent); color: var(--status-echeance); }
+
+        .notif-drawer .notif-item {
+            background: var(--ui-surface-2); border: 1px solid var(--ui-border);
+            border-radius: 10px; padding: 10px 12px; margin-bottom: 6px;
+            cursor: pointer;
+        }
+        .notif-drawer .notif-item:hover { background: var(--ui-primary-soft); border-color: var(--ui-primary); }
+
+        .notif-seeall {
+            display: flex; align-items: center; justify-content: center;
+            margin-top: 4px; padding: 8px; border-radius: 10px;
+            border: 1px dashed var(--ui-border-strong); color: var(--ui-primary);
+            font-size: .78rem; font-weight: 700; cursor: pointer; transition: .15s;
+        }
+        .notif-seeall:hover { background: var(--ui-primary-soft); border-color: var(--ui-primary); }
+        .notif-empty { text-align: center; color: var(--ui-text-muted); padding: 42px 12px; font-size: .85rem; }
+
         .page-title {
             color: var(--ui-text) !important;
             font-weight: 800;
@@ -792,17 +864,17 @@
                     </div>
                 </div>
 
-                <!-- Badge alertes global -->
-                <a href="{{ url_for('operations') }}"
+                <!-- Badge alertes global : ouvre le centre d'alertes (drawer) -->
+                <button type="button"
                    id="global-alert-badge"
                    class="nav-icon-btn"
-                   onclick="return handleGlobalAlertClick(event, this)"
+                   onclick="openNotifDrawer()"
                    hx-get="{{ url_for('api_notifications_badge') }}"
                    hx-trigger="load, every 60s, refreshGlobalAlert from:body"
                    hx-swap="innerHTML"
                    title="Alertes">
                     <i class="fas fa-bell"></i>
-                </a>
+                </button>
 
                 <!-- Toggle thème segmenté -->
                 <div class="seg-theme" role="group" aria-label="Thème">
@@ -834,6 +906,28 @@
                 </div>
                 {% endif %}
             </header>
+
+            <!-- ===== Centre d'alertes (drawer) ===== -->
+            {% if is_logged_in %}
+            <div id="notif-overlay" class="notif-overlay" onclick="closeNotifDrawer()"></div>
+            <aside id="notif-drawer" class="notif-drawer" aria-label="Centre d'alertes" aria-hidden="true">
+                <div class="notif-drawer-header">
+                    <div>
+                        <div class="title"><i class="fas fa-bell mr-2" style="color:var(--status-echeance)"></i>Centre d'alertes</div>
+                        <div class="sub">Échéances &amp; rejets</div>
+                    </div>
+                    <button type="button" class="nav-icon-btn" onclick="closeNotifDrawer()" title="Fermer" aria-label="Fermer">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div id="notif-drawer-content" class="notif-drawer-content">
+                    <div class="notif-empty">
+                        <i class="fas fa-spinner fa-spin text-xl mb-2"></i>
+                        <div>Chargement…</div>
+                    </div>
+                </div>
+            </aside>
+            {% endif %}
 
             <!-- Contenu de la page -->
             <main class="flex-1 px-4 py-6 w-full">
@@ -917,16 +1011,129 @@
             if (modal) modal.showModal();
         }
 
-        function handleGlobalAlertClick(event, anchor) {
-            const targetEl = anchor.querySelector('[data-target-url]');
-            const targetUrl = targetEl ? targetEl.getAttribute('data-target-url') : null;
-            if (targetUrl) {
-                event.preventDefault();
-                window.location.href = targetUrl;
-                return false;
-            }
-            return true;
+        // ===== Centre d'alertes (drawer) =====
+        var _notifDrawerLoaded = false;
+        var _openedFromDrawer = false;  // Track si le modal détail a été ouvert depuis le drawer.
+
+        function openNotifDrawer() {
+            var overlay = document.getElementById('notif-overlay');
+            var drawer  = document.getElementById('notif-drawer');
+            if (!overlay || !drawer) return;
+            overlay.classList.add('open');
+            drawer.classList.add('open');
+            drawer.setAttribute('aria-hidden', 'false');
+            document.body.style.overflow = 'hidden';
+            loadNotifDrawer();
         }
+
+        function closeNotifDrawer() {
+            var overlay = document.getElementById('notif-overlay');
+            var drawer  = document.getElementById('notif-drawer');
+            if (!overlay || !drawer) return;
+            overlay.classList.remove('open');
+            drawer.classList.remove('open');
+            drawer.setAttribute('aria-hidden', 'true');
+            document.body.style.overflow = '';
+        }
+
+        // Charge (ou recharge) le contenu du drawer via HTMX.
+        function loadNotifDrawer() {
+            var content = document.getElementById('notif-drawer-content');
+            if (!content || typeof htmx === 'undefined') return;
+            htmx.ajax('GET', '{{ url_for("api_notifications_drawer") }}', { target: '#notif-drawer-content', swap: 'innerHTML' });
+        }
+
+        function notifSwitchTab(tab) {
+            document.querySelectorAll('#notif-drawer-content [data-notif-tab]').forEach(function(b) {
+                b.classList.toggle('active', b.getAttribute('data-notif-tab') === tab);
+            });
+            document.querySelectorAll('#notif-drawer-content [data-notif-pane]').forEach(function(p) {
+                p.classList.toggle('active', p.getAttribute('data-notif-pane') === tab);
+            });
+        }
+
+        // Clic sur un item du drawer : ouvrir le détail (finance ou logistique).
+        // On ne déclenche PAS si le clic est sur un badge statut (data-status-edit).
+        document.addEventListener('click', function(event) {
+            // Ne pas interférer avec le clic sur badge statut.
+            if (event.target.closest('[data-status-edit]')) return;
+            var item = event.target.closest('#notif-drawer-content .notif-item');
+            if (!item) return;
+            var kind = item.getAttribute('data-notif-kind');
+            if (kind === 'finance') {
+                var opId = item.getAttribute('data-op-id');
+                if (opId) openNotifFinanceDetail(opId);
+            } else if (kind === 'log') {
+                _openedFromDrawer = true;
+                closeNotifDrawer();
+                if (typeof openLogDetail === 'function') {
+                    openLogDetail(item);
+                } else {
+                    window.location.href = '{{ url_for("logistique_gestion") }}';
+                }
+            }
+        });
+
+        // Ouvre le détail d'une opération financière. Si le modal de détail existe
+        // sur la page courante, on le réutilise ; sinon on va sur la page Opérations.
+        function openNotifFinanceDetail(opId) {
+            var modal = document.getElementById('detail-modal');
+            if (modal && typeof htmx !== 'undefined') {
+                _openedFromDrawer = true;
+                closeNotifDrawer();
+                var base = {{ request.script_root|tojson }};
+                htmx.ajax('GET', base + '/api/operations/' + opId, { target: '#modal-content', swap: 'innerHTML' });
+            } else {
+                window.location.href = '{{ url_for("operations") }}';
+            }
+        }
+
+        // Retour au drawer : quand le modal détail se ferme et qu'il avait été ouvert
+        // depuis le drawer, on réouvre le drawer.
+        document.addEventListener('close', function(event) {
+            if (!_openedFromDrawer) return;
+            var modal = event.target;
+            if (modal && (modal.id === 'detail-modal' || modal.id === 'modal-detail-log')) {
+                _openedFromDrawer = false;
+                setTimeout(function() { openNotifDrawer(); }, 150);
+            }
+        }, true);
+
+        // Changement de statut depuis le drawer : le capture handler existant
+        // (data-status-edit) fonctionne déjà puisque les badges portent les attributs.
+        // Après confirmation du statut, on recharge le drawer s'il est ouvert.
+        (function() {
+            var origStatusConfirmClick = null;
+            document.addEventListener('DOMContentLoaded', function() {
+                var statusConfirm = document.getElementById('status-confirm');
+                var statusModal = document.getElementById('status-modal');
+                if (!statusConfirm || !statusModal) return;
+
+                // Écouter la fermeture du modal statut : si le drawer était la source,
+                // recharger son contenu et le réouvrir.
+                statusModal.addEventListener('close', function() {
+                    var drawer = document.getElementById('notif-drawer');
+                    if (drawer) {
+                        // Recharger badge global + contenu drawer.
+                        htmx.trigger(document.body, 'refreshGlobalAlert');
+                        setTimeout(function() {
+                            openNotifDrawer();
+                        }, 200);
+                    }
+                });
+            });
+        })();
+
+        // Recharger le contenu du drawer quand les alertes changent (si ouvert).
+        document.body.addEventListener('refreshGlobalAlert', function() {
+            var drawer = document.getElementById('notif-drawer');
+            if (drawer && drawer.classList.contains('open')) loadNotifDrawer();
+        });
+
+        // Échap ferme le drawer.
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeNotifDrawer();
+        });
     </script>
 
     <!-- Modal de confirmation de suppression -->

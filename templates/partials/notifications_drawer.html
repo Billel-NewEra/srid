@@ -1,0 +1,204 @@
+{# ============================================================================
+   Centre d'alertes (drawer). Contenu injecté par /api/notifications/drawer.
+   Deux domaines (onglets) : Finance & Logistique.
+   Deux cas par domaine : Échus / Cette semaine. Sections bornées (section_cap)
+   avec lien « Voir tout » vers la table filtrée.
+   ============================================================================ #}
+{% set fin_total = (notifications.total_alerts if notifications else 0) + (rejections.total if rejections else 0) %}
+{% set log_total = log_notifications.total_alerts if log_notifications else 0 %}
+
+<div class="notif-drawer-tabs">
+    <button type="button" class="notif-drawer-tab active" data-notif-tab="finance" onclick="notifSwitchTab('finance')">
+        <i class="fas fa-money-check-dollar"></i> Finance
+        {% if fin_total > 0 %}<span class="notif-tab-count">{{ fin_total }}</span>{% endif %}
+    </button>
+    <button type="button" class="notif-drawer-tab" data-notif-tab="logistique" onclick="notifSwitchTab('logistique')">
+        <i class="fas fa-truck-fast"></i> Logistique
+        {% if log_total > 0 %}<span class="notif-tab-count">{{ log_total }}</span>{% endif %}
+    </button>
+</div>
+
+<div class="notif-drawer-panes">
+    {# ============================ FINANCE ============================ #}
+    <div class="notif-pane active" data-notif-pane="finance">
+        {% if notifications and notifications.overdue_items %}
+        <div class="notif-group">
+            <div class="notif-group-head">
+                <span class="notif-group-title"><span class="notif-dot notif-dot-late"></span>Échus</span>
+                <span class="notif-group-count notif-group-count-late">{{ notifications.overdue_count }}</span>
+            </div>
+            {% for item in notifications.overdue_items %}
+                {% set delta = (item.date_encaissement - notifications.today).days %}
+                <div class="notif-item" data-notif-kind="finance" data-op-id="{{ item.id }}">
+                    <div class="min-w-0">
+                        <div class="notif-item-title truncate">{{ item.client or '—' }}</div>
+                        <div class="notif-item-date">
+                            <span class="meta-date-label">Échéance :</span>
+                            <span class="meta-date-value">{{ item.date_encaissement.strftime('%d/%m/%Y') }}</span>
+                            {% if delta == 0 %}<span class="notif-delay notif-delay-late">(aujourd'hui!)</span>
+                            {% else %}<span class="notif-delay notif-delay-late">(retard {{ -delta }}j)</span>{% endif %}
+                        </div>
+                    </div>
+                    <span class="notif-badge notif-badge-secondary {% if is_admin %}cursor-pointer hover:brightness-110{% endif %}"
+                        {% if is_admin %}
+                        data-status-edit
+                        data-op-id="{{ item.id }}"
+                        data-current-status="{{ item.statut }}"
+                        data-post-url="{{ url_for('api_update_operation_status', op_id=item.id) }}"
+                        {% endif %}>Échu</span>
+                </div>
+            {% endfor %}
+            {% if notifications.overdue_count > notifications.overdue_items|length %}
+                <a href="{{ finance_links.overdue }}" class="notif-seeall">
+                    Voir les {{ notifications.overdue_count }} échus <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if notifications and notifications.upcoming_items %}
+        <div class="notif-group">
+            <div class="notif-group-head">
+                <span class="notif-group-title"><span class="notif-dot notif-dot-soon"></span>Cette semaine</span>
+                <span class="notif-group-count notif-group-count-soon">{{ notifications.upcoming_count }}</span>
+            </div>
+            {% for item in notifications.upcoming_items %}
+                {% set delta = (item.date_encaissement - notifications.today).days %}
+                <div class="notif-item" data-notif-kind="finance" data-op-id="{{ item.id }}">
+                    <div class="min-w-0">
+                        <div class="notif-item-title truncate">{{ item.client or '—' }}</div>
+                        <div class="notif-item-date">
+                            <span class="meta-date-label">Échéance :</span>
+                            <span class="meta-date-value">{{ item.date_encaissement.strftime('%d/%m/%Y') }}</span>
+                            {% if delta == 0 %}<span class="notif-delay notif-delay-soon">(aujourd'hui)</span>
+                            {% else %}<span class="notif-delay notif-delay-soon">(J-{{ delta }})</span>{% endif %}
+                        </div>
+                    </div>
+                    <span class="notif-badge notif-badge-warning {% if is_admin %}cursor-pointer hover:brightness-110{% endif %}"
+                        {% if is_admin %}
+                        data-status-edit
+                        data-op-id="{{ item.id }}"
+                        data-current-status="{{ item.statut }}"
+                        data-post-url="{{ url_for('api_update_operation_status', op_id=item.id) }}"
+                        {% endif %}>Arrive à échéance</span>
+                </div>
+            {% endfor %}
+            {% if notifications.upcoming_count > notifications.upcoming_items|length %}
+                <a href="{{ finance_links.upcoming }}" class="notif-seeall">
+                    Voir les {{ notifications.upcoming_count }} à venir <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if rejections and rejections.rejections %}
+        <div class="notif-group">
+            <div class="notif-group-head">
+                <span class="notif-group-title"><span class="notif-dot notif-dot-late"></span>Chèques rejetés</span>
+                <span class="notif-group-count notif-group-count-late">{{ rejections.total }}</span>
+            </div>
+            {% for item in rejections.rejections %}
+                <div class="notif-item" data-notif-kind="finance" data-op-id="{{ item.operation.id }}">
+                    <div class="min-w-0">
+                        <div class="notif-item-title truncate">{{ item.operation.client or '—' }}</div>
+                        {% if item.operation.numero_piece %}
+                        <div class="notif-item-date"><span class="meta-date-label">N° pièce :</span> <span class="font-mono">{{ item.operation.numero_piece }}</span></div>
+                        {% endif %}
+                    </div>
+                    <span class="notif-badge notif-badge-error {% if is_admin %}cursor-pointer hover:brightness-110{% endif %}"
+                        {% if is_admin %}
+                        data-status-edit
+                        data-op-id="{{ item.operation.id }}"
+                        data-current-status="{{ item.operation.statut }}"
+                        data-post-url="{{ url_for('api_update_operation_status', op_id=item.operation.id) }}"
+                        {% endif %}>Rejeté</span>
+                </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if fin_total == 0 %}
+        <div class="notif-empty">
+            <i class="fas fa-circle-check text-2xl mb-2" style="color:var(--status-encaisse)"></i>
+            <div>Aucune alerte financière</div>
+        </div>
+        {% endif %}
+    </div>
+
+    {# ============================ LOGISTIQUE ============================ #}
+    <div class="notif-pane" data-notif-pane="logistique">
+        {% macro log_item(item, today) %}
+            {% set delta = (item.date_echeance - today).days %}
+            <div class="notif-item" data-notif-kind="log"
+                 data-id="{{ item.id }}"
+                 data-ref-log="{{ item.ref_log or '' }}"
+                 data-bon-id="{{ item.bon_id or '' }}"
+                 data-societe="{{ item.societe or '' }}"
+                 data-date-d10="{{ item.date_d10.strftime('%Y-%m-%d') if item.date_d10 else '' }}"
+                 data-date-arrivee="{{ item.date_arrivee.strftime('%Y-%m-%d') if item.date_arrivee else '' }}"
+                 data-date-arrivee-depot="{{ item.date_arrivee_depot.strftime('%Y-%m-%d') if item.date_arrivee_depot else '' }}"
+                 data-date-etd="{{ item.date_etd.strftime('%Y-%m-%d') if item.date_etd else '' }}"
+                 data-fournisseur="{{ item.fournisseur or '' }}"
+                 data-montant-eur="{{ item.montant_eur or '' }}"
+                 data-montant-eur-fmt="{{ item.montant_eur|currency if item.montant_eur is not none else '' }}"
+                 data-cours="{{ item.cours or '' }}"
+                 data-date-facture="{{ item.date_facture.strftime('%Y-%m-%d') if item.date_facture else '' }}"
+                 data-code-paiement="{{ item.code_paiement or '' }}"
+                 data-nb-jours="{{ item.nb_jours or '' }}"
+                 data-date-echeance="{{ item.date_echeance.strftime('%Y-%m-%d') if item.date_echeance else '' }}"
+                 data-date-paiement="{{ item.date_paiement.strftime('%Y-%m-%d') if item.date_paiement else '' }}"
+                 data-date-valeur="{{ item.date_valeur.strftime('%Y-%m-%d') if item.date_valeur else '' }}"
+                 data-remarque="{{ item.remarque or '' }}">
+                <div class="min-w-0">
+                    <div class="notif-item-title truncate">{{ item.fournisseur or '—' }}</div>
+                    <div class="notif-item-date">
+                        <span class="meta-date-label">Bon :</span> <span class="font-mono font-semibold">{{ item.ref_log or '—' }}</span>
+                        <span class="meta-separator"> • </span>
+                        <span class="meta-date-label">Échéance :</span>
+                        <span class="meta-date-value">{{ item.date_echeance.strftime('%d/%m/%Y') }}</span>
+                        {% if delta < 0 %}<span class="notif-delay notif-delay-late">(retard {{ -delta }}j)</span>
+                        {% elif delta == 0 %}<span class="notif-delay notif-delay-late">(aujourd'hui)</span>
+                        {% else %}<span class="notif-delay notif-delay-soon">(J-{{ delta }})</span>{% endif %}
+                    </div>
+                </div>
+            </div>
+        {% endmacro %}
+
+        {% if log_notifications and log_notifications.overdue_items %}
+        <div class="notif-group">
+            <div class="notif-group-head">
+                <span class="notif-group-title"><span class="notif-dot notif-dot-late"></span>Échus</span>
+                <span class="notif-group-count notif-group-count-late">{{ log_notifications.overdue_count }}</span>
+            </div>
+            {% for item in log_notifications.overdue_items %}{{ log_item(item, log_notifications.today) }}{% endfor %}
+            {% if log_notifications.overdue_count > log_notifications.overdue_items|length %}
+                <a href="{{ logistique_links.overdue }}" class="notif-seeall">
+                    Voir les {{ log_notifications.overdue_count }} échus <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if log_notifications and log_notifications.upcoming_items %}
+        <div class="notif-group">
+            <div class="notif-group-head">
+                <span class="notif-group-title"><span class="notif-dot notif-dot-soon"></span>Cette semaine</span>
+                <span class="notif-group-count notif-group-count-soon">{{ log_notifications.upcoming_count }}</span>
+            </div>
+            {% for item in log_notifications.upcoming_items %}{{ log_item(item, log_notifications.today) }}{% endfor %}
+            {% if log_notifications.upcoming_count > log_notifications.upcoming_items|length %}
+                <a href="{{ logistique_links.upcoming }}" class="notif-seeall">
+                    Voir les {{ log_notifications.upcoming_count }} à venir <i class="fas fa-arrow-right ml-1"></i>
+                </a>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if log_total == 0 %}
+        <div class="notif-empty">
+            <i class="fas fa-circle-check text-2xl mb-2" style="color:var(--status-encaisse)"></i>
+            <div>Aucune alerte logistique</div>
+        </div>
+        {% endif %}
+    </div>
+</div>

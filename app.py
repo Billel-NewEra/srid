@@ -58,7 +58,7 @@ ROLE_LABELS = {
 }
 
 CHECK_TYPE_CHOICES = ['Garantie', 'À encaisser', 'À échéance']
-STATUS_CHOICES = ['Encaissé', 'Rejeté', 'Échéance', 'En cours', 'Arrive à échéance', 'Échu']
+STATUS_CHOICES = ['Encaissé', 'Rejeté', 'Échéance', 'En cours', 'Arrive à échéance', 'Échu', 'Garantie', 'Retour']
 
 
 # --- Décorateurs d'authentification ---
@@ -233,6 +233,8 @@ def _normalize_type_operation(raw_type):
 def _compute_statut(type_operation, type_cheque):
     if type_operation != 'Chèque':
         return 'Encaissé'
+    if type_cheque == 'Garantie':
+        return 'Garantie'
     if type_cheque == 'À échéance':
         return 'Échéance'
     return 'En cours'
@@ -278,8 +280,19 @@ def _auto_update_echeance_statuts():
     db.session.commit()
 
 
-def _get_echeance_notifications(limit=8):
-    """Retourne les alertes d'échéance globales pour affichage sans filtre."""
+# Nombre maximal d'items affichés par section dans le drawer d'alertes.
+# Le drawer reste à hauteur bornée quel que soit le volume total : au-delà,
+# l'en-tête affiche le compte réel et un lien « Voir tout » ouvre la table filtrée.
+ALERTS_SECTION_CAP = 6
+
+
+def _get_echeance_notifications(limit=8, section_cap=ALERTS_SECTION_CAP):
+    """Retourne les alertes d'échéance globales pour affichage sans filtre.
+
+    Deux cas seulement : « Échus » (échéance passée) et « Cette semaine »
+    (échéance dans les 7 jours). Chaque section est bornée à `section_cap`
+    items ; les compteurs restent le total réel.
+    """
     today = date.today()
     alert_date = today + timedelta(days=7)
     workflow_statuses = ['Échéance', 'Arrive à échéance', 'Échu']
@@ -290,12 +303,20 @@ def _get_echeance_notifications(limit=8):
         Operation.statut.in_(workflow_statuses),
     )
 
-    overdue_count = base_query.filter(Operation.date_encaissement < today).count()
-    upcoming_count = base_query.filter(
+    overdue_q = base_query.filter(Operation.date_encaissement < today)
+    upcoming_q = base_query.filter(
         Operation.date_encaissement >= today,
         Operation.date_encaissement <= alert_date,
-    ).count()
+    )
 
+    overdue_count = overdue_q.count()
+    upcoming_count = upcoming_q.count()
+
+    # Sections bornées, triées par urgence (échéance la plus proche/ancienne d'abord).
+    overdue_items = overdue_q.order_by(Operation.date_encaissement.asc()).limit(section_cap).all()
+    upcoming_items = upcoming_q.order_by(Operation.date_encaissement.asc()).limit(section_cap).all()
+
+    # Conservé pour rétro-compatibilité (ancien panneau inline).
     critical_operations = base_query.filter(
         or_(
             Operation.date_encaissement < today,
@@ -308,9 +329,13 @@ def _get_echeance_notifications(limit=8):
 
     return {
         'today': today,
+        'alert_date': alert_date,
         'overdue_count': overdue_count,
         'upcoming_count': upcoming_count,
         'total_alerts': overdue_count + upcoming_count,
+        'overdue_items': overdue_items,
+        'upcoming_items': upcoming_items,
+        'section_cap': section_cap,
         'critical_operations': critical_operations,
     }
 
@@ -1372,8 +1397,38 @@ def _log_kpis():
     }
 
 
-def _get_logistique_notifications(limit=8):
-    """Retourne les alertes d'échéance pour la gestion logistique."""
+def _apply_log_echeance_filter(q, echeance_f):
+    """Applique le filtre d'échéance logistique, cohérent avec le centre d'alertes.
+
+    Deux valeurs : 'overdue' (échus) et 'upcoming' (dans les 7 jours). Comme dans
+    _get_logistique_notifications, on ne considère que les entrées non payées
+    (date_paiement et date_valeur vides).
+    """
+    if echeance_f not in ('overdue', 'upcoming'):
+        return q
+    today = date.today()
+    q = q.filter(
+        CommandeLogistique.date_echeance.isnot(None),
+        CommandeLogistique.date_paiement.is_(None),
+        CommandeLogistique.date_valeur.is_(None),
+    )
+    if echeance_f == 'overdue':
+        q = q.filter(CommandeLogistique.date_echeance < today)
+    else:  # upcoming
+        q = q.filter(
+            CommandeLogistique.date_echeance >= today,
+            CommandeLogistique.date_echeance <= today + timedelta(days=7),
+        )
+    return q
+
+
+def _get_logistique_notifications(limit=8, section_cap=ALERTS_SECTION_CAP):
+    """Retourne les alertes d'échéance pour la gestion logistique.
+
+    Deux cas seulement : « Échus » (échéance passée) et « Cette semaine »
+    (échéance dans les 7 jours), sur les entrées non payées. Chaque section
+    est bornée à `section_cap` items ; les compteurs restent le total réel.
+    """
     today = date.today()
     alert_date = today + timedelta(days=7)
 
@@ -1384,12 +1439,23 @@ def _get_logistique_notifications(limit=8):
         CommandeLogistique.date_valeur.is_(None),
     )
 
-    overdue_count = base_query.filter(CommandeLogistique.date_echeance < today).count()
-    upcoming_count = base_query.filter(
+    overdue_q = base_query.filter(CommandeLogistique.date_echeance < today)
+    upcoming_q = base_query.filter(
         CommandeLogistique.date_echeance >= today,
         CommandeLogistique.date_echeance <= alert_date,
-    ).count()
+    )
 
+    overdue_count = overdue_q.count()
+    upcoming_count = upcoming_q.count()
+
+    overdue_items = overdue_q.order_by(
+        CommandeLogistique.date_echeance.asc(), CommandeLogistique.id.desc()
+    ).limit(section_cap).all()
+    upcoming_items = upcoming_q.order_by(
+        CommandeLogistique.date_echeance.asc(), CommandeLogistique.id.desc()
+    ).limit(section_cap).all()
+
+    # Conservé pour rétro-compatibilité (ancien panneau inline).
     critical_entries = base_query.filter(
         or_(
             CommandeLogistique.date_echeance < today,
@@ -1402,9 +1468,13 @@ def _get_logistique_notifications(limit=8):
 
     return {
         'today': today,
+        'alert_date': alert_date,
         'overdue_count': overdue_count,
         'upcoming_count': upcoming_count,
         'total_alerts': overdue_count + upcoming_count,
+        'overdue_items': overdue_items,
+        'upcoming_items': upcoming_items,
+        'section_cap': section_cap,
         'critical_entries': critical_entries,
     }
 
@@ -1780,6 +1850,7 @@ def api_logistique_gestion_list():
     search   = request.args.get('search', '').strip()
     societe  = request.args.get('societe', '').strip()
     statut_f = request.args.get('statut', '').strip()
+    echeance_f = request.args.get('echeance', '').strip()
     date_filter = request.args.get('date_filter', '').strip()
     date_debut_raw = request.args.get('date_debut', '').strip()
     date_fin_raw = request.args.get('date_fin', '').strip()
@@ -1815,6 +1886,7 @@ def api_logistique_gestion_list():
         ))
     if societe:
         q = q.filter(CommandeLogistique.societe == societe)
+    q = _apply_log_echeance_filter(q, echeance_f)
     if date_filter in date_fields:
         df = date_fields[date_filter]
         if date_debut:
@@ -1882,7 +1954,7 @@ def api_logistique_gestion_list():
     return render_template('partials/logistique_gestion_table.html',
                            items=items, page=page, total_pages=total_pages, total=total,
                            search=search, societe=societe,
-                           statut_f=statut_f, date_filter=date_filter,
+                           statut_f=statut_f, echeance_f=echeance_f, date_filter=date_filter,
                            date_debut=date_debut_raw, date_fin=date_fin_raw,
                            sort_col=sort_col, sort_dir=sort_dir,
                            today=date.today(),
@@ -2043,6 +2115,7 @@ def logistique_gestion():
     search   = request.args.get('search', '').strip()
     societe  = request.args.get('societe', '').strip()
     statut_f = request.args.get('statut', '').strip()
+    echeance_f = request.args.get('echeance', '').strip()
     date_filter = request.args.get('date_filter', '').strip()
     date_debut_raw = request.args.get('date_debut', '').strip()
     date_fin_raw = request.args.get('date_fin', '').strip()
@@ -2072,6 +2145,7 @@ def logistique_gestion():
         ))
     if societe:
         q = q.filter(CommandeLogistique.societe == societe)
+    q = _apply_log_echeance_filter(q, echeance_f)
     if date_filter in date_fields:
         df = date_fields[date_filter]
         if date_debut:
@@ -2100,7 +2174,7 @@ def logistique_gestion():
     return render_template('logistique_gestion.html',
                            items=items, page=page, total_pages=total_pages, total=total,
                            search=search, societe=societe,
-                           statut_f=statut_f, date_filter=date_filter,
+                           statut_f=statut_f, echeance_f=echeance_f, date_filter=date_filter,
                            date_debut=date_debut_raw, date_fin=date_fin_raw,
                            kpis=_log_kpis(),
                            notifications=_get_logistique_notifications(),
@@ -2672,6 +2746,56 @@ def _build_operations_query(args):
     if statut:
         query = query.filter(Operation.statut == statut)
 
+    # Filtre montant (min / max). Nettoie tous les séparateurs de milliers possibles
+    # (espace normal, insécable \u00a0, fine insécable \u202f, point millier européen)
+    # et convertit la virgule décimale en point.
+    def _parse_montant(v):
+        v = (v or '').strip()
+        if not v:
+            return None
+        # Retirer tous les types d'espaces (séparateurs de milliers).
+        import re as _re
+        v = _re.sub(r'[\s\u00a0\u202f\u2009]+', '', v)
+        # Gérer le format européen 1.716.000,16 : si contient ',' ET '.' → le point
+        # est un séparateur de milliers et la virgule est le séparateur décimal.
+        if ',' in v and '.' in v:
+            v = v.replace('.', '').replace(',', '.')
+        elif ',' in v:
+            v = v.replace(',', '.')
+        # Sinon le point est déjà le séparateur décimal (ou pas de décimale).
+        try:
+            return float(v)
+        except ValueError:
+            return None
+
+    montant_min_raw = args.get('montant_min', '').strip()
+    montant_max_raw = args.get('montant_max', '').strip()
+    montant_min = _parse_montant(montant_min_raw)
+    montant_max = _parse_montant(montant_max_raw)
+    if montant_min is not None:
+        query = query.filter(Operation.montant >= montant_min)
+    if montant_max is not None:
+        query = query.filter(Operation.montant <= montant_max)
+
+    # Filtre échéance dédié (cohérent avec le centre d'alertes) : même périmètre
+    # que _get_echeance_notifications, indépendant des anomalies de statut.
+    echeance = args.get('echeance', '').strip()
+    if echeance in ('overdue', 'upcoming'):
+        _today = date.today()
+        query = query.filter(
+            Operation.type_operation == 'Chèque',
+            Operation.type_detail == 'À échéance',
+            Operation.date_encaissement.isnot(None),
+            Operation.statut.in_(['Échéance', 'Arrive à échéance', 'Échu']),
+        )
+        if echeance == 'overdue':
+            query = query.filter(Operation.date_encaissement < _today)
+        else:  # upcoming
+            query = query.filter(
+                Operation.date_encaissement >= _today,
+                Operation.date_encaissement <= _today + timedelta(days=7),
+            )
+
     date_filter = args.get('date_filter', 'date_operation').strip()
     date_column = Operation.date_operation
     if date_filter == 'date_reception':
@@ -2760,6 +2884,16 @@ def _build_operations_query(args):
         'per_page_options': PER_PAGE_OPTIONS,
         'sort_col': sort_col,
         'sort_dir': sort_dir,
+        # Valeurs de filtre renvoyées pour pré-remplir les contrôles (pré-sélection
+        # depuis un lien externe, ex. « Voir tout » du centre d'alertes). Indispensable
+        # pour que la pagination HTMX (hx-include) conserve le filtre page après page.
+        'statut_f': statut,
+        'type_operation_f': type_op,
+        'societe_f': societe,
+        'remettant_f': remettant,
+        'echeance_f': echeance,
+        'montant_min_f': montant_min_raw,
+        'montant_max_f': montant_max_raw,
     }
 
 
@@ -2817,17 +2951,49 @@ def api_notifications_badge():
     log_notifications = _get_logistique_notifications()
     # Pour les non-admins, ajouter le compte des rejets récents
     rejections_count = 0 if _current_role() == 'admin' else _get_recent_rejections()['total']
-    consultation_total = (notifications.get('total_alerts', 0) if notifications else 0) + rejections_count
-    logistique_total = log_notifications.get('total_alerts', 0) if log_notifications else 0
-    target_url = url_for('operations') if consultation_total > 0 else (
-        url_for('logistique_gestion') if logistique_total > 0 else url_for('operations')
-    )
     return render_template(
         'partials/global_notifications_badge.html',
         notifications=notifications,
         log_notifications=log_notifications,
         rejections_count=rejections_count,
-        target_url=target_url,
+    )
+
+
+@app.route('/api/notifications/drawer')
+@login_required
+def api_notifications_drawer():
+    """Contenu du centre d'alertes (drawer) : Finance + Logistique.
+
+    Chaque section est bornée côté serveur ; les liens « Voir tout » renvoient
+    vers la table concernée, filtrée sur le cas correspondant.
+    """
+    _auto_update_echeance_statuts()
+    role = _current_role()
+    notifications = _get_echeance_notifications()
+    log_notifications = _get_logistique_notifications()
+    rejections = _get_recent_rejections() if role != 'admin' else {'rejections': [], 'total': 0}
+
+    # Liens « Voir tout » — Finance : filtre échéance dédié (même périmètre que le
+    # centre d'alertes), cohérent avec les compteurs et conservé par la pagination.
+    finance_links = {
+        'overdue': url_for('operations', echeance='overdue'),
+        'upcoming': url_for('operations', echeance='upcoming'),
+    }
+    # Liens « Voir tout » — Logistique : filtre échéance dédié (non payé), cohérent
+    # avec les compteurs du centre d'alertes, et conservé par la pagination.
+    logistique_links = {
+        'overdue': url_for('logistique_gestion', echeance='overdue'),
+        'upcoming': url_for('logistique_gestion', echeance='upcoming'),
+    }
+
+    return render_template(
+        'partials/notifications_drawer.html',
+        notifications=notifications,
+        log_notifications=log_notifications,
+        rejections=rejections,
+        is_admin=(role == 'admin'),
+        finance_links=finance_links,
+        logistique_links=logistique_links,
     )
 
 
