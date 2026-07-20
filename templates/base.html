@@ -1013,7 +1013,6 @@
 
         // ===== Centre d'alertes (drawer) =====
         var _notifDrawerLoaded = false;
-        var _openedFromDrawer = false;  // Track si le modal détail a été ouvert depuis le drawer.
 
         function openNotifDrawer() {
             var overlay = document.getElementById('notif-overlay');
@@ -1053,6 +1052,8 @@
         }
 
         // Clic sur un item du drawer : ouvrir le détail (finance ou logistique).
+        // Le drawer RESTE ouvert — le modal se superpose. À la fermeture du modal,
+        // l'utilisateur retrouve le drawer.
         // On ne déclenche PAS si le clic est sur un badge statut (data-status-edit).
         document.addEventListener('click', function(event) {
             // Ne pas interférer avec le clic sur badge statut.
@@ -1064,40 +1065,26 @@
                 var opId = item.getAttribute('data-op-id');
                 if (opId) openNotifFinanceDetail(opId);
             } else if (kind === 'log') {
-                _openedFromDrawer = true;
-                closeNotifDrawer();
                 if (typeof openLogDetail === 'function') {
                     openLogDetail(item);
                 } else {
+                    closeNotifDrawer();
                     window.location.href = '{{ url_for("logistique_gestion") }}';
                 }
             }
         });
 
-        // Ouvre le détail d'une opération financière. Si le modal de détail existe
-        // sur la page courante, on le réutilise ; sinon on va sur la page Opérations.
+        // Ouvre le détail d'une opération financière. Le drawer reste ouvert.
         function openNotifFinanceDetail(opId) {
             var modal = document.getElementById('detail-modal');
             if (modal && typeof htmx !== 'undefined') {
-                _openedFromDrawer = true;
-                closeNotifDrawer();
                 var base = {{ request.script_root|tojson }};
                 htmx.ajax('GET', base + '/api/operations/' + opId, { target: '#modal-content', swap: 'innerHTML' });
             } else {
+                closeNotifDrawer();
                 window.location.href = '{{ url_for("operations") }}';
             }
         }
-
-        // Retour au drawer : quand le modal détail se ferme et qu'il avait été ouvert
-        // depuis le drawer, on réouvre le drawer.
-        document.addEventListener('close', function(event) {
-            if (!_openedFromDrawer) return;
-            var modal = event.target;
-            if (modal && (modal.id === 'detail-modal' || modal.id === 'modal-detail-log')) {
-                _openedFromDrawer = false;
-                setTimeout(function() { openNotifDrawer(); }, 150);
-            }
-        }, true);
 
         // Changement de statut depuis le drawer : après confirmation, recharger le drawer
         // UNIQUEMENT si le changement de statut a été initié depuis le drawer.
