@@ -59,6 +59,19 @@ These preferences were established during recent work:
 - Notifications for logistique should appear only in the Gestion section, not in Frais.
 - Dashboard KPI filters should be embedded naturally inside the card rather than floating awkwardly above it.
 
+## Data Layer & Import (Gotchas)
+
+- Canonical `societe` value in the `operations` table is **`SRID`** or **`Genetics`**.
+  Dashboard KPIs and filters match `Genetics` exactly — writing `GENETICS` makes rows invisible.
+  Normalize casing on any import/create/edit path.
+- Excel import lives in `import_excel_cheques.py`: it **wipes** operations/logistique tables
+  (FK-safe order) then bulk-reimports from `srid finalisé.xlsx`. It is destructive — always
+  back up `database.db` first (`database.db.bak-YYYYMMDD-HHMMSS`) and confirm scope.
+- Invalid/absent montant cells (e.g. `/`) are imported as `0.0`, not skipped.
+- For `Operation`, `date_encaissement` stores the **cheque due date** (échéance), not the
+  actual encashment date.
+- SQLite has no Alembic; add columns via `ALTER TABLE ... ADD COLUMN` in direct SQL.
+
 ## Common Change Patterns
 
 ### Add or update paginated tables
