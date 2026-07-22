@@ -136,18 +136,18 @@
 {% else %}<i class="fas fa-sort ml-1 opacity-30"></i>{% endif %}
 {% endmacro %}
 
-<table class="table table-sm w-full" id="operations-table">
+<table class="table table-sm w-full table-fixed" id="operations-table">
     <thead>
         <tr class="bg-base-200">
-            <th class="cursor-pointer select-none" onclick="sortOpsTable('societe')">Société{{ sort_icon('societe', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="cursor-pointer select-none" onclick="sortOpsTable('client')">Client{{ sort_icon('client', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th>Type</th>
-            <th class="cursor-pointer select-none" onclick="sortOpsTable('montant')">Montant{{ sort_icon('montant', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="cursor-pointer select-none" onclick="sortOpsTable('date_reception')">Réception{{ sort_icon('date_reception', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="cursor-pointer select-none" onclick="sortOpsTable('date_operation')">Dép/Vir{{ sort_icon('date_operation', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="cursor-pointer select-none" onclick="sortOpsTable('date_encaissement')">Échéance{{ sort_icon('date_encaissement', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="cursor-pointer select-none" onclick="sortOpsTable('statut')">Statut{{ sort_icon('statut', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            {% if can_write or can_delete %}<th class="text-center">Actions</th>{% endif %}
+            <th class="cursor-pointer select-none w-32" onclick="sortOpsTable('societe')">Société{{ sort_icon('societe', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none w-40" onclick="sortOpsTable('client')">Client{{ sort_icon('client', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="w-16">Type</th>
+            <th class="cursor-pointer select-none w-28" onclick="sortOpsTable('montant')">Montant{{ sort_icon('montant', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none w-28" onclick="sortOpsTable('date_reception')">Réception{{ sort_icon('date_reception', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none w-28" onclick="sortOpsTable('date_operation')">Dép/Vir{{ sort_icon('date_operation', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none w-36" onclick="sortOpsTable('date_encaissement')">Échéance{{ sort_icon('date_encaissement', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none w-44" onclick="sortOpsTable('statut')">Statut{{ sort_icon('statut', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            {% if can_write or can_delete %}<th class="text-center w-20">Actions</th>{% endif %}
         </tr>
     </thead>
     <tbody>
@@ -158,8 +158,8 @@
             {% if op.statut == 'Encaissé' %}style="background-color: rgba(34,197,94,0.13) !important;"{% endif %}
             hx-get="{{ url_for('api_operation_detail', op_id=op.id) }}"
             hx-target="#modal-content" hx-swap="innerHTML">
-            <td class="text-xs whitespace-nowrap">{{ op.societe or '-' }}</td>
-            <td class="text-xs truncate max-w-[160px]">{{ op.client }}</td>
+            <td class="text-xs truncate">{{ op.societe or '-' }}</td>
+            <td class="text-xs truncate">{{ op.client }}</td>
             <td class="text-xs">{% if op.type_operation == 'Chèque' %}CHQ{% elif op.type_operation == 'Virement' %}VIR{% elif op.type_operation == 'Versement' %}VRS{% elif op.type_operation == 'Transfer' %}TRF{% else %}AUT{% endif %}</td>
             <td class="text-xs whitespace-nowrap font-semibold">{{ op.montant|currency }}</td>
             <td class="text-xs whitespace-nowrap">{{ op.date_reception.strftime('%d/%m/%Y') if op.type_operation == 'Chèque' and op.date_reception else '-' }}</td>
