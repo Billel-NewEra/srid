@@ -132,166 +132,9 @@
         </div>
     </div>
 
-    <!-- Modal détail -->
-    <dialog id="detail-modal" class="modal">
-        <div class="modal-box max-w-5xl w-full" id="modal-content">
-        </div>
-        <form method="dialog" class="modal-backdrop"><button>close</button></form>
-    </dialog>
+    <!-- Modals déplacés dans base.html (détail, statut, ajout/édition) -->
 
-    <!-- Modal changement statut -->
-    <dialog id="status-modal" class="modal">
-        <div class="modal-box max-w-md">
-            <h3 class="font-bold text-lg mb-2"><i class="fas fa-pen-to-square text-warning mr-2"></i>Changer le statut</h3>
-            <p class="text-sm modal-meta mb-4">Sélectionnez un statut puis confirmez.</p>
-
-            <div id="status-options" class="grid grid-cols-2 gap-2 mb-4"></div>
-
-            <div class="modal-action">
-                <button type="button" id="status-cancel" class="btn btn-ghost">Annuler</button>
-                <button type="button" id="status-confirm" class="btn btn-primary" disabled>Confirmer</button>
-            </div>
-        </div>
-        <form method="dialog" class="modal-backdrop"><button>close</button></form>
-    </dialog>
 </div>
-
-{% if can_write %}
-<!-- Modal Nouvelle opération -->
-<dialog id="modal-add-operation" class="modal modal-top sm:modal-middle">
-    <div class="modal-box max-w-6xl w-full overflow-y-auto" style="max-height: calc(100vh - 2rem); padding: 1.5rem;">
-        <h3 class="font-bold text-lg mb-3">
-            <i class="fas fa-plus-circle text-primary mr-2"></i><span id="modal-operation-title-text">Nouvelle opération</span>
-        </h3>
-        <form method="POST" action="{{ url_for('api_operation_add') }}" id="form-add-operation" class="space-y-4" data-edit-url-template="{{ url_for('edit_operation', op_id=0) }}" data-detail-url-template="{{ url_for('api_operation_detail', op_id=0) }}">
-            <!-- Section: Type et Société -->
-            <div class="divider divider-start text-sm font-semibold opacity-70">
-                <i class="fas fa-tag mr-1"></i> Type d'opération
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div class="form-control">
-                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Type *</span></label>
-                    <select name="type_operation" class="select select-bordered select-sm w-full" required data-modal-type-operation>
-                        <option value="" disabled selected>-- Choisir --</option>
-                        <option value="Chèque">Chèque</option>
-                        <option value="Virement">Virement</option>
-                        <option value="Versement">Versement</option>
-                        <option value="Transfer">Transfert</option>
-                        <option value="Autre">Autre</option>
-                    </select>
-                </div>
-                <div class="form-control">
-                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Société *</span></label>
-                    <select name="societe" class="select select-bordered select-sm w-full" required>
-                        <option value="" disabled selected>-- Choisir --</option>
-                        <option value="SRID">SRID</option>
-                        <option value="Genetics">Genetics</option>
-                    </select>
-                </div>
-                <div class="form-control">
-                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Type chèque</span></label>
-                    <select name="type_cheque" class="select select-bordered select-sm w-full" data-modal-type-cheque disabled>
-                        <option value="">-- Aucun --</option>
-                        {% for check_type in check_type_options %}
-                        <option value="{{ check_type }}">{{ check_type }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-            </div>
-
-            <!-- Section: Dates -->
-            <div class="divider divider-start text-sm font-semibold opacity-70">
-                <i class="fas fa-calendar mr-1"></i> Dates
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div class="form-control hidden" data-modal-date-general-wrap>
-                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Date *</span></label>
-                    <input type="date" name="date_operation" class="input input-bordered input-sm w-full" data-modal-date-general>
-                </div>
-                <div class="form-control hidden" data-modal-date-reception-wrap>
-                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Date réception <span data-modal-date-reception-required>*</span></span></label>
-                    <input type="date" name="date_reception" class="input input-bordered input-sm w-full" data-modal-date-reception>
-                </div>
-                <div class="form-control hidden" data-modal-date-sortie-wrap>
-                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Date dépôt / virement <span data-modal-date-sortie-required>*</span></span></label>
-                    <input type="date" name="date_sortie" class="input input-bordered input-sm w-full" data-modal-date-sortie>
-                </div>
-                <div class="form-control hidden" data-modal-date-echeance-wrap>
-                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Date échéance *</span></label>
-                    <input type="date" name="date_echeance" class="input input-bordered input-sm w-full" data-modal-date-echeance>
-                </div>
-            </div>
-
-            <!-- Section: Client et Montant -->
-            <div class="divider divider-start text-sm font-semibold opacity-70">
-                <i class="fas fa-user mr-1"></i> Client & Montant
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div class="form-control">
-                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Client / Libellé *</span></label>
-                    <div class="relative">
-                        <input type="text" name="client" class="input input-bordered input-sm w-full" placeholder="Nom du client" autocomplete="off" required data-modal-client-input>
-                        <div class="absolute left-0 right-0 top-full mt-1 z-50 hidden max-h-96 overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-lg origin-top transition-transform duration-100" data-modal-client-list>
-                            {% for client in client_options %}
-                            <button type="button" class="block w-full px-3 py-2 text-left text-sm hover:bg-base-200" data-modal-client-option="{{ client }}">{{ client }}</button>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-                <div class="form-control">
-                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Remettant / Commercial</span></label>
-                    <div class="relative">
-                        <input type="text" name="remettant_commercial" class="input input-bordered input-sm w-full" placeholder="Nom remettant/commercial" autocomplete="off" data-modal-remettant-input>
-                        <div class="absolute left-0 right-0 top-full mt-1 z-50 hidden max-h-96 overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-lg origin-top transition-transform duration-100" data-modal-remettant-list>
-                            {% for remettant in remettant_options %}
-                            <button type="button" class="block w-full px-3 py-2 text-left text-sm hover:bg-base-200" data-modal-remettant-option="{{ remettant }}">{{ remettant }}</button>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-                <div class="form-control">
-                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Montant *</span></label>
-                    <input type="text" name="montant" class="input input-bordered input-sm w-full" placeholder="0" inputmode="decimal" autocomplete="off" required data-modal-montant-input>
-                </div>
-            </div>
-
-            <!-- Section: Banque et Pièce -->
-            <div class="divider divider-start text-sm font-semibold opacity-70">
-                <i class="fas fa-university mr-1"></i> Banque & Pièce
-            </div>
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <div class="form-control">
-                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Banque</span></label>
-                    <div class="relative">
-                        <input type="text" name="banque" class="input input-bordered input-sm w-full" placeholder="Choisir ou taper une banque" autocomplete="off" data-modal-bank-input>
-                        <div class="absolute left-0 right-0 top-full mt-1 z-50 hidden max-h-96 overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-lg origin-top transition-transform duration-100" data-modal-bank-list>
-                            {% for bank in bank_options %}
-                            <button type="button" class="block w-full px-3 py-2 text-left text-sm hover:bg-base-200" data-modal-bank-option="{{ bank }}">{{ bank }}</button>
-                            {% endfor %}
-                        </div>
-                    </div>
-                </div>
-                <div class="form-control">
-                    <label class="label pb-1"><span class="label-text text-xs font-semibold">N° Pièce</span></label>
-                    <input type="text" name="numero_piece" class="input input-bordered input-sm w-full" placeholder="N° chèque ou versement">
-                </div>
-                <div class="form-control">
-                    <label class="label pb-1"><span class="label-text text-xs font-semibold">Remarque</span></label>
-                    <textarea name="remarque" class="textarea textarea-bordered textarea-sm w-full" rows="2" placeholder="Notes ou commentaires..."></textarea>
-                </div>
-            </div>
-
-            <div class="modal-action">
-                <button type="button" class="btn btn-ghost btn-sm" onclick="cancelAddOperation()">Annuler</button>
-                <button type="submit" class="btn btn-primary btn-sm">
-                    <i class="fas fa-save mr-1"></i><span id="modal-operation-submit-text">Créer l'opération</span>
-                </button>
-            </div>
-        </form>
-    </div>
-    <form method="dialog" class="modal-backdrop"><button>close</button></form>
-</dialog>
-{% endif %}
 
 {% endblock %}
 
@@ -302,13 +145,8 @@
         70%  { box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--ui-primary) 16%, transparent); }
         100% { box-shadow: inset 0 0 0 9999px transparent; }
     }
-    /* Overlay via box-shadow plutôt que background-color : reste visible même sur une
-       ligne déjà colorée en !important (ex. statut Encaissé en vert). */
     .op-flash > td { animation: opFlash 3s ease-out; }
     .card.op-flash { animation: opFlash 3s ease-out; }
-    /* Pendant le flash, la 1re cellule (client) est normalement tronquée (overflow:hidden,
-       nowrap) et couperait le badge : on laisse le contenu passer à la ligne dans la cellule
-       (sans déborder sur les colonnes voisines, la largeur max reste appliquée). */
     .op-flash > td:first-child { overflow: visible; white-space: normal; }
     .op-new-badge {
         display: inline-flex; align-items: center; gap: .25rem;
@@ -417,18 +255,9 @@
         htmx.ajax('GET', '{{ url_for("api_operations") }}?' + params.toString(), {target: '#results-table', swap: 'innerHTML'});
     }
 
-    // Ouvrir le modal de détail
-    document.body.addEventListener('htmx:afterSwap', function(event) {
-        if (event.detail.target.id === 'modal-content') {
-            document.getElementById('detail-modal').showModal();
-        }
-    });
+    // Ouvrir le modal de détail — géré globalement dans base.html
 
     const exportLink = document.getElementById('export-link');
-    const statusModal = document.getElementById('status-modal');
-    const statusOptions = document.getElementById('status-options');
-    const statusConfirm = document.getElementById('status-confirm');
-    const statusCancel = document.getElementById('status-cancel');
     const filterSelectors = [
         '[name="search"]',
         '[name="type_operation"]',
@@ -437,20 +266,6 @@
         '[name="statut"]',
         '[name="per_page"]'
     ];
-
-    const statusChoices = [
-        { value: 'Encaissé', cls: 'badge-success' },
-        { value: 'Rejeté', cls: 'badge-error' },
-        { value: 'Échéance', cls: 'badge-warning' },
-        { value: 'En cours', label: "En cours d'encaissement", cls: 'badge-primary' },
-        { value: 'Arrive à échéance', cls: 'badge-accent' },
-        { value: 'Échu', cls: 'badge-secondary' },
-        { value: 'Garantie', cls: 'badge-info' },
-        { value: 'Retour', cls: 'bg-pink-500 text-white border-pink-600' }
-    ];
-
-    let selectedStatus = '';
-    let selectedPostUrl = '';
 
     function currentPageFromTable() {
         const pageSource = document.querySelector('#results-table [data-current-page]');
@@ -479,7 +294,6 @@
         return htmx.ajax('GET', `{{ url_for('api_operations') }}?${params.toString()}`, { target: '#results-table', swap: 'innerHTML' });
     }
 
-    // Attire l'attention sur une opération fraîchement créée : flash + badge « Nouveau » + scroll.
     function highlightNewOperation(id) {
         if (!id) return;
         var sel = '#results-table tr[data-op-id="' + id + '"], #results-table .card[data-op-id="' + id + '"]';
@@ -487,7 +301,6 @@
         if (!els.length) return;
         els.forEach(function(el) {
             el.classList.add('op-flash');
-            // Vue tableau : cellule client (1re cellule). Vue carte (mobile) : après le nom du client.
             var host = el.matches('tr')
                 ? el.querySelector('td')
                 : (el.querySelector('.font-semibold') || el.querySelector('.card-body'));
@@ -504,33 +317,12 @@
         if (visible) visible.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }
 
-    function renderStatusOptions(currentStatus) {
-        statusOptions.innerHTML = '';
-        statusChoices.forEach((item) => {
-            if (item.value === currentStatus) {
-                return;
-            }
-            const button = document.createElement('button');
-            button.type = 'button';
-            button.className = `badge badge-lg justify-center py-4 ${item.cls} ${item.value === selectedStatus ? 'ring-2 ring-primary' : ''}`;
-            button.textContent = item.label || item.value;
-            button.addEventListener('click', () => {
-                selectedStatus = item.value;
-                renderStatusOptions(currentStatus);
-                statusConfirm.disabled = selectedStatus === currentStatus;
-            });
-            statusOptions.appendChild(button);
-        });
-    }
-
     function updateExportLink() {
         if (!exportLink) return;
         const url = new URL(exportLink.getAttribute('href'), window.location.origin);
         url.search = '';
-
         const params = buildQueryParams();
         params.forEach((value, key) => url.searchParams.set(key, value));
-
         exportLink.setAttribute('href', url.pathname + url.search);
     }
 
@@ -539,54 +331,6 @@
         if (!field) return;
         field.addEventListener('input', updateExportLink);
         field.addEventListener('change', updateExportLink);
-    });
-
-    // Fonction globale pour ouvrir le modal de changement de statut depuis n'importe où
-    window.openStatusModal = function(trigger) {
-        selectedPostUrl = trigger.getAttribute('data-post-url') || '';
-        const currentStatus = trigger.getAttribute('data-current-status') || '';
-        selectedStatus = currentStatus;
-        renderStatusOptions(currentStatus);
-        statusConfirm.disabled = true;
-        statusModal.showModal();
-    };
-
-    // Capture phase (avant HTMX) : détecte les clics sur badge statut
-    document.addEventListener('click', function(event) {
-        const trigger = event.target.closest('[data-status-edit]');
-        if (!trigger) return;
-        window._statusEditPending = true;
-        window.openStatusModal(trigger);
-    }, true);
-
-    // Annule la requête HTMX si le clic venait d'un badge statut
-    document.body.addEventListener('htmx:beforeRequest', function(evt) {
-        if (window._statusEditPending) {
-            window._statusEditPending = false;
-            evt.preventDefault();
-        }
-    });
-
-    statusCancel.addEventListener('click', () => {
-        statusModal.close();
-    });
-
-    statusConfirm.addEventListener('click', async () => {
-        if (!selectedPostUrl || !selectedStatus) return;
-        const response = await fetch(selectedPostUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-            body: new URLSearchParams({ statut: selectedStatus }).toString(),
-            credentials: 'same-origin'
-        });
-
-        if (response.ok) {
-            statusModal.close();
-            refreshResultsTable();
-            return;
-        }
-
-        alert('Erreur lors du changement de statut.');
     });
 
     updateExportLink();
@@ -599,292 +343,26 @@
         _sortInProgress = false;
     });
 
-    // ── Modal Nouvelle opération / Modifier opération ─────────────────────────
-    let editingOperationId = null;
-
-    function resetModalToCreateMode() {
-        const titleText = document.getElementById('modal-operation-title-text');
-        const submitText = document.getElementById('modal-operation-submit-text');
-        if (titleText) titleText.textContent = 'Nouvelle opération';
-        if (submitText) submitText.textContent = "Créer l'opération";
-    }
-
-    function openNewOperation() {
-        const modal = document.getElementById('modal-add-operation');
-        if (modal) {
-            editingOperationId = null;
-            document.getElementById('form-add-operation').reset();
-            resetModalToCreateMode();
-            applyModalTypeRules();
-            modal.showModal();
-        }
-    }
-
-    function cancelAddOperation() {
-        document.getElementById('modal-add-operation').close();
-        editingOperationId = null;
-        resetModalToCreateMode();
-    }
-
-    async function openEditOperation(opId) {
-        const modal = document.getElementById('modal-add-operation');
-        const form = document.getElementById('form-add-operation');
-        if (!modal || !form) return;
-
-        const detailUrl = (form.dataset.detailUrlTemplate || '').replace(/\/0$/, `/${opId}`);
-        const response = await fetch(detailUrl, {
-            headers: { 'Accept': 'application/json' },
-            credentials: 'same-origin'
+    // Rafraîchir la table quand un modal global sauvegarde ou change un statut
+    document.body.addEventListener('operationSaved', function(e) {
+        Promise.resolve(refreshResultsTable()).then(function() {
+            if (e.detail && e.detail.id) highlightNewOperation(e.detail.id);
         });
-        if (!response.ok) {
-            alert("Impossible de charger l'opération à modifier.");
-            return;
-        }
-        const data = await response.json();
+    });
+    document.body.addEventListener('operationStatusChanged', function() {
+        refreshResultsTable();
+    });
 
-        form.reset();
-        editingOperationId = opId;
-
-        const setValue = (name, value) => {
-            const field = form.querySelector(`[name="${name}"]`);
-            if (field) field.value = value ?? '';
-        };
-
-        setValue('type_operation', data.type_operation);
-        setValue('societe', data.societe);
-        setValue('type_cheque', data.type_detail);
-        applyModalTypeRules();
-
-        setValue('date_operation', data.date_operation);
-        setValue('date_reception', data.date_reception);
-        setValue('date_sortie', data.date_sortie);
-        setValue('date_echeance', data.date_encaissement);
-        setValue('client', data.client);
-        setValue('remettant_commercial', data.remettant);
-        setValue('montant', data.montant);
-        setValue('banque', data.banque);
-        setValue('numero_piece', data.numero_piece);
-        setValue('remarque', data.remarque);
-
-        const titleText = document.getElementById('modal-operation-title-text');
-        const submitText = document.getElementById('modal-operation-submit-text');
-        if (titleText) titleText.textContent = `Modifier l'opération #${opId}`;
-        if (submitText) submitText.textContent = 'Enregistrer';
-
-        modal.showModal();
-    }
-
-    // Gestion du formulaire modal : soumission via fetch
+    // Auto-ouverture du modal de détail si ?open=ID est dans l'URL
     (function() {
-        const form = document.getElementById('form-add-operation');
-        if (!form) return;
-
-        form.addEventListener('submit', async function(e) {
-            e.preventDefault();
-            // Normaliser le montant avant envoi
-            const montantInput = form.querySelector('[data-modal-montant-input]');
-            if (montantInput) {
-                montantInput.value = (montantInput.value || '').replace(/\s+/g, '').replace(/,/g, '.');
-            }
-
-            const isCreate = !editingOperationId;
-            const formData = new FormData(form);
-            const editUrlTemplate = form.dataset.editUrlTemplate;
-            const url = editingOperationId
-                ? editUrlTemplate.replace(/\/0$/, '/' + editingOperationId)
-                : form.action;
-            const response = await fetch(url, {
-                method: 'POST',
-                body: formData,
-                credentials: 'same-origin',
-                headers: { 'X-Requested-With': 'fetch' }
-            });
-
-            if (response.ok) {
-                let newId = null;
-                if (isCreate) {
-                    try { const data = await response.json(); newId = data && data.id; } catch (_) {}
-                }
-                document.getElementById('modal-add-operation').close();
-                editingOperationId = null;
-                resetModalToCreateMode();
-                Promise.resolve(refreshResultsTable()).then(function() {
-                    if (newId) highlightNewOperation(newId);
-                });
-                htmx.trigger(document.body, 'refreshGlobalAlert');
-            } else {
-                alert("Erreur lors de l'enregistrement de l'opération.");
-            }
-        });
-
-        // Autocomplete suggestions
-        function setupModalSuggestion({ inputSelector, listSelector, optionAttr }) {
-            const input = form.querySelector(inputSelector);
-            const list = form.querySelector(listSelector);
-            if (!input || !list) return;
-            const modalBox = input.closest('.modal-box');
-
-            const options = Array.from(list.querySelectorAll(`[${optionAttr}]`));
-
-            function positionListWithinModal() {
-                if (!modalBox) return;
-
-                const inputRect = input.getBoundingClientRect();
-                const modalRect = modalBox.getBoundingClientRect();
-                const gap = 8;
-                const minListHeight = 120;
-
-                const spaceBelow = Math.max(0, modalRect.bottom - inputRect.bottom - gap);
-                const spaceAbove = Math.max(0, inputRect.top - modalRect.top - gap);
-                const openUp = spaceBelow < minListHeight && spaceAbove > spaceBelow;
-
-                list.classList.remove('top-full', 'mt-1', 'bottom-full', 'mb-1');
-                if (openUp) {
-                    list.classList.add('bottom-full', 'mb-1');
-                    list.classList.remove('origin-top');
-                    list.classList.add('origin-bottom');
-                } else {
-                    list.classList.add('top-full', 'mt-1');
-                    list.classList.remove('origin-bottom');
-                    list.classList.add('origin-top');
-                }
-
-                const available = openUp ? spaceAbove : spaceBelow;
-                const clampedHeight = Math.max(96, Math.min(available, 360));
-                list.style.maxHeight = `${clampedHeight}px`;
-            }
-
-            function filterOptions() {
-                const query = input.value.trim().toUpperCase();
-                let visible = 0;
-                options.forEach((btn) => {
-                    const value = (btn.getAttribute(optionAttr) || '').toUpperCase();
-                    const show = !query || value.includes(query);
-                    btn.classList.toggle('hidden', !show);
-                    if (show) visible += 1;
-                });
-                if (visible === 0) {
-                    list.classList.add('hidden');
-                    return;
-                }
-
-                positionListWithinModal();
-                list.classList.remove('hidden');
-            }
-
-            input.addEventListener('focus', filterOptions);
-            input.addEventListener('input', filterOptions);
-
-            options.forEach((btn) => {
-                btn.addEventListener('click', () => {
-                    input.value = btn.getAttribute(optionAttr) || '';
-                    list.classList.add('hidden');
-                });
-            });
-
-            document.addEventListener('click', (event) => {
-                if (!list.contains(event.target) && event.target !== input) {
-                    list.classList.add('hidden');
-                }
-            });
-
-            if (modalBox) {
-                modalBox.addEventListener('scroll', () => {
-                    if (!list.classList.contains('hidden')) {
-                        positionListWithinModal();
-                    }
-                });
-            }
-
-            window.addEventListener('resize', () => {
-                if (!list.classList.contains('hidden')) {
-                    positionListWithinModal();
-                }
-            });
-        }
-
-        setupModalSuggestion({ inputSelector: '[data-modal-bank-input]', listSelector: '[data-modal-bank-list]', optionAttr: 'data-modal-bank-option' });
-        setupModalSuggestion({ inputSelector: '[data-modal-client-input]', listSelector: '[data-modal-client-list]', optionAttr: 'data-modal-client-option' });
-        setupModalSuggestion({ inputSelector: '[data-modal-remettant-input]', listSelector: '[data-modal-remettant-list]', optionAttr: 'data-modal-remettant-option' });
-
-        // Formatage montant
-        const montantInput = form.querySelector('[data-modal-montant-input]');
-        if (montantInput) {
-            montantInput.addEventListener('input', () => {
-                const val = (montantInput.value || '').replace(/\s+/g, '').replace(/,/g, '.');
-                const cleaned = val.replace(/[^\d.]/g, '');
-                const firstDot = cleaned.indexOf('.');
-                const compact = firstDot === -1
-                    ? cleaned
-                    : cleaned.slice(0, firstDot + 1) + cleaned.slice(firstDot + 1).replace(/\./g, '');
-                const [intPartRaw, decimalPartRaw] = compact.split('.');
-                const intDigits = (intPartRaw || '').replace(/^0+(?=\d)/, '') || '0';
-                const grouped = intDigits.replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
-                montantInput.value = decimalPartRaw !== undefined ? `${grouped}.${decimalPartRaw.slice(0, 2)}` : grouped;
-            });
-        }
-
-        // Type operation rules
-        const typeSelect = form.querySelector('[data-modal-type-operation]');
-        const typeChequeSelect = form.querySelector('[data-modal-type-cheque]');
-        const dateGeneralWrap = form.querySelector('[data-modal-date-general-wrap]');
-        const dateGeneralInput = form.querySelector('[data-modal-date-general]');
-        const dateReceptionWrap = form.querySelector('[data-modal-date-reception-wrap]');
-        const dateReceptionInput = form.querySelector('[data-modal-date-reception]');
-        const dateSortieWrap = form.querySelector('[data-modal-date-sortie-wrap]');
-        const dateSortieInput = form.querySelector('[data-modal-date-sortie]');
-        const dateEcheanceWrap = form.querySelector('[data-modal-date-echeance-wrap]');
-        const dateEcheanceInput = form.querySelector('[data-modal-date-echeance]');
-        const dateReceptionRequiredMark = form.querySelector('[data-modal-date-reception-required]');
-        const dateSortieRequiredMark = form.querySelector('[data-modal-date-sortie-required]');
-
-        window.applyModalTypeRules = function() {
-            const selectedType = typeSelect ? typeSelect.value : '';
-            const hasType = selectedType !== '';
-            const isCheque = selectedType === 'Chèque';
-            const isChequeEcheance = isCheque && typeChequeSelect && typeChequeSelect.value === 'À échéance';
-
-            if (typeChequeSelect) {
-                typeChequeSelect.disabled = !isCheque;
-                if (!isCheque) typeChequeSelect.value = '';
-            }
-
-            if (!hasType) {
-                dateGeneralWrap.classList.add('hidden');
-                dateReceptionWrap.classList.add('hidden');
-                dateSortieWrap.classList.add('hidden');
-                dateEcheanceWrap.classList.add('hidden');
-                if (dateGeneralInput) dateGeneralInput.required = false;
-                if (dateReceptionInput) dateReceptionInput.required = false;
-                if (dateSortieInput) dateSortieInput.required = false;
-                if (dateEcheanceInput) dateEcheanceInput.required = false;
-                return;
-            }
-
-            dateGeneralWrap.classList.toggle('hidden', isCheque);
-            if (dateGeneralInput) dateGeneralInput.required = !isCheque;
-
-            // Date réception reste toujours obligatoire pour un chèque.
-            dateReceptionWrap.classList.toggle('hidden', !isCheque);
-            if (dateReceptionInput) dateReceptionInput.required = isCheque;
-            if (dateReceptionRequiredMark) dateReceptionRequiredMark.classList.toggle('hidden', !isCheque);
-
-            // Quand le chèque est "À échéance", le dépôt/virement n'a pas encore
-            // eu lieu : il reste visible mais devient optionnel.
-            const sortieRequired = isCheque && !isChequeEcheance;
-
-            dateSortieWrap.classList.toggle('hidden', !isCheque);
-            if (dateSortieInput) dateSortieInput.required = sortieRequired;
-            if (dateSortieRequiredMark) dateSortieRequiredMark.classList.toggle('hidden', !sortieRequired);
-
-            dateEcheanceWrap.classList.toggle('hidden', !isChequeEcheance);
-            if (dateEcheanceInput) dateEcheanceInput.required = isChequeEcheance;
-            if (!isChequeEcheance && dateEcheanceInput) dateEcheanceInput.value = '';
-        };
-
-        if (typeSelect) typeSelect.addEventListener('change', applyModalTypeRules);
-        if (typeChequeSelect) typeChequeSelect.addEventListener('change', applyModalTypeRules);
-        applyModalTypeRules();
+        var params = new URLSearchParams(window.location.search);
+        var openId = params.get('open');
+        if (!openId) return;
+        // Nettoyer l'URL sans recharger la page
+        var cleanSearch = window.location.search.replace(/[?&]open=[^&]+/, '').replace(/^&/, '?');
+        history.replaceState(null, '', window.location.pathname + (cleanSearch || ''));
+        // Charger le détail dans le modal et l'ouvrir
+        htmx.ajax('GET', {{ request.script_root|tojson }} + '/api/operations/' + openId, { target: '#modal-content', swap: 'innerHTML' });
     })();
 </script>
 {% endblock %}

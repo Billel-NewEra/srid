@@ -26,8 +26,8 @@
             {% for item in notifications.critical_operations %}
             {% set delta = (item.date_encaissement - notifications.today).days %}
             <div class="notif-item cursor-pointer"
-                 hx-get="{{ url_for('api_operation_detail', op_id=item.id) }}"
-                 hx-target="#modal-content" hx-swap="innerHTML">
+                 data-notif-kind="finance"
+                 data-op-id="{{ item.id }}">
                 <div class="min-w-0">
                     <div class="notif-item-title truncate">{{ item.client }}</div>
                     <div class="notif-item-date">

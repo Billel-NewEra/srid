@@ -125,6 +125,10 @@ def inject_globals():
         'can_manage_users': role_key == 'admin',
         'is_logged_in': 'user_id' in session,
         'now': datetime.now,
+        'bank_options': _get_bank_suggestions() if 'user_id' in session else [],
+        'client_options': _get_client_suggestions() if 'user_id' in session else [],
+        'remettant_options': _get_remettant_suggestions() if 'user_id' in session else [],
+        'check_type_options': CHECK_TYPE_CHOICES,
     }
 
 
@@ -1078,7 +1082,7 @@ def api_operation_add():
         date_reception=date_reception,
         date_encaissement=date_echeance,
         date_sortie=date_sortie,
-        client=request.form.get('client'),
+        client=(request.form.get('client') or '').strip().upper() or None,
         remettant=request.form.get('remettant_commercial') or request.form.get('remettant') or None,
         montant=abs(float(request.form.get('montant', 0))),
         banque=_normalize_bank_name(request.form.get('banque')),
@@ -1134,7 +1138,7 @@ def edit_operation(op_id):
         op.date_reception = date_reception
         op.date_encaissement = date_echeance
         op.date_sortie = date_sortie
-        op.client = request.form.get('client')
+        op.client = (request.form.get('client') or '').strip().upper() or None
         op.remettant = request.form.get('remettant_commercial') or request.form.get('remettant') or None
         op.montant = abs(float(request.form.get('montant', 0)))
         op.banque = _normalize_bank_name(request.form.get('banque'))
