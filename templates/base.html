@@ -1188,19 +1188,19 @@
                 <div class="divider divider-start text-sm font-semibold opacity-70"><i class="fas fa-calendar mr-1"></i> Dates</div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                     <div class="form-control hidden" data-modal-date-general-wrap>
-                        <label class="label pb-1"><span class="label-text text-xs font-semibold">Date *</span></label>
+                        <label class="label pb-1"><span class="label-text text-xs font-semibold">Date</span></label>
                         <input type="date" name="date_operation" class="input input-bordered input-sm w-full" data-modal-date-general>
                     </div>
                     <div class="form-control hidden" data-modal-date-reception-wrap>
-                        <label class="label pb-1"><span class="label-text text-xs font-semibold">Date réception <span data-modal-date-reception-required>*</span></span></label>
+                        <label class="label pb-1"><span class="label-text text-xs font-semibold">Date réception</span></label>
                         <input type="date" name="date_reception" class="input input-bordered input-sm w-full" data-modal-date-reception>
                     </div>
                     <div class="form-control hidden" data-modal-date-sortie-wrap>
-                        <label class="label pb-1"><span class="label-text text-xs font-semibold">Date dépôt / virement <span data-modal-date-sortie-required>*</span></span></label>
+                        <label class="label pb-1"><span class="label-text text-xs font-semibold">Date dépôt / virement</span></label>
                         <input type="date" name="date_sortie" class="input input-bordered input-sm w-full" data-modal-date-sortie>
                     </div>
                     <div class="form-control hidden" data-modal-date-echeance-wrap>
-                        <label class="label pb-1"><span class="label-text text-xs font-semibold">Date échéance *</span></label>
+                        <label class="label pb-1"><span class="label-text text-xs font-semibold">Date échéance</span></label>
                         <input type="date" name="date_echeance" class="input input-bordered input-sm w-full" data-modal-date-echeance>
                     </div>
                 </div>
@@ -1560,18 +1560,9 @@
             if (!isCheque && typeChequeSelect) typeChequeSelect.value = '';
 
             if (dateGeneralWrap) dateGeneralWrap.classList.toggle('hidden', isCheque);
-            if (dateGeneralInput) dateGeneralInput.required = !isCheque;
             if (dateReceptionWrap) dateReceptionWrap.classList.toggle('hidden', !isCheque);
-            if (dateReceptionInput) dateReceptionInput.required = isCheque;
-            if (dateReceptionRequiredMark) dateReceptionRequiredMark.classList.toggle('hidden', !isCheque);
-
-            var sortieRequired = isCheque && !isChequeEcheance;
             if (dateSortieWrap) dateSortieWrap.classList.toggle('hidden', !isCheque);
-            if (dateSortieInput) dateSortieInput.required = sortieRequired;
-            if (dateSortieRequiredMark) dateSortieRequiredMark.classList.toggle('hidden', !sortieRequired);
-
             if (dateEcheanceWrap) dateEcheanceWrap.classList.toggle('hidden', !isChequeEcheance);
-            if (dateEcheanceInput) dateEcheanceInput.required = isChequeEcheance;
             if (!isChequeEcheance && dateEcheanceInput) dateEcheanceInput.value = '';
         }
         window.applyModalTypeRules = applyModalTypeRules;
