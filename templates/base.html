@@ -322,6 +322,33 @@
             background: var(--ui-primary) !important;
         }
 
+        .module-strip-mobicom {
+            background: linear-gradient(180deg, #22d3ee, #0891b2) !important;
+            width: 4px;
+            height: 15px;
+        }
+
+        .nav-section-label.nav-section-label-mobicom {
+            color: #67e8f9 !important;
+            font-size: 11px;
+            background: rgba(34, 211, 238, 0.14);
+            border: 1px solid rgba(34, 211, 238, 0.40);
+            border-radius: 8px;
+            padding: 0.3rem 0.55rem;
+            box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.08), 0 2px 8px rgba(8, 145, 178, 0.18);
+        }
+
+        .app-sidebar .nav-link.nav-link-mobicom .nav-icon {
+            color: #22d3ee;
+        }
+
+        .app-sidebar .nav-link.nav-link-mobicom.active {
+            background: linear-gradient(90deg, rgba(34, 211, 238, 0.22), rgba(8, 145, 178, 0.14)) !important;
+            color: #ffffff !important;
+            font-weight: 600;
+            box-shadow: inset 0 0 0 1px rgba(34, 211, 238, 0.35);
+        }
+
         .card,
         .stat,
         .modal-box,
@@ -817,6 +844,14 @@
                         <span>Référentiels</span>
                     </a>
                     {% endif %}
+
+                    <!-- ── MOBICOM BRIDGE ── -->
+                    <div class="pt-5 pb-1.5">
+                        <div class="nav-section-label nav-section-label-mobicom">
+                            <div class="module-strip module-strip-mobicom"></div>
+                            MobiCom Bridge
+                        </div>
+                    </div>
 
                     <!-- ── ADMINISTRATION ── -->
                     <div class="pt-5 pb-1.5">
