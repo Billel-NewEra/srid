@@ -1609,6 +1609,7 @@ def _pr_config(frais, bon):
                 'prix': l.prix_unitaire or 0,   # depuis le bon (lecture seule)
                 'qte':  l.quantite or 0,        # depuis le bon (lecture seule)
                 'tva':  sp.get('tva', rates['tva']),
+                'prix_vente_ttc': sp.get('prix_vente_ttc'),  # prix de vente TTC unitaire saisi
             }
     return {'rates': rates, 'charges': charges, 'produits': produits}
 
@@ -1667,6 +1668,16 @@ def _calculer_pr_bon(bon, frais, cours):
         pr_ttc = total_douanes + total_transitaire
         pr_ht  = pr_ttc - tva
 
+        pr_unit_ht  = (pr_ht / qty) if qty else None
+        # Prix de vente HT unitaire (= PV TTC / (1 + TVA)) et marge (= PV HT / PR unit HT - 1).
+        pv_ttc = p.get('prix_vente_ttc')
+        try:
+            pv_ttc = float(pv_ttc) if pv_ttc not in (None, '') else None
+        except (TypeError, ValueError):
+            pv_ttc = None
+        pv_ht = (pv_ttc / (1 + (p['tva'] or 0))) if pv_ttc is not None else None
+        marge = ((pv_ht / pr_unit_ht) - 1) if (pv_ht is not None and pr_unit_ht) else None
+
         resultats.append({
             'ligne':             ligne,
             'nom':               p['nom'],
@@ -1694,7 +1705,9 @@ def _calculer_pr_bon(bon, frais, cours):
             'pr_ttc':            pr_ttc,
             'pr_ht':             pr_ht,
             'pr_unit_ttc':       (pr_ttc / qty) if qty else None,
-            'pr_unit_ht':        (pr_ht / qty) if qty else None,
+            'pr_unit_ht':        pr_unit_ht,
+            'pv_ht':             pv_ht,
+            'marge':             marge,
         })
     return resultats
 
@@ -2579,16 +2592,18 @@ def api_bon_update(bon_id):
             old_pr_config = json.loads(frais_entry.pr_config)
         except (ValueError, TypeError):
             old_pr_config = None
-    tva_overrides = []  # [ref_norm, desig_norm, tva, consumed]
+    tva_overrides = []  # [ref_norm, desig_norm, tva, prix_vente_ttc, consumed]
     if old_pr_config and isinstance(old_pr_config.get('produits'), dict):
         prod_cfg = old_pr_config['produits']
         for l in bon.lignes:
-            tva = (prod_cfg.get(str(l.id)) or {}).get('tva')
-            if tva is not None:
+            sp = prod_cfg.get(str(l.id)) or {}
+            tva = sp.get('tva')
+            pv = sp.get('prix_vente_ttc')
+            if tva is not None or pv is not None:
                 tva_overrides.append([
                     (l.reference or '').strip().upper(),
                     (l.designation or '').strip().upper(),
-                    tva, False,
+                    tva, pv, False,
                 ])
 
     # Remplacer les lignes existantes
@@ -2619,13 +2634,18 @@ def api_bon_update(bon_id):
             ref_n = (nl.reference or '').strip().upper()
             des_n = (nl.designation or '').strip().upper()
             match = next((o for o in tva_overrides
-                          if not o[3] and o[0] == ref_n and o[1] == des_n), None)
+                          if not o[4] and o[0] == ref_n and o[1] == des_n), None)
             if match is None:
                 match = next((o for o in tva_overrides
-                              if not o[3] and o[1] == des_n), None)
+                              if not o[4] and o[1] == des_n), None)
             if match is not None:
-                match[3] = True
-                new_produits[str(nl.id)] = {'tva': match[2]}
+                match[4] = True
+                entry = {}
+                if match[2] is not None:
+                    entry['tva'] = match[2]
+                if match[3] is not None:
+                    entry['prix_vente_ttc'] = match[3]
+                new_produits[str(nl.id)] = entry
         old_pr_config['produits'] = new_produits
         frais_entry.pr_config = json.dumps(old_pr_config, ensure_ascii=False)
 

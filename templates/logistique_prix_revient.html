@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Prix de revient - SRID COM{% endblock %}
+{% block title %}Prix de revient/vente - SRID COM{% endblock %}
 
 {% block content %}
 <div class="fade-in">
@@ -7,9 +7,9 @@
     <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
         <div>
             <h1 class="text-2xl font-bold page-title">
-                <i class="fas fa-calculator text-teal-400 mr-2"></i>Prix de revient
+                <i class="fas fa-calculator text-teal-400 mr-2"></i>Prix de revient/vente
             </h1>
-            <p class="text-sm page-subtitle mt-1">Prix de revient par produit, par bon — {{ bons_pr|length }} bon{{ 's' if bons_pr|length != 1 else '' }} calculé{{ 's' if bons_pr|length != 1 else '' }}</p>
+            <p class="text-sm page-subtitle mt-1">Prix de revient et de vente par produit, par bon — {{ bons_pr|length }} bon{{ 's' if bons_pr|length != 1 else '' }} calculé{{ 's' if bons_pr|length != 1 else '' }}</p>
         </div>
     </div>
 
@@ -86,8 +86,8 @@
                         <th class="py-2 text-right">Qté</th>
                         <th class="py-2 text-right bg-amber-500/15">PR unitaire HT (DA)</th>
                         <th class="py-2 text-right bg-orange-500/15">PR unitaire TTC (DA)</th>
-                        <th class="py-2 text-right bg-amber-500/15">PR total HT (DA)</th>
-                        <th class="py-2 text-right bg-orange-500/15">PR total TTC (DA)</th>
+                        <th class="py-2 text-right bg-teal-500/15">PV HT (DA)</th>
+                        <th class="py-2 text-right bg-violet-500/15">Marge</th>
                     </tr>
                 </thead>
                 {% for entry in bons_pr %}
@@ -110,8 +110,8 @@
                         <td class="text-right whitespace-nowrap bg-orange-500/15">
                             <span class="badge badge-sm border-transparent bg-orange-600 text-white font-semibold tabular-nums text-sm shadow-sm">{{ r.pr_unit_ttc|currency if r.pr_unit_ttc is not none else '—' }}</span>
                         </td>
-                        <td class="text-right tabular-nums whitespace-nowrap font-medium text-amber-700 bg-amber-500/15">{{ r.pr_ht|currency }}</td>
-                        <td class="text-right tabular-nums whitespace-nowrap font-medium text-orange-700 bg-orange-500/15">{{ r.pr_ttc|currency }}</td>
+                        <td class="text-right whitespace-nowrap bg-teal-500/15">{% if r.pv_ht is not none %}<span class="badge badge-sm border-transparent bg-teal-600 text-white font-semibold tabular-nums text-sm shadow-sm">{{ r.pv_ht|currency }}</span>{% else %}—{% endif %}</td>
+                        <td class="text-right whitespace-nowrap bg-violet-500/15">{% if r.marge is not none %}<span class="badge badge-sm border-transparent {{ 'bg-violet-600' if r.marge >= 0 else 'bg-red-600' }} text-white font-semibold tabular-nums text-sm shadow-sm">{{ ('%.2f'|format(r.marge * 100))|replace('.', ',') }} %</span>{% else %}—{% endif %}</td>
                     </tr>
                     {% endfor %}
                 </tbody>

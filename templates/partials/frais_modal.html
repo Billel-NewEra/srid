@@ -1,71 +1,114 @@
 {% if can_write %}
 <!-- ═══════ MODAL CALCUL FRAIS / PRIX DE REVIENT ═══════ -->
+<style>
+#modal-frais-edit .frais-tab {
+    border-bottom: 3px solid transparent;
+    color: hsl(var(--bc) / 0.55);
+    font-weight: 500;
+    transition: color .15s ease, border-color .15s ease, background-color .15s ease;
+}
+#modal-frais-edit .frais-tab:hover { color: hsl(var(--bc) / 0.85); }
+#modal-frais-edit .frais-tab:focus,
+#modal-frais-edit .frais-tab:focus-visible {
+    outline: none;
+    box-shadow: none;
+}
+#modal-frais-edit .frais-tab.tab-active {
+    border-bottom-color: #d97706;
+    background-color: rgba(217, 119, 6, 0.12);
+    color: #b45309;
+    font-weight: 700;
+    border-top-left-radius: .5rem;
+    border-top-right-radius: .5rem;
+}
+</style>
 <dialog id="modal-frais-edit" class="modal">
-    <div class="modal-box max-w-7xl">
-        <h3 class="font-bold text-lg">Prix de revient du bon <span id="frais-modal-numero" class="text-primary"></span></h3>
-        <p class="text-xs opacity-60 mb-3">Toutes les valeurs et pourcentages sont modifiables. Le calcul se met à jour en direct.</p>
+    <div class="modal-box max-w-7xl w-full h-[85vh] flex flex-col">
+        <h3 class="font-bold text-lg flex-none">Prix de revient/vente du bon <span id="frais-modal-numero" class="text-primary"></span></h3>
+        <p class="text-xs opacity-60 mb-3 flex-none">Toutes les valeurs et pourcentages sont modifiables. Le calcul se met à jour en direct.</p>
 
-        <div id="frais-cours-warning" class="alert alert-warning py-2 text-sm mb-3 hidden">
+        <div id="frais-cours-warning" class="alert alert-warning py-2 text-sm mb-3 hidden flex-none">
             <i class="fas fa-triangle-exclamation"></i>
             <span>Aucun <strong>cours</strong> n'est renseigné pour ce bon. Renseignez-le dans « Gestion des commandes » pour obtenir le prix de revient.</span>
         </div>
 
-        <form id="form-frais-edit" method="POST" action="">
+        <form id="form-frais-edit" method="POST" action="" class="flex flex-col flex-1 min-h-0">
             <input type="hidden" name="pr_config" id="frais-pr-config">
 
-            <div class="divider text-xs my-2 font-semibold">Produits du bon (prix &amp; quantité non modifiables)</div>
-            <div class="overflow-x-auto">
-                <table class="table table-xs">
-                    <thead id="frais-in-head"></thead>
-                    <tbody id="frais-in-body"></tbody>
-                </table>
+            <div role="tablist" class="tabs tabs-bordered justify-start mb-3 flex-none">
+                <button type="button" role="tab" class="tab frais-tab tab-active" data-frais-tab="0" onclick="_setFraisTab(0)">Prix de revient</button>
+                <button type="button" role="tab" class="tab frais-tab" data-frais-tab="1" onclick="_setFraisTab(1)">Prix de vente</button>
             </div>
 
-            <div class="divider text-xs my-2 font-semibold text-info">Taxes douanières</div>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                <label class="form-control"><span class="label-text text-xs">Droits de douane (D.D.)</span>
-                    <select id="pg_douane" class="select select-bordered select-xs" oninput="recomputePR()">
-                        <option value="0">TAUX 1 — 0 %</option>
-                        <option value="15">TAUX 2 — 15 %</option>
-                        <option value="30">TAUX 3 — 30 %</option>
-                    </select></label>
-                <label class="form-control"><span class="label-text text-xs">TCS (%)</span>
-                    <input type="number" step="0.01" id="pg_tcs" class="input input-bordered input-xs" oninput="recomputePR()"></label>
-                <label class="form-control"><span class="label-text text-xs">Précompte IBS (%)</span>
-                    <input type="number" step="0.01" id="pg_precompte" class="input input-bordered input-xs" oninput="recomputePR()"></label>
-                <label class="form-control"><span class="label-text text-xs">RPS</span>
-                    <input type="text" inputmode="decimal" id="pc_rps" class="input input-bordered input-xs text-right" oninput="_fmtAmountInput(this); recomputePR()"></label>
+            <div id="frais-scroll" class="flex-1 overflow-y-auto min-h-0 pr-1">
+                <div data-frais-panel="0">
+
+                    <div class="divider text-xs my-2 font-semibold">Produits du bon (prix &amp; quantité non modifiables)</div>
+                    <div class="overflow-x-auto">
+                        <table class="table table-xs">
+                            <thead id="frais-in-head"></thead>
+                            <tbody id="frais-in-body"></tbody>
+                        </table>
+                    </div>
+
+                    <div class="divider text-xs my-2 font-semibold text-info">Taxes douanières</div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <label class="form-control"><span class="label-text text-xs">Droits de douane (D.D.)</span>
+                            <select id="pg_douane" class="select select-bordered select-xs" oninput="recomputePR()">
+                                <option value="0">TAUX 1 — 0 %</option>
+                                <option value="15">TAUX 2 — 15 %</option>
+                                <option value="30">TAUX 3 — 30 %</option>
+                            </select></label>
+                        <label class="form-control"><span class="label-text text-xs">TCS (%)</span>
+                            <input type="number" step="0.01" id="pg_tcs" class="input input-bordered input-xs" oninput="recomputePR()"></label>
+                        <label class="form-control"><span class="label-text text-xs">Précompte IBS (%)</span>
+                            <input type="number" step="0.01" id="pg_precompte" class="input input-bordered input-xs" oninput="recomputePR()"></label>
+                        <label class="form-control"><span class="label-text text-xs">RPS</span>
+                            <input type="text" inputmode="decimal" id="pc_rps" class="input input-bordered input-xs text-right" oninput="_fmtAmountInput(this); recomputePR()"></label>
+                    </div>
+
+                    <div class="divider text-xs my-2 font-semibold text-warning">Frais transitaire</div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
+                        <label class="form-control"><span class="label-text text-xs">Fret (<span id="fret-devise">€</span>)</span>
+                            <input type="text" inputmode="decimal" id="pc_fret" class="input input-bordered input-xs text-right" oninput="_fmtAmountInput(this); recomputePR()"></label>
+                        <label class="form-control"><span class="label-text text-xs">Taxe domiciliation (%)</span>
+                            <input type="number" step="0.001" id="pg_taxedom" class="input input-bordered input-xs" oninput="recomputePR()"></label>
+                        <label class="form-control"><span class="label-text text-xs">Frais transfert (%)</span>
+                            <input type="number" step="0.001" id="pg_transfert" class="input input-bordered input-xs" oninput="recomputePR()"></label>
+                        <label class="form-control"><span class="label-text text-xs">Échange</span>
+                            <input type="text" inputmode="decimal" id="pc_echange" class="input input-bordered input-xs text-right" oninput="_fmtAmountInput(this); recomputePR()"></label>
+                        <label class="form-control"><span class="label-text text-xs">Honoraires transitaire</span>
+                            <input type="text" inputmode="decimal" id="pc_honoraires" class="input input-bordered input-xs text-right" oninput="_fmtAmountInput(this); recomputePR()"></label>
+                        <label class="form-control"><span class="label-text text-xs">Magasinage</span>
+                            <input type="text" inputmode="decimal" id="pc_magasinage" class="input input-bordered input-xs text-right" oninput="_fmtAmountInput(this); recomputePR()"></label>
+                        <label class="form-control"><span class="label-text text-xs">Surestaries</span>
+                            <input type="text" inputmode="decimal" id="pc_surestaries" class="input input-bordered input-xs text-right" oninput="_fmtAmountInput(this); recomputePR()"></label>
+                        <label class="form-control"><span class="label-text text-xs">Remarque</span>
+                            <input type="text" name="remarque" id="frais-remarque" class="input input-bordered input-xs"></label>
+                    </div>
+
+                    <div class="divider text-xs my-2 font-semibold">Détail du prix de revient</div>
+                    <div class="overflow-x-auto">
+                        <table class="table table-xs">
+                            <thead id="frais-out-head"></thead>
+                            <tbody id="frais-out-body"></tbody>
+                        </table>
+                    </div>
+
+                </div>
+
+                <div data-frais-panel="1" class="hidden">
+                    <div class="divider text-xs my-2 font-semibold">Prix de vente par produit</div>
+                    <div class="overflow-x-auto">
+                        <table class="table table-xs">
+                            <thead id="vente-head"></thead>
+                            <tbody id="vente-body"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
 
-            <div class="divider text-xs my-2 font-semibold text-warning">Frais transitaire</div>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                <label class="form-control"><span class="label-text text-xs">Fret (<span id="fret-devise">€</span>)</span>
-                    <input type="text" inputmode="decimal" id="pc_fret" class="input input-bordered input-xs text-right" oninput="_fmtAmountInput(this); recomputePR()"></label>
-                <label class="form-control"><span class="label-text text-xs">Taxe domiciliation (%)</span>
-                    <input type="number" step="0.001" id="pg_taxedom" class="input input-bordered input-xs" oninput="recomputePR()"></label>
-                <label class="form-control"><span class="label-text text-xs">Frais transfert (%)</span>
-                    <input type="number" step="0.001" id="pg_transfert" class="input input-bordered input-xs" oninput="recomputePR()"></label>
-                <label class="form-control"><span class="label-text text-xs">Échange</span>
-                    <input type="text" inputmode="decimal" id="pc_echange" class="input input-bordered input-xs text-right" oninput="_fmtAmountInput(this); recomputePR()"></label>
-                <label class="form-control"><span class="label-text text-xs">Honoraires transitaire</span>
-                    <input type="text" inputmode="decimal" id="pc_honoraires" class="input input-bordered input-xs text-right" oninput="_fmtAmountInput(this); recomputePR()"></label>
-                <label class="form-control"><span class="label-text text-xs">Magasinage</span>
-                    <input type="text" inputmode="decimal" id="pc_magasinage" class="input input-bordered input-xs text-right" oninput="_fmtAmountInput(this); recomputePR()"></label>
-                <label class="form-control"><span class="label-text text-xs">Surestaries</span>
-                    <input type="text" inputmode="decimal" id="pc_surestaries" class="input input-bordered input-xs text-right" oninput="_fmtAmountInput(this); recomputePR()"></label>
-                <label class="form-control"><span class="label-text text-xs">Remarque</span>
-                    <input type="text" name="remarque" id="frais-remarque" class="input input-bordered input-xs"></label>
-            </div>
-
-            <div class="divider text-xs my-2 font-semibold">Détail du prix de revient</div>
-            <div class="overflow-x-auto">
-                <table class="table table-xs">
-                    <thead id="frais-out-head"></thead>
-                    <tbody id="frais-out-body"></tbody>
-                </table>
-            </div>
-
-            <div class="modal-action">
+            <div class="modal-action flex-none">
                 <button type="button" class="btn btn-ghost btn-sm" onclick="_closeFraisReturn()">Annuler</button>
                 <button type="submit" class="btn btn-primary btn-sm">Enregistrer</button>
             </div>
@@ -100,7 +143,9 @@ function _setMoney(id, val) {
 // Groupe les milliers en direct pendant la saisie (épargne la position du curseur)
 function _fmtAmountInput(el) {
     var caret = el.selectionStart || 0;
-    var digitsBefore = el.value.slice(0, caret).replace(/[^0-9]/g, '').length;
+    // Caractères « significatifs » avant le curseur = chiffres + séparateur décimal.
+    // (on inclut la virgule pour que le curseur la suive dès qu'on la tape)
+    var sigBefore = el.value.slice(0, caret).replace(/[^0-9.,]/g, '').length;
     var cleaned = el.value.replace(/[^0-9.,]/g, '').replace(/\./g, ',');
     var parts = cleaned.split(',');
     var intPart = (parts[0] || '').replace(/^0+(?=\d)/, '');
@@ -110,8 +155,9 @@ function _fmtAmountInput(el) {
     var out = grouped + (hasSep ? ',' + decPart : '');
     el.value = out;
     var pos = 0, seen = 0;
-    while (pos < out.length && seen < digitsBefore) {
-        if (out.charCodeAt(pos) >= 48 && out.charCodeAt(pos) <= 57) seen++;
+    while (pos < out.length && seen < sigBefore) {
+        var ch = out.charCodeAt(pos);
+        if ((ch >= 48 && ch <= 57) || ch === 44) seen++;  // chiffre ou virgule
         pos++;
     }
     try { el.setSelectionRange(pos, pos); } catch (e) {}
@@ -135,6 +181,20 @@ function _closeFraisReturn() {
     if (typeof reopenDetailLog === 'function') reopenDetailLog();
 }
 
+// Active un onglet du calculateur (0 = Prix de revient, 1 = Prix de vente).
+function _setFraisTab(idx) {
+    var modal = document.getElementById('modal-frais-edit');
+    if (!modal) return;
+    modal.querySelectorAll('[data-frais-tab]').forEach(function (b) {
+        b.classList.toggle('tab-active', parseInt(b.getAttribute('data-frais-tab'), 10) === idx);
+    });
+    modal.querySelectorAll('[data-frais-panel]').forEach(function (p) {
+        p.classList.toggle('hidden', parseInt(p.getAttribute('data-frais-panel'), 10) !== idx);
+    });
+    var scroll = document.getElementById('frais-scroll');
+    if (scroll) scroll.scrollTop = 0;
+}
+
 // Ouvre le calculateur pour un bon donné : récupère la config à la volée puis affiche le modal.
 function openFraisForBon(bonId) {
     if (!bonId) return;
@@ -148,8 +208,8 @@ function openFraisForBon(bonId) {
             _populateFraisModal(cfg, cfg.frais_id);
             document.getElementById('modal-frais-edit').showModal();
             // Toujours réafficher le contenu depuis le haut à l'ouverture.
-            var box = document.querySelector('#modal-frais-edit .modal-box');
-            if (box) box.scrollTop = 0;
+            var scroll = document.getElementById('frais-scroll');
+            if (scroll) scroll.scrollTop = 0;
         })
         .catch(function (err) {
             console.error('Frais config fetch error:', err);
@@ -180,7 +240,9 @@ function _populateFraisModal(cfg, fraisId) {
     _setv('frais-remarque', _fraisCurrent.remarque || '');
 
     buildFraisGrid();
+    buildVenteGrid();
     recomputePR();
+    _setFraisTab(0);  // toujours revenir à l'onglet Prix de revient à l'ouverture
 }
 
 function buildFraisGrid() {
@@ -209,6 +271,70 @@ function buildFraisGrid() {
         body = '<tr><td colspan="4" class="text-center opacity-50 py-3">Aucun produit sur ce bon</td></tr>';
     }
     document.getElementById('frais-in-body').innerHTML = body;
+}
+
+// Résultats du dernier calcul PR (par produit), pour l'onglet Prix de vente.
+var _prLastRes = [];
+
+// Construit la table de l'onglet « Prix de vente » (une ligne par produit).
+function buildVenteGrid() {
+    var prods = (_fraisCurrent && _fraisCurrent.produits) ? _fraisCurrent.produits : [];
+    var head = '<tr>' +
+        '<th class="text-left">Produit</th>' +
+        '<th class="text-right">PR unitaire HT (DA)</th>' +
+        '<th class="text-right">PV TTC unitaire (DA)</th>' +
+        '<th class="text-right">PV HT unitaire (DA)</th>' +
+        '<th class="text-right">Marge</th>' +
+        '</tr>';
+    document.getElementById('vente-head').innerHTML = head;
+
+    var body = '';
+    prods.forEach(function (p, i) {
+        var pv = (p.prix_vente_ttc === null || p.prix_vente_ttc === undefined || p.prix_vente_ttc === '')
+            ? '' : Number(p.prix_vente_ttc).toLocaleString('fr-FR', {maximumFractionDigits: 2});
+        body += '<tr>' +
+            '<td class="font-medium">' + (p.nom || '-') + '</td>' +
+            '<td class="text-right opacity-70 tabular-nums" id="pv_pr_' + i + '">—</td>' +
+            '<td class="text-right"><input type="text" inputmode="decimal" id="pv_ttc_' + i +
+            '" value="' + pv + '" class="input input-bordered input-xs w-28 text-right" ' +
+            'oninput="_fmtAmountInput(this); recomputeVente()"></td>' +
+            '<td class="text-right tabular-nums" id="pv_ht_' + i + '">—</td>' +
+            '<td class="text-right font-semibold tabular-nums" id="pv_marge_' + i + '">—</td>' +
+            '</tr>';
+    });
+    if (!prods.length) {
+        body = '<tr><td colspan="5" class="text-center opacity-50 py-3">Aucun produit sur ce bon</td></tr>';
+    }
+    document.getElementById('vente-body').innerHTML = body;
+}
+
+// Recalcule le PV HT (= PV TTC / (1 + TVA)) et la marge (= PV HT / PR unit HT − 1).
+function recomputeVente() {
+    var prods = (_fraisCurrent && _fraisCurrent.produits) ? _fraisCurrent.produits : [];
+    prods.forEach(function (p, i) {
+        var prCell = document.getElementById('pv_pr_' + i);
+        var htCell = document.getElementById('pv_ht_' + i);
+        var mgCell = document.getElementById('pv_marge_' + i);
+        if (!htCell || !mgCell) return;
+
+        var prUnitHt = (_prLastRes[i] && _prLastRes[i].pr_unit_ht != null) ? _prLastRes[i].pr_unit_ht : null;
+        if (prCell) prCell.textContent = (prUnitHt != null) ? _fmtDA(prUnitHt) : '—';
+
+        var ttcEl = document.getElementById('pv_ttc_' + i);
+        var hasTtc = ttcEl && ('' + ttcEl.value).trim() !== '';
+        if (!hasTtc) { htCell.textContent = '—'; mgCell.textContent = '—'; return; }
+
+        var ttc = _numv('pv_ttc_' + i);
+        var tva = _numv('pa_tva_' + i) / 100;
+        var ht = ttc / (1 + tva);
+        htCell.textContent = _fmtDA(ht);
+
+        if (prUnitHt) {
+            mgCell.textContent = _fmtPct((ht / prUnitHt) - 1);
+        } else {
+            mgCell.textContent = '—';
+        }
+    });
 }
 
 var _fraisOutRows = [
@@ -255,12 +381,16 @@ function recomputePR() {
     if (!prods.length) {
         warn.classList.add('hidden');
         outBody.innerHTML = '<tr><td class="text-center opacity-50 py-3">Aucun produit sur ce bon</td></tr>';
+        _prLastRes = [];
+        recomputeVente();
         return;
     }
     var cours = _fraisCurrent.cours;
     if (!cours) {
         warn.classList.remove('hidden');
         outBody.innerHTML = '<tr><td class="text-center opacity-50 py-3">Cours manquant — calcul indisponible</td></tr>';
+        _prLastRes = [];
+        recomputeVente();
         return;
     }
     warn.classList.add('hidden');
@@ -328,6 +458,10 @@ function recomputePR() {
         body += '</tr>';
     });
     outBody.innerHTML = body;
+
+    // Met à jour l'onglet « Prix de vente » avec les PR unitaires HT recalculés.
+    _prLastRes = res;
+    recomputeVente();
 }
 
 document.addEventListener('submit', function (e) {
@@ -349,7 +483,9 @@ document.addEventListener('submit', function (e) {
     config.charges.magasinage = _numv('pc_magasinage');
     config.charges.surestaries = _numv('pc_surestaries');
     prods.forEach(function (p, i) {
-        config.produits[p.id] = {tva: _numv('pa_tva_' + i) / 100};
+        var pvEl = document.getElementById('pv_ttc_' + i);
+        var pvVal = (pvEl && ('' + pvEl.value).trim() !== '') ? _numv('pv_ttc_' + i) : null;
+        config.produits[p.id] = {tva: _numv('pa_tva_' + i) / 100, prix_vente_ttc: pvVal};
     });
     document.getElementById('frais-pr-config').value = JSON.stringify(config);
 
