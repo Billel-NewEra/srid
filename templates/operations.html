@@ -212,14 +212,20 @@
         border-radius: .75rem; box-shadow: var(--ui-shadow); color: var(--ui-text);
     }
     .periode-panel.hidden { display: none; }
-    #periode-calendar .flatpickr-calendar.inline { box-shadow: none; margin: 0 auto; width: 100%; background: transparent; }
-    #periode-calendar .flatpickr-calendar.inline .flatpickr-days,
-    #periode-calendar .flatpickr-calendar.inline .dayContainer { width: 100%; min-width: 100%; max-width: 100%; }
-    #periode-calendar .flatpickr-calendar.inline .flatpickr-day { max-width: none; height: 30px; line-height: 30px; }
-    #periode-calendar .flatpickr-day.selected,
-    #periode-calendar .flatpickr-day.startRange,
-    #periode-calendar .flatpickr-day.endRange { background: #0891b2; border-color: #0891b2; }
-    #periode-calendar .flatpickr-day.inRange { background: rgba(8,145,178,0.14); border-color: transparent; box-shadow: -5px 0 0 rgba(8,145,178,0.14), 5px 0 0 rgba(8,145,178,0.14); }
+    #periode-panel .flatpickr-calendar.inline { box-shadow: none; margin: 0 auto; width: 100%; background: transparent; }
+    #periode-panel .flatpickr-calendar.inline .flatpickr-days,
+    #periode-panel .flatpickr-calendar.inline .dayContainer { width: 100%; min-width: 100%; max-width: 100%; }
+    #periode-panel .flatpickr-calendar.inline .flatpickr-day { max-width: none; height: 26px; line-height: 26px; }
+    /* En-tête mois + jours de la semaine compacts, pour tenir sans scroll */
+    #periode-panel .flatpickr-months .flatpickr-month { height: 30px; }
+    #periode-panel .flatpickr-current-month { padding-top: 2px; height: 28px; }
+    #periode-panel .flatpickr-current-month input.cur-year,
+    #periode-panel .flatpickr-current-month .flatpickr-monthDropdown-months { font-size: .92rem; }
+    #periode-panel span.flatpickr-weekday { height: 22px; line-height: 22px; }
+    #periode-panel .flatpickr-day.selected,
+    #periode-panel .flatpickr-day.startRange,
+    #periode-panel .flatpickr-day.endRange { background: #0891b2; border-color: #0891b2; }
+    #periode-panel .flatpickr-day.inRange { background: rgba(8,145,178,0.14); border-color: transparent; box-shadow: -5px 0 0 rgba(8,145,178,0.14), 5px 0 0 rgba(8,145,178,0.14); }
 </style>
 <style>
     @keyframes opFlash {
