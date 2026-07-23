@@ -19,6 +19,7 @@
 
     {# Notifications déplacées dans le centre d'alertes global (cloche → drawer). #}
 
+    <div id="ops-filters">
     {# Champ caché : filtre échéance issu du centre d'alertes. Persisté dans le DOM
        pour être transporté par la pagination HTMX (hx-include) page après page. #}
     <input type="hidden" name="echeance" value="{{ echeance_f if echeance_f is defined else '' }}">
@@ -52,7 +53,7 @@
                                hx-get="{{ url_for('api_operations') }}"
                                hx-trigger="keyup changed delay:300ms"
                                hx-target="#results-table"
-                               hx-include="[name='type_operation'],[name='societe'],[name='remettant'],[name='statut'],[name='echeance'],[name='per_page']">
+                               hx-include="#ops-filters,[name='per_page']">
                     </div>
                 </div>
 
@@ -62,7 +63,7 @@
                             hx-get="{{ url_for('api_operations') }}"
                             hx-trigger="change"
                             hx-target="#results-table"
-                            hx-include="[name='search'],[name='societe'],[name='remettant'],[name='statut'],[name='echeance'],[name='per_page']"
+                            hx-include="#ops-filters,[name='per_page']"
                             data-type-operation-filter>
                         {% set tof = type_operation_f if type_operation_f is defined else '' %}
                         <option value="">Tous les types</option>
@@ -76,7 +77,7 @@
                             hx-get="{{ url_for('api_operations') }}"
                             hx-trigger="change"
                             hx-target="#results-table"
-                            hx-include="[name='search'],[name='type_operation'],[name='remettant'],[name='statut'],[name='echeance'],[name='per_page']">
+                            hx-include="#ops-filters,[name='per_page']">
                         {% set socf = societe_f if societe_f is defined else '' %}
                         <option value="">Toutes les sociétés</option>
                         <option value="SRID" {% if socf == 'SRID' %}selected{% endif %}>SRID</option>
@@ -103,7 +104,7 @@
                             hx-get="{{ url_for('api_operations') }}"
                             hx-trigger="change"
                             hx-target="#results-table"
-                            hx-include="[name='search'],[name='type_operation'],[name='societe'],[name='remettant'],[name='echeance'],[name='per_page']">
+                            hx-include="#ops-filters,[name='per_page']">
                         {% set stf = statut_f if statut_f is defined else '' %}
                         <option value="">Tous les statuts</option>
                         <option value="Encaissé" {% if stf == 'Encaissé' %}selected{% endif %}>Encaissé</option>
@@ -116,8 +117,68 @@
                         <option value="Retour" {% if stf == 'Retour' %}selected{% endif %}>Retour</option>
                     </select>
                 </div>
+
+                <!-- Filtre Période : sélecteur unifié (année absolue / date absolue / plage / raccourcis) -->
+                <input type="hidden" name="date_filter" id="ops-date-filter" value="{{ date_filter_f if date_filter_f is defined else 'date_operation' }}">
+                <input type="hidden" name="date_debut" id="ops-date-debut" value="{{ date_debut_f if date_debut_f is defined else '' }}">
+                <input type="hidden" name="date_fin" id="ops-date-fin" value="{{ date_fin_f if date_fin_f is defined else '' }}">
+                <div class="flex flex-wrap items-end gap-3">
+                <!-- Champ 1 : Type de date -->
+                <div>
+                    <label class="form-control w-full sm:w-56">
+                        <span class="label-text text-xs opacity-70" id="periode-col-label">Type de date</span>
+                        <select id="periode-col" class="select select-bordered select-sm">
+                            <option value="date_operation">Dép/vir</option>
+                            <option value="date_reception">Réception</option>
+                            <option value="date_echeance">Échéance</option>
+                        </select>
+                    </label>
+                </div>
+                <!-- Champ 2 : Période -->
+                <div>
+                    <label class="form-control w-full sm:w-64">
+                        <span class="label-text text-xs opacity-70">Période</span>
+                        <div class="relative" id="periode-dropdown">
+                            <button type="button" id="periode-btn"
+                                 class="btn btn-sm w-full justify-between font-normal bg-base-100 hover:bg-base-200">
+                                <span class="flex items-center gap-2 min-w-0 flex-1">
+                                    <i class="fas fa-calendar-days text-cyan-600 flex-none"></i>
+                                    <span id="periode-label" class="truncate">Toutes les dates</span>
+                                </span>
+                                <i class="fas fa-chevron-down text-xs opacity-50 flex-none"></i>
+                            </button>
+                            <div id="periode-panel" class="periode-panel periode-pop hidden p-0 rounded-xl">
+                                <!-- Raccourcis -->
+                                <div class="p-2.5 border-b border-base-200">
+                                    <div class="flex flex-wrap gap-1">
+                                        <button type="button" class="btn btn-xs btn-ghost" data-preset="all">Tout</button>
+                                        <button type="button" class="btn btn-xs btn-ghost" data-preset="thisMonth">Ce mois</button>
+                                        <button type="button" class="btn btn-xs btn-ghost" data-preset="thisYear">Cette année</button>
+                                        {% for y in (annee_options if annee_options is defined else []) %}
+                                        <button type="button" class="btn btn-xs btn-outline" data-year="{{ y }}">{{ y }}</button>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                                <!-- Calendrier -->
+                                <div class="px-2.5 pt-2.5">
+                                    <div id="periode-calendar"></div>
+                                </div>
+                                <!-- Pied -->
+                                <div class="flex items-center justify-between gap-2 border-t border-base-200 p-2.5 mt-1">
+                                    <div class="text-[11px] opacity-70 truncate" id="periode-preview">Aucune date</div>
+                                    <div class="flex gap-1.5 flex-none">
+                                        <button type="button" class="btn btn-ghost btn-xs" id="periode-clear">Effacer</button>
+                                        <button type="button" class="btn btn-xs bg-cyan-600 hover:bg-cyan-700 text-white border-0" id="periode-apply">Appliquer</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+                </div>
             </div>
         </div>
+    </div>
     </div>
 
     <!-- Tableau des résultats -->
@@ -139,6 +200,27 @@
 {% endblock %}
 
 {% block scripts %}
+<link rel="stylesheet" href="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.css') }}">
+<script src="{{ url_for('static', filename='vendor/flatpickr/flatpickr.min.js') }}"></script>
+<script src="{{ url_for('static', filename='vendor/flatpickr/fr.js') }}"></script>
+<style>
+    /* Popover Période : largeur fixe + calendrier compact 1 mois */
+    #periode-dropdown .periode-pop { width: 300px; }
+    .periode-panel {
+        position: absolute; left: 0; top: 100%; margin-top: .5rem; z-index: 50;
+        background: var(--ui-surface); border: 1px solid var(--ui-border);
+        border-radius: .75rem; box-shadow: var(--ui-shadow); color: var(--ui-text);
+    }
+    .periode-panel.hidden { display: none; }
+    #periode-calendar .flatpickr-calendar.inline { box-shadow: none; margin: 0 auto; width: 100%; background: transparent; }
+    #periode-calendar .flatpickr-calendar.inline .flatpickr-days,
+    #periode-calendar .flatpickr-calendar.inline .dayContainer { width: 100%; min-width: 100%; max-width: 100%; }
+    #periode-calendar .flatpickr-calendar.inline .flatpickr-day { max-width: none; height: 30px; line-height: 30px; }
+    #periode-calendar .flatpickr-day.selected,
+    #periode-calendar .flatpickr-day.startRange,
+    #periode-calendar .flatpickr-day.endRange { background: #0891b2; border-color: #0891b2; }
+    #periode-calendar .flatpickr-day.inRange { background: rgba(8,145,178,0.14); border-color: transparent; box-shadow: -5px 0 0 rgba(8,145,178,0.14), 5px 0 0 rgba(8,145,178,0.14); }
+</style>
 <style>
     @keyframes opFlash {
         0%   { box-shadow: inset 0 0 0 9999px color-mix(in srgb, var(--ui-primary) 32%, transparent); }
@@ -242,12 +324,20 @@
         var societe = document.querySelector('[name="societe"]');
         var remettant = document.querySelector('[name="remettant"]');
         var statut = document.querySelector('[name="statut"]');
+        var echeance = document.querySelector('[name="echeance"]');
+        var dateFilter = document.querySelector('[name="date_filter"]');
+        var dateDebut = document.querySelector('[name="date_debut"]');
+        var dateFin = document.querySelector('[name="date_fin"]');
         var perPage = document.querySelector('[name="per_page"]');
         if (search && search.value) params.set('search', search.value);
         if (type_op && type_op.value) params.set('type_operation', type_op.value);
         if (societe && societe.value) params.set('societe', societe.value);
         if (remettant && remettant.value) params.set('remettant', remettant.value);
         if (statut && statut.value) params.set('statut', statut.value);
+        if (echeance && echeance.value) params.set('echeance', echeance.value);
+        if (dateFilter && dateFilter.value) params.set('date_filter', dateFilter.value);
+        if (dateDebut && dateDebut.value) params.set('date_debut', dateDebut.value);
+        if (dateFin && dateFin.value) params.set('date_fin', dateFin.value);
         if (perPage && perPage.value) params.set('per_page', perPage.value);
         params.set('sort', _opsSort);
         params.set('dir', _opsDir);
@@ -264,6 +354,10 @@
         '[name="societe"]',
         '[name="remettant"]',
         '[name="statut"]',
+        '[name="echeance"]',
+        '[name="date_filter"]',
+        '[name="date_debut"]',
+        '[name="date_fin"]',
         '[name="per_page"]'
     ];
 
@@ -363,6 +457,174 @@
         history.replaceState(null, '', window.location.pathname + (cleanSearch || ''));
         // Charger le détail dans le modal et l'ouvrir
         htmx.ajax('GET', {{ request.script_root|tojson }} + '/api/operations/' + openId, { target: '#modal-content', swap: 'innerHTML' });
+    })();
+
+    // ── Sélecteur de période unifié (année / date / plage / raccourcis) ────────
+    (function() {
+        var calEl = document.getElementById('periode-calendar');
+        if (!calEl || typeof flatpickr === 'undefined') return;
+
+        var dropdown = document.getElementById('periode-dropdown');
+        var btn      = document.getElementById('periode-btn');
+        var panel    = document.getElementById('periode-panel');
+        var btnLabel = document.getElementById('periode-label');
+        var colSel   = document.getElementById('periode-col');
+        var colLabel = document.getElementById('periode-col-label');
+        var preview  = document.getElementById('periode-preview');
+        var hidCol   = document.getElementById('ops-date-filter');
+        var hidDeb   = document.getElementById('ops-date-debut');
+        var hidFin   = document.getElementById('ops-date-fin');
+
+        var pad = function(n) { return String(n).padStart(2, '0'); };
+        var iso = function(d) { return d ? d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()) : ''; };
+        var fmt = function(d) { return d ? pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + d.getFullYear() : ''; };
+        var fmtS = function(d) { return d ? pad(d.getDate()) + '/' + pad(d.getMonth() + 1) + '/' + pad(d.getFullYear() % 100) : ''; };
+
+        var selStart = null, selEnd = null;
+
+        // ── Ouverture / fermeture (toggle manuel) ──────────────────────────────
+        function openPanel()  { panel.classList.remove('hidden'); }
+        function closePanel() { panel.classList.add('hidden'); }
+        function isOpen()     { return !panel.classList.contains('hidden'); }
+
+        // Navigation mois/année de Flatpickr : le redraw détache l'élément flèche
+        // cliqué, et le navigateur émet alors un « click » synthétique (detail:0)
+        // redirigé vers le bouton toggle, ce qui refermait le popover à tort.
+        // On arme un drapeau tant qu'on interagit dans le calendrier pour ignorer
+        // ce clic parasite. Volontairement SANS setTimeout : selon le navigateur,
+        // le minuteur pouvait s'exécuter entre le mousedown et le click parasite
+        // et effacer le drapeau trop tôt. On le désarme plutôt au mousedown réel
+        // sur le bouton (précède tout vrai toggle).
+        var calInteracting = false;
+
+        btn.addEventListener('mousedown', function() { calInteracting = false; });
+        btn.addEventListener('click', function(e) {
+            if (calInteracting) { calInteracting = false; return; }   // clic synthétique du redraw
+            e.stopPropagation();
+            if (isOpen()) closePanel(); else openPanel();
+        });
+        // Empêcher la fermeture quand on interagit dans le panneau + armer le
+        // drapeau si le clic vient du calendrier (flèches, sélecteurs mois/année).
+        panel.addEventListener('mousedown', function(e) {
+            e.stopPropagation();
+            calInteracting = !!(e.target.closest && e.target.closest('.flatpickr-calendar'));
+        });
+        // Clic ailleurs → fermeture. On écoute « mousedown » (et non « click ») :
+        // la navigation mois de Flatpickr redessine le calendrier et détache la
+        // cible avant le « click », ce qui fermait le popover à tort.
+        // On ignore aussi tout clic dans un .flatpickr-calendar, car Flatpickr
+        // peut rendre le calendrier hors du dropdown (portail).
+        document.addEventListener('mousedown', function(e) {
+            if (!isOpen()) return;
+            if (dropdown.contains(e.target)) return;
+            if (e.target.closest && e.target.closest('.flatpickr-calendar')) return;
+            closePanel();
+        });
+        // Échap → fermeture.
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && isOpen()) closePanel();
+        });
+
+        // Pré-remplir « Appliquer sur » depuis le champ caché.
+        if (hidCol && hidCol.value) colSel.value = hidCol.value;
+
+        var fp = flatpickr(calEl, {
+            inline: true, mode: 'range', locale: 'fr', showMonths: 1,
+            onChange: function(dates) {
+                selStart = dates[0] || null;
+                selEnd = dates[1] || dates[0] || null;
+                updatePreview();
+            }
+        });
+
+        function updatePreview() {
+            if (selStart && selEnd) {
+                preview.textContent = (iso(selStart) === iso(selEnd))
+                    ? ('Le ' + fmt(selStart))
+                    : ('Du ' + fmt(selStart) + ' au ' + fmt(selEnd));
+            } else {
+                preview.textContent = 'Aucune date';
+            }
+        }
+
+        function computeLabel() {
+            if (!selStart) return 'Toutes les dates';
+            var period;
+            if (iso(selStart) === iso(selEnd)) {
+                period = fmtS(selStart);
+            } else if (selStart.getMonth() === 0 && selStart.getDate() === 1 &&
+                selEnd.getMonth() === 11 && selEnd.getDate() === 31 &&
+                selStart.getFullYear() === selEnd.getFullYear()) {
+                period = String(selStart.getFullYear());
+            } else {
+                period = fmtS(selStart) + '–' + fmtS(selEnd);
+            }
+            return period;
+        }
+
+        // Changer le type de date rafraîchit immédiatement (champ indépendant).
+        colSel.addEventListener('change', function() {
+            hidCol.value = colSel.value;
+            // Sans période active (« Toutes les dates »), le type ne filtre rien : pas de rafraîchissement.
+            if (!selStart) return;
+            if (typeof refreshResultsTable === 'function') refreshResultsTable();
+            if (typeof updateExportLink === 'function') updateExportLink();
+        });
+
+        function setYear(y) {
+            selStart = new Date(y, 0, 1);
+            selEnd = new Date(y, 11, 31);
+            fp.setDate([selStart, selEnd], false);
+            updatePreview();
+        }
+
+        function setPreset(p) {
+            var now = new Date(), s = null, e = null;
+            if (p === 'all') { selStart = selEnd = null; fp.clear(); updatePreview(); return; }
+            if (p === 'thisMonth') { s = new Date(now.getFullYear(), now.getMonth(), 1); e = new Date(now.getFullYear(), now.getMonth() + 1, 0); }
+            if (p === 'thisYear')  { s = new Date(now.getFullYear(), 0, 1); e = new Date(now.getFullYear(), 11, 31); }
+            selStart = s; selEnd = e;
+            fp.setDate([s, e], false);
+            updatePreview();
+        }
+
+        document.querySelectorAll('#periode-dropdown [data-preset]').forEach(function(b) {
+            b.addEventListener('click', function() { setPreset(b.dataset.preset); });
+        });
+        document.querySelectorAll('#periode-dropdown [data-year]').forEach(function(b) {
+            b.addEventListener('click', function() { setYear(parseInt(b.dataset.year, 10)); });
+        });
+
+        // « Effacer » = réinitialisation vers « Toutes les dates » (sans fermer le popover).
+        document.getElementById('periode-clear').addEventListener('click', function() {
+            selStart = selEnd = null;
+            fp.clear();
+            updatePreview();
+            btnLabel.textContent = 'Toutes les dates';
+            hidDeb.value = '';
+            hidFin.value = '';
+            if (typeof refreshResultsTable === 'function') refreshResultsTable();
+            if (typeof updateExportLink === 'function') updateExportLink();
+        });
+
+        document.getElementById('periode-apply').addEventListener('click', function() {
+            btnLabel.textContent = computeLabel();
+            hidCol.value = colSel.value;
+            hidDeb.value = selStart ? iso(selStart) : '';
+            hidFin.value = selEnd ? iso(selEnd) : '';
+            closePanel();
+            if (typeof refreshResultsTable === 'function') refreshResultsTable();
+            if (typeof updateExportLink === 'function') updateExportLink();
+        });
+
+        // Pré-remplissage initial (lien externe, pagination, etc.).
+        if (hidDeb.value && hidFin.value) {
+            selStart = fp.parseDate(hidDeb.value, 'Y-m-d');
+            selEnd = fp.parseDate(hidFin.value, 'Y-m-d');
+            fp.setDate([selStart, selEnd], false);
+            updatePreview();
+            btnLabel.textContent = computeLabel();
+        }
     })();
 </script>
 {% endblock %}

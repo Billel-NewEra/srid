@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Preview — Sélecteur de période unifié</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.22/dist/full.min.css" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+<script src="https://npmcdn.com/flatpickr/dist/l10n/fr.js"></script>
+<style>
+  body { background:#f1f5f9; }
+  .periode-pop { width: 300px; }
+  .preset-chip { transition: all .12s ease; }
+  .flatpickr-calendar.inline { box-shadow:none; margin:0 auto; width:100%; }
+  .flatpickr-calendar.inline .flatpickr-days,
+  .flatpickr-calendar.inline .dayContainer { width:100%; min-width:100%; max-width:100%; }
+  .flatpickr-calendar.inline .flatpickr-day { max-width:none; height:30px; line-height:30px; }
+  .seg-btn.seg-active { background:#0891b2; color:#fff; border-color:#0891b2; }
+</style>
+</head>
+<body class="p-8">
+
+<div class="max-w-5xl mx-auto">
+  <div class="mb-6">
+    <h1 class="text-2xl font-bold">Preview — Sélecteur de période unifié</h1>
+    <p class="text-sm opacity-70">Année absolue · Date absolue · Plage · Raccourcis — le tout dans un seul bouton/popover. Rien n'est branché sur le serveur ici : c'est une maquette interactive.</p>
+  </div>
+
+  <!-- Barre de filtres simulée -->
+  <div class="card bg-base-100 shadow mb-6">
+    <div class="card-body p-4">
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+        <label class="form-control">
+          <span class="label-text text-xs opacity-70">Type</span>
+          <select class="select select-bordered select-sm w-full">
+            <option>Tous les types</option><option>Chèque</option><option>Virement</option>
+          </select>
+        </label>
+        <label class="form-control">
+          <span class="label-text text-xs opacity-70">Société</span>
+          <select class="select select-bordered select-sm w-full">
+            <option>Toutes les sociétés</option><option>SRID</option><option>Genetics</option>
+          </select>
+        </label>
+        <label class="form-control">
+          <span class="label-text text-xs opacity-70">Statut</span>
+          <select class="select select-bordered select-sm w-full">
+            <option>Tous les statuts</option><option>Encaissé</option><option>Échéance</option>
+          </select>
+        </label>
+
+        <!-- ✨ LE composant unifié -->
+        <label class="form-control">
+          <span class="label-text text-xs opacity-70">Période</span>
+          <div class="dropdown dropdown-end w-full">
+            <div tabindex="0" role="button" id="periode-btn"
+                 class="btn btn-sm w-full justify-between font-normal border-base-300 bg-base-100 hover:bg-base-200">
+              <span class="flex items-center gap-2 truncate">
+                <i class="fas fa-calendar-days text-cyan-600"></i>
+                <span id="periode-label" class="truncate">Toutes les dates</span>
+              </span>
+              <i class="fas fa-chevron-down text-xs opacity-50"></i>
+            </div>
+            <div tabindex="0" class="dropdown-content periode-pop z-50 mt-2 p-0 rounded-xl border border-base-300 bg-base-100 shadow-2xl">
+              <!-- Raccourcis en puces compactes -->
+              <div class="p-2.5 border-b border-base-200">
+                <div class="flex flex-wrap gap-1">
+                  <button class="preset-chip btn btn-xs btn-ghost" data-preset="all">Tout</button>
+                  <button class="preset-chip btn btn-xs btn-ghost" data-preset="thisMonth">Ce mois</button>
+                  <button class="preset-chip btn btn-xs btn-ghost" data-preset="thisYear">Cette année</button>
+                  <button class="preset-chip btn btn-xs btn-outline" data-year="2026">2026</button>
+                  <button class="preset-chip btn btn-xs btn-outline" data-year="2025">2025</button>
+                  <button class="preset-chip btn btn-xs btn-outline" data-year="2024">2024</button>
+                </div>
+              </div>
+
+              <!-- Type de date : dans le popover -->
+              <div class="px-2.5 pt-2.5">
+                <span class="label-text text-[11px] opacity-60">Appliquer sur</span>
+                <select id="date-col-select" class="select select-bordered select-xs w-full mt-0.5">
+                  <option value="date_operation">Date dép/vir</option>
+                  <option value="date_reception">Date réception</option>
+                  <option value="date_echeance">Date échéance</option>
+                </select>
+              </div>
+
+              <!-- Calendrier compact 1 mois -->
+              <div class="px-2.5 pt-2">
+                <div id="calendar"></div>
+              </div>
+
+              <!-- Pied -->
+              <div class="flex items-center justify-between gap-2 border-t border-base-200 p-2.5 mt-1 bg-base-200/40 rounded-b-xl">
+                <div class="text-[11px] opacity-70 truncate" id="selection-preview">Aucune date</div>
+                <div class="flex gap-1.5 flex-none">
+                  <button class="btn btn-ghost btn-xs" id="btn-clear">Effacer</button>
+                  <button class="btn btn-xs bg-cyan-600 hover:bg-cyan-700 text-white border-0" id="btn-apply">Appliquer</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Zone de résultat simulée : montre ce qui serait envoyé au serveur -->
+  <div class="card bg-base-100 shadow">
+    <div class="card-body p-4">
+      <div class="text-sm font-bold mb-2">Ce qui serait envoyé au serveur (params HTMX) :</div>
+      <pre class="bg-neutral text-neutral-content text-xs p-3 rounded-lg overflow-x-auto" id="params-out">date_filter = date_operation
+date_debut  = (vide)
+date_fin    = (vide)</pre>
+      <div class="text-xs opacity-60 mt-2">Note : l'ancien paramètre <code>annee</code> disparaît — une année devient simplement une plage 01/01 → 31/12. Plus aucune contradiction possible.</div>
+    </div>
+  </div>
+
+  <div class="mt-6 text-sm opacity-70">
+    <p class="font-bold mb-1">À valider :</p>
+    <ul class="list-disc ml-5 space-y-1">
+      <li>Le principe « 1 bouton → popover avec raccourcis + calendrier + sur quelle date ».</li>
+      <li>Le segment « Appliquer sur » (Dép/Vir · Réception · Échéance) placé dans le popover.</li>
+      <li>La liste des raccourcis proposés.</li>
+    </ul>
+  </div>
+</div>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script>
+let selCol = 'date_operation';
+let selStart = null, selEnd = null, selLabel = 'Toutes les dates';
+
+const fmt = d => d ? `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}` : '';
+const iso = d => d ? `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}` : '';
+
+const fp = flatpickr('#calendar', {
+  inline: true, mode: 'range', locale: 'fr', showMonths: 1,
+  onChange: (dates) => {
+    selStart = dates[0] || null;
+    selEnd = dates[1] || dates[0] || null;
+    updatePreview();
+  }
+});
+
+function updatePreview() {
+  const prev = document.getElementById('selection-preview');
+  if (selStart && selEnd) {
+    if (iso(selStart) === iso(selEnd)) { prev.textContent = 'Le ' + fmt(selStart); }
+    else { prev.textContent = 'Du ' + fmt(selStart) + ' au ' + fmt(selEnd); }
+  } else { prev.textContent = 'Aucune date sélectionnée'; }
+}
+
+function setYear(y) {
+  selStart = new Date(y, 0, 1); selEnd = new Date(y, 11, 31);
+  selLabel = String(y);
+  fp.setDate([selStart, selEnd], false);
+  updatePreview();
+}
+function setRangePreset(preset) {
+  const now = new Date(); let s, e;
+  if (preset === 'all') { selStart = selEnd = null; selLabel = 'Toutes les dates'; fp.clear(); updatePreview(); return; }
+  if (preset === 'thisMonth') { s = new Date(now.getFullYear(), now.getMonth(), 1); e = new Date(now.getFullYear(), now.getMonth()+1, 0); selLabel='Ce mois'; }
+  if (preset === 'thisQuarter') { const q = Math.floor(now.getMonth()/3); s = new Date(now.getFullYear(), q*3, 1); e = new Date(now.getFullYear(), q*3+3, 0); selLabel='Ce trimestre'; }
+  if (preset === 'thisYear') { s = new Date(now.getFullYear(),0,1); e = new Date(now.getFullYear(),11,31); selLabel='Cette année'; }
+  if (preset === 'lastYear') { s = new Date(now.getFullYear()-1,0,1); e = new Date(now.getFullYear()-1,11,31); selLabel='Année dernière'; }
+  selStart = s; selEnd = e; fp.setDate([s, e], false); updatePreview();
+}
+
+document.querySelectorAll('[data-preset]').forEach(b => b.addEventListener('click', () => setRangePreset(b.dataset.preset)));
+document.querySelectorAll('[data-year]').forEach(b => b.addEventListener('click', () => { setYear(+b.dataset.year); selLabel = b.dataset.year; }));
+
+document.getElementById('date-col-select').addEventListener('change', (e) => { selCol = e.target.value; });
+
+document.getElementById('btn-clear').addEventListener('click', () => {
+  selStart = selEnd = null; selLabel = 'Toutes les dates'; fp.clear(); updatePreview();
+});
+
+document.getElementById('btn-apply').addEventListener('click', () => {
+  // Détermine le libellé
+  let label;
+  if (!selStart) label = 'Toutes les dates';
+  else if (iso(selStart) === iso(selEnd)) label = fmt(selStart);
+  else if (selStart.getMonth()===0 && selStart.getDate()===1 && selEnd.getMonth()===11 && selEnd.getDate()===31 && selStart.getFullYear()===selEnd.getFullYear())
+    label = String(selStart.getFullYear());
+  else label = fmt(selStart) + ' – ' + fmt(selEnd);
+
+  document.getElementById('periode-label').textContent = label;
+
+  // Simule les params HTMX
+  document.getElementById('params-out').textContent =
+    `date_filter = ${selCol}\n` +
+    `date_debut  = ${selStart ? iso(selStart) : '(vide)'}\n` +
+    `date_fin    = ${selEnd ? iso(selEnd) : '(vide)'}`;
+
+  // Ferme le dropdown
+  document.activeElement.blur();
+});
+</script>
+</body>
+</html>

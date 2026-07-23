@@ -2817,23 +2817,27 @@ def _build_operations_query(args):
                 Operation.date_encaissement <= _today + timedelta(days=7),
             )
 
+    date_debut = args.get('date_debut', '').strip()
+    date_fin = args.get('date_fin', '').strip()
+
     date_filter = args.get('date_filter', 'date_operation').strip()
     date_column = Operation.date_operation
-    if date_filter == 'date_reception':
-        query = query.filter(Operation.type_operation == 'Chèque')
-        date_column = Operation.date_reception
-    elif date_filter == 'date_echeance':
-        query = query.filter(
-            Operation.type_operation == 'Chèque',
-            Operation.type_detail == 'À échéance',
-        )
-        date_column = Operation.date_encaissement
+    # Le « type de date » ne s'applique qu'en présence d'une période réelle.
+    # Sans date_debut/date_fin, il ne doit rien filtrer (ex. après « Effacer »).
+    if date_debut or date_fin:
+        if date_filter == 'date_reception':
+            query = query.filter(Operation.type_operation == 'Chèque')
+            date_column = Operation.date_reception
+        elif date_filter == 'date_echeance':
+            query = query.filter(
+                Operation.type_operation == 'Chèque',
+                Operation.type_detail == 'À échéance',
+            )
+            date_column = Operation.date_encaissement
 
-    date_debut = args.get('date_debut', '').strip()
     if date_debut:
         query = query.filter(date_column >= date_debut)
 
-    date_fin = args.get('date_fin', '').strip()
     if date_fin:
         query = query.filter(date_column <= date_fin)
 
@@ -2895,6 +2899,14 @@ def _build_operations_query(args):
 
     total_pages = (total_count + per_page - 1) // per_page
 
+    # Années présentes dans les données (toutes dates confondues) pour le filtre.
+    annee_options = set()
+    for _col in (Operation.date_operation, Operation.date_reception, Operation.date_encaissement):
+        for (_y,) in db.session.query(func.strftime('%Y', _col)).filter(_col.isnot(None)).distinct():
+            if _y:
+                annee_options.add(_y)
+    annee_options = sorted(annee_options, reverse=True)
+
     return {
         'operations': operations,
         'total_montant': total_montant,
@@ -2913,6 +2925,10 @@ def _build_operations_query(args):
         'societe_f': societe,
         'remettant_f': remettant,
         'echeance_f': echeance,
+        'annee_options': annee_options,
+        'date_filter_f': date_filter,
+        'date_debut_f': date_debut,
+        'date_fin_f': date_fin,
     }
 
 
