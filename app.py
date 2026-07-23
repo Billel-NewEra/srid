@@ -2765,17 +2765,13 @@ def _build_operations_query(args):
             Operation.remarque.ilike(f'%{search}%'),
             Operation.societe.ilike(f'%{search}%'),
         ]
-        # Si la saisie ressemble à un montant, chercher les opérations dont le
-        # montant contient cette séquence de chiffres (recherche partielle).
-        search_montant = _parse_montant(search)
-        if search_montant is not None:
-            # Extraire uniquement les chiffres et le point décimal pour le LIKE.
-            import re as _re
-            digits_only = _re.sub(r'[\s\u00a0\u202f\u2009.,]+', '', search)
-            if digits_only.isdigit():
-                search_filters.append(
-                    func.cast(Operation.montant, db.String).like(f'%{digits_only}%')
-                )
+        # Recherche montant tolérante aux séparateurs: « 1234 », « 1,234 »,
+        # « 1 234,00 » doivent pointer vers les mêmes opérations.
+        import re as _re
+        digits_only = _re.sub(r'\D+', '', search)
+        if digits_only:
+            montant_digits = func.replace(func.cast(Operation.montant, db.String), '.', '')
+            search_filters.append(montant_digits.like(f'%{digits_only}%'))
         query = query.filter(or_(*search_filters))
 
     type_op = args.get('type_operation', '').strip()
