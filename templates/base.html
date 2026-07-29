@@ -1220,13 +1220,13 @@
                 </div>
                 <div class="divider divider-start text-sm font-semibold opacity-70"><i class="fas fa-calendar mr-1"></i> Dates</div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                    <div class="form-control hidden" data-modal-date-general-wrap>
-                        <label class="label pb-1"><span class="label-text text-xs font-semibold">Date</span></label>
-                        <input type="date" name="date_operation" class="input input-bordered input-sm w-full" data-modal-date-general>
-                    </div>
                     <div class="form-control hidden" data-modal-date-reception-wrap>
                         <label class="label pb-1"><span class="label-text text-xs font-semibold">Date réception</span></label>
                         <input type="date" name="date_reception" class="input input-bordered input-sm w-full" data-modal-date-reception>
+                    </div>
+                    <div class="form-control hidden" data-modal-date-general-wrap>
+                        <label class="label pb-1"><span class="label-text text-xs font-semibold" data-modal-date-general-label>Date</span></label>
+                        <input type="date" name="date_operation" class="input input-bordered input-sm w-full" data-modal-date-general>
                     </div>
                     <div class="form-control hidden" data-modal-date-echeance-wrap>
                         <label class="label pb-1"><span class="label-text text-xs font-semibold">Date échéance</span></label>
@@ -1572,6 +1572,7 @@
             var typeChequeSelect = form.querySelector('[data-modal-type-cheque]');
             var dateGeneralWrap = form.querySelector('[data-modal-date-general-wrap]');
             var dateGeneralInput = form.querySelector('[data-modal-date-general]');
+            var dateGeneralLabel = form.querySelector('[data-modal-date-general-label]');
             var dateReceptionWrap = form.querySelector('[data-modal-date-reception-wrap]');
             var dateReceptionInput = form.querySelector('[data-modal-date-reception]');
             var dateEcheanceWrap = form.querySelector('[data-modal-date-echeance-wrap]');
@@ -1585,7 +1586,10 @@
             if (typeChequeSelect) typeChequeSelect.disabled = !isCheque;
             if (!isCheque && typeChequeSelect) typeChequeSelect.value = '';
 
-            if (dateGeneralWrap) dateGeneralWrap.classList.toggle('hidden', isCheque);
+            // Date principale toujours visible : « Date » (virement/versement)
+            // ou « Date dépôt / virement » (chèque).
+            if (dateGeneralWrap) dateGeneralWrap.classList.remove('hidden');
+            if (dateGeneralLabel) dateGeneralLabel.textContent = isCheque ? 'Date dépôt / virement' : 'Date';
             if (dateReceptionWrap) dateReceptionWrap.classList.toggle('hidden', !isCheque);
             if (dateEcheanceWrap) dateEcheanceWrap.classList.toggle('hidden', !isChequeEcheance);
             if (!isChequeEcheance && dateEcheanceInput) dateEcheanceInput.value = '';

@@ -31,13 +31,13 @@
                 {% endfor %}
             </select>
         </div>
-        <div class="form-control hidden" data-date-general-wrap>
-            <label class="label label-text text-xs">Date</label>
-            <input type="date" name="date_operation" class="input input-bordered input-sm w-full" value="{{ operation.date_operation.strftime('%Y-%m-%d') if operation.date_operation else '' }}" data-date-general>
-        </div>
         <div class="form-control hidden" data-date-reception-wrap>
             <label class="label label-text text-xs">Date réception</label>
             <input type="date" name="date_reception" class="input input-bordered input-sm w-full" value="{{ operation.date_reception.strftime('%Y-%m-%d') if operation.date_reception else '' }}" data-date-reception>
+        </div>
+        <div class="form-control hidden" data-date-general-wrap>
+            <label class="label label-text text-xs" data-date-general-label>Date</label>
+            <input type="date" name="date_operation" class="input input-bordered input-sm w-full" value="{{ operation.date_operation.strftime('%Y-%m-%d') if operation.date_operation else '' }}" data-date-general>
         </div>
         <div class="form-control hidden" data-date-echeance-wrap>
             <label class="label label-text text-xs">Date échéance</label>
@@ -144,6 +144,7 @@
         const typeChequeSelect = document.querySelector('[data-type-cheque]');
         const dateGeneralWrap = document.querySelector('[data-date-general-wrap]');
         const dateGeneralInput = document.querySelector('[data-date-general]');
+        const dateGeneralLabel = document.querySelector('[data-date-general-label]');
         const dateReceptionWrap = document.querySelector('[data-date-reception-wrap]');
         const dateReceptionInput = document.querySelector('[data-date-reception]');
         const dateEcheanceWrap = document.querySelector('[data-date-echeance-wrap]');
@@ -170,8 +171,11 @@
                 return;
             }
 
-            dateGeneralWrap.classList.toggle('hidden', isCheque);
-            dateGeneralInput.required = !isCheque;
+            // Date principale toujours visible : « Date » (virement/versement)
+            // ou « Date dépôt / virement » (chèque).
+            dateGeneralWrap.classList.remove('hidden');
+            dateGeneralInput.required = true;
+            if (dateGeneralLabel) dateGeneralLabel.textContent = isCheque ? 'Date dépôt / virement' : 'Date';
 
             dateReceptionWrap.classList.toggle('hidden', !isCheque);
             dateReceptionInput.required = isCheque;

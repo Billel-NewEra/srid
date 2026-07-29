@@ -1059,14 +1059,15 @@ def api_operation_add():
     if type_cheque not in CHECK_TYPE_CHOICES:
         type_cheque = None
 
-    date_operation = None
+    date_operation = _parse_date(request.form.get('date_operation'))
     date_reception = None
     date_echeance = None
     if type_operation == 'Chèque':
         date_reception = _parse_date(request.form.get('date_reception'))
         if type_cheque == 'À échéance':
             date_echeance = _parse_date(request.form.get('date_echeance') or request.form.get('date_encaissement'))
-        date_operation = date_reception or date_echeance
+        if not date_operation:
+            date_operation = date_reception or date_echeance
     else:
         date_operation = _parse_date(request.form.get('date_operation'))
 
@@ -1115,14 +1116,15 @@ def edit_operation(op_id):
         if type_cheque not in CHECK_TYPE_CHOICES:
             type_cheque = None
 
-        date_operation = None
+        date_operation = _parse_date(request.form.get('date_operation'))
         date_reception = None
         date_echeance = None
         if type_operation == 'Chèque':
             date_reception = _parse_date(request.form.get('date_reception'))
             if type_cheque == 'À échéance':
                 date_echeance = _parse_date(request.form.get('date_echeance') or request.form.get('date_encaissement'))
-            date_operation = date_reception or date_echeance
+            if not date_operation:
+                date_operation = date_reception or date_echeance
         else:
             date_operation = _parse_date(request.form.get('date_operation'))
 
@@ -1393,6 +1395,34 @@ def _log_kpis():
         'DAD': dad, 'D10': d10, 'DAP': dap,
         'ETD': etd, 'ARRIVAGE': arrivage,
     }
+
+
+def _apply_bon_date_filter(q, date_filter, date_debut_raw, date_fin_raw):
+    """Applique le filtre « Période » (Type de date + plage) aux bons de commande.
+
+    date_filter désigne la colonne date ciblée ('date_commande' ou
+    'date_livraison_prevue'). Retourne (q, date_filter, date_debut_raw,
+    date_fin_raw) pour réinjection dans le template.
+    """
+    def _parse(v):
+        try:
+            return datetime.strptime(v, '%Y-%m-%d').date() if v else None
+        except ValueError:
+            return None
+
+    date_fields = {
+        'date_commande': BonCommande.date_commande,
+        'date_livraison_prevue': BonCommande.date_livraison_prevue,
+    }
+    if date_filter in date_fields:
+        df = date_fields[date_filter]
+        date_debut = _parse(date_debut_raw)
+        date_fin = _parse(date_fin_raw)
+        if date_debut:
+            q = q.filter(df >= date_debut)
+        if date_fin:
+            q = q.filter(df <= date_fin)
+    return q, date_filter, date_debut_raw, date_fin_raw
 
 
 def _apply_log_echeance_filter(q, echeance_f):
@@ -1790,6 +1820,9 @@ def api_logistique_bons_list():
     search   = request.args.get('search', '').strip()
     societe  = request.args.get('societe', '').strip()
     statut_f = request.args.get('statut', '').strip()
+    date_filter = request.args.get('date_filter', '').strip()
+    date_debut_raw = request.args.get('date_debut', '').strip()
+    date_fin_raw = request.args.get('date_fin', '').strip()
     sort_col = request.args.get('sort', '').strip()
     sort_dir = request.args.get('dir', 'asc').strip()
     per_page = _get_per_page(request.args, 'per_page_bons', BON_PER_PAGE)
@@ -1806,6 +1839,8 @@ def api_logistique_bons_list():
         q = q.filter(BonCommande.societe == societe)
     if statut_f:
         q = q.filter(BonCommande.statut == statut_f)
+    q, date_filter, date_debut_raw, date_fin_raw = _apply_bon_date_filter(
+        q, date_filter, date_debut_raw, date_fin_raw)
 
     # -- Tri dynamique --
     bon_sort_columns = {
@@ -1836,6 +1871,7 @@ def api_logistique_bons_list():
         return render_template('partials/logistique_bons_table.html',
                                bons=bons, page=page, total_pages=total_pages, total=total,
                                search=search, societe=societe, statut_f=statut_f,
+                               date_filter=date_filter, date_debut=date_debut_raw, date_fin=date_fin_raw,
                                bon_statuts=BON_STATUTS,
                                sort_col=sort_col, sort_dir=sort_dir,
                        per_page_bons=per_page,
@@ -1851,6 +1887,7 @@ def api_logistique_bons_list():
     return render_template('partials/logistique_bons_table.html',
                            bons=bons, page=page, total_pages=total_pages, total=total,
                            search=search, societe=societe, statut_f=statut_f,
+                           date_filter=date_filter, date_debut=date_debut_raw, date_fin=date_fin_raw,
                            bon_statuts=BON_STATUTS,
                            sort_col=sort_col, sort_dir=sort_dir,
                            per_page_bons=per_page,
@@ -1886,12 +1923,14 @@ def api_logistique_gestion_list():
     date_debut = _parse_date(date_debut_raw)
     date_fin = _parse_date(date_fin_raw)
     date_fields = {
-        'date_d10': CommandeLogistique.date_d10,
+        'date_etd': CommandeLogistique.date_etd,
         'date_arrivee': CommandeLogistique.date_arrivee,
-        'date_facture': CommandeLogistique.date_facture,
+        'date_d10': CommandeLogistique.date_d10,
+        'date_arrivee_depot': CommandeLogistique.date_arrivee_depot,
         'date_echeance': CommandeLogistique.date_echeance,
         'date_paiement': CommandeLogistique.date_paiement,
         'date_valeur': CommandeLogistique.date_valeur,
+        'date_facture': CommandeLogistique.date_facture,
     }
 
     q = CommandeLogistique.query
@@ -2146,12 +2185,14 @@ def logistique_gestion():
     date_debut = _parse_date(date_debut_raw)
     date_fin = _parse_date(date_fin_raw)
     date_fields = {
-        'date_d10': CommandeLogistique.date_d10,
+        'date_etd': CommandeLogistique.date_etd,
         'date_arrivee': CommandeLogistique.date_arrivee,
-        'date_facture': CommandeLogistique.date_facture,
+        'date_d10': CommandeLogistique.date_d10,
+        'date_arrivee_depot': CommandeLogistique.date_arrivee_depot,
         'date_echeance': CommandeLogistique.date_echeance,
         'date_paiement': CommandeLogistique.date_paiement,
         'date_valeur': CommandeLogistique.date_valeur,
+        'date_facture': CommandeLogistique.date_facture,
     }
 
     q = CommandeLogistique.query
@@ -2188,11 +2229,22 @@ def logistique_gestion():
     _attach_devise(items)
     _attach_pr(items)
 
+    # Années présentes (boutons raccourcis du filtre Période).
+    _yr_min = db.session.query(db.func.min(CommandeLogistique.date_creation)).scalar()
+    _yr_ech = db.session.query(db.func.max(CommandeLogistique.date_echeance)).scalar()
+    if _yr_min:
+        _start = _yr_min.year
+        _end = max(date.today().year, _yr_ech.year if _yr_ech else 0)
+        annee_options = list(range(_end, _start - 1, -1))
+    else:
+        annee_options = []
+
     return render_template('logistique_gestion.html',
                            items=items, page=page, total_pages=total_pages, total=total,
                            search=search, societe=societe,
                            statut_f=statut_f, echeance_f=echeance_f, date_filter=date_filter,
                            date_debut=date_debut_raw, date_fin=date_fin_raw,
+                           annee_options=annee_options,
                            kpis=_log_kpis(),
                            notifications=_get_logistique_notifications(),
                            today=date.today(),
@@ -2333,6 +2385,9 @@ def logistique_bons():
     search   = request.args.get('search', '').strip()
     societe  = request.args.get('societe', '').strip()
     statut_f = request.args.get('statut', '').strip()
+    date_filter = request.args.get('date_filter', '').strip()
+    date_debut_raw = request.args.get('date_debut', '').strip()
+    date_fin_raw = request.args.get('date_fin', '').strip()
 
     q = BonCommande.query
     if search:
@@ -2345,6 +2400,8 @@ def logistique_bons():
         q = q.filter(BonCommande.societe == societe)
     if statut_f:
         q = q.filter(BonCommande.statut == statut_f)
+    q, date_filter, date_debut_raw, date_fin_raw = _apply_bon_date_filter(
+        q, date_filter, date_debut_raw, date_fin_raw)
 
     q = q.order_by(BonCommande.date_commande.desc(), BonCommande.id.desc())
     total       = q.count()
@@ -2352,6 +2409,11 @@ def logistique_bons():
     total_pages = max(1, (total + per_page - 1) // per_page)
 
     can_write = _current_role() in ('admin', 'saisie')
+
+    # Années présentes (boutons raccourcis du filtre Période).
+    _yr_min = db.session.query(db.func.min(BonCommande.date_commande)).scalar()
+    _yr_max = db.session.query(db.func.max(BonCommande.date_commande)).scalar()
+    annee_options = list(range(_yr_max.year, _yr_min.year - 1, -1)) if _yr_min and _yr_max else []
 
     # Ne charger les données du formulaire que si l'utilisateur peut écrire
     import json as _json
@@ -2368,6 +2430,8 @@ def logistique_bons():
     return render_template('logistique_bons.html',
                            bons=bons, page=page, total_pages=total_pages, total=total,
                            search=search, societe=societe, statut_f=statut_f,
+                           date_filter=date_filter, date_debut=date_debut_raw, date_fin=date_fin_raw,
+                           annee_options=annee_options,
                            bon_statuts=BON_STATUTS, fournisseurs_json=fournisseurs_json,
                            products_json=products_json,
                            per_page_bons=per_page,
@@ -3307,6 +3371,19 @@ with app.app_context():
         if _fret_col_added:
             _conn.exec_driver_sql("ALTER TABLE bons_commande ADD COLUMN fret FLOAT")
             _conn.commit()
+
+        # Migration : normalise les montants en devise à 2 décimales pour éliminer
+        # le bruit des flottants binaires (ex. 408542.39999999997 -> 408542.4).
+        # Idempotent : ne réécrit que s'il reste des valeurs non arrondies.
+        for _mtbl, _mcol in (('operations', 'montant'),
+                             ('commandes_logistique', 'montant_eur'),
+                             ('bons_commande', 'fret')):
+            _need = _conn.exec_driver_sql(
+                f"SELECT 1 FROM {_mtbl} WHERE {_mcol} IS NOT NULL AND {_mcol} <> ROUND({_mcol}, 2) LIMIT 1"
+            ).fetchone()
+            if _need:
+                _conn.exec_driver_sql(f"UPDATE {_mtbl} SET {_mcol} = ROUND({_mcol}, 2) WHERE {_mcol} IS NOT NULL")
+        _conn.commit()
 
     if _fret_col_added:
         # Reprise unique : copie le fret des configs PR existantes vers le bon.

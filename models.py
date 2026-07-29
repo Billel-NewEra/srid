@@ -1,8 +1,21 @@
 from datetime import datetime, date
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import validates
 from werkzeug.security import generate_password_hash, check_password_hash
 
 db = SQLAlchemy()
+
+
+def _money2(value):
+    """Normalise un montant en devise à 2 décimales, éliminant le bruit des
+    flottants binaires (ex. 408542.39999999997 -> 408542.4). Renvoie tel quel
+    None ou une valeur non numérique."""
+    if value is None or value == '':
+        return None
+    try:
+        return round(float(value), 2)
+    except (TypeError, ValueError):
+        return value
 
 
 class User(db.Model):
@@ -58,6 +71,10 @@ class Operation(db.Model):
     cree_par = db.Column(db.String(100))
     date_creation = db.Column(db.DateTime, default=datetime.utcnow)
     date_modification = db.Column(db.DateTime, onupdate=datetime.utcnow)
+
+    @validates('montant')
+    def _validate_montant(self, key, value):
+        return _money2(value)
 
     def to_dict(self):
         return {
@@ -143,6 +160,10 @@ class CommandeLogistique(db.Model):
     date_creation     = db.Column(db.DateTime, default=datetime.utcnow)
     date_modification = db.Column(db.DateTime, onupdate=datetime.utcnow)
 
+    @validates('montant_eur')
+    def _validate_montant_eur(self, key, value):
+        return _money2(value)
+
     @property
     def montant_da(self):
         if self.montant_eur and self.cours:
@@ -217,6 +238,10 @@ class BonCommande(db.Model):
     date_creation         = db.Column(db.DateTime, default=datetime.utcnow)
     lignes                = db.relationship('LigneCommande', backref='bon',
                                             lazy=True, cascade='all, delete-orphan')
+
+    @validates('fret')
+    def _validate_fret(self, key, value):
+        return _money2(value)
 
     @property
     def total_eur(self):

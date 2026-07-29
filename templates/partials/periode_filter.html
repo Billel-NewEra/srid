@@ -1,0 +1,100 @@
+{# Filtre « Période » réutilisable : Type de date + popover calendrier.
+   À inclure dans la barre de filtres d'une table pilotée par HTMX.
+   Câblage JS : voir static/js/periode_filter.js (window.initPeriodeFilter).
+
+   Variables attendues :
+     pf_prefix        : préfixe d'ID unique (ex. 'bons', 'gestion')
+     pf_date_options  : liste de tuples (valeur, libellé) pour le Type de date
+     pf_date_filter   : valeur sélectionnée (défaut = 1re option)
+     pf_date_debut    : 'YYYY-MM-DD' ou ''
+     pf_date_fin      : 'YYYY-MM-DD' ou ''
+     pf_annee_options : liste d'années (boutons raccourcis), optionnel
+     pf_show_col      : afficher le sélecteur « Type de date » (défaut True).
+                        Mettre à False quand la table n'a qu'une seule date :
+                        le champ caption reste figé sur pf_date_options[0].
+#}
+{% set _pf_col = pf_date_filter or (pf_date_options[0][0] if pf_date_options else '') %}
+{% set _pf_show_col = pf_show_col if pf_show_col is defined else True %}
+<input type="hidden" name="date_filter" id="{{ pf_prefix }}-date-filter" value="{{ _pf_col }}">
+<input type="hidden" name="date_debut" id="{{ pf_prefix }}-date-debut" value="{{ pf_date_debut or '' }}">
+<input type="hidden" name="date_fin" id="{{ pf_prefix }}-date-fin" value="{{ pf_date_fin or '' }}">
+
+{% if _pf_show_col %}
+<!-- Champ 1 : Type de date -->
+<div>
+    <label class="form-control w-full sm:w-56">
+        <span class="label-text text-xs opacity-70">Type de date</span>
+        <select id="{{ pf_prefix }}-periode-col" class="select select-bordered select-sm">
+            {% for val, lbl in pf_date_options %}
+            <option value="{{ val }}" {% if _pf_col == val %}selected{% endif %}>{{ lbl }}</option>
+            {% endfor %}
+        </select>
+    </label>
+</div>
+{% endif %}
+
+<!-- Champ 2 : Période -->
+<div>
+    <label class="form-control w-full sm:w-64">
+        <span class="label-text text-xs opacity-70">Période</span>
+        <div class="relative" id="{{ pf_prefix }}-periode-dropdown">
+            <button type="button" id="{{ pf_prefix }}-periode-btn"
+                 class="btn btn-sm w-full justify-between font-normal bg-base-100 hover:bg-base-200">
+                <span class="flex items-center gap-2 min-w-0 flex-1">
+                    <i class="fas fa-calendar-days text-cyan-600 flex-none"></i>
+                    <span id="{{ pf_prefix }}-periode-label" class="truncate">Toutes les dates</span>
+                </span>
+                <i class="fas fa-chevron-down text-xs opacity-50 flex-none"></i>
+            </button>
+            <div id="{{ pf_prefix }}-periode-panel" class="periode-panel periode-pop hidden p-0 rounded-xl">
+                <!-- Raccourcis -->
+                <div class="p-2.5 border-b border-base-200">
+                    <div class="flex flex-wrap gap-1">
+                        <button type="button" class="btn btn-xs btn-ghost" data-preset="all">Tout</button>
+                        <button type="button" class="btn btn-xs btn-ghost" data-preset="thisMonth">Ce mois</button>
+                        <button type="button" class="btn btn-xs btn-ghost" data-preset="thisYear">Cette année</button>
+                        {% for y in (pf_annee_options or []) %}
+                        <button type="button" class="btn btn-xs btn-outline" data-year="{{ y }}">{{ y }}</button>
+                        {% endfor %}
+                    </div>
+                </div>
+                <!-- Calendrier -->
+                <div class="px-2.5 pt-2.5">
+                    <div id="{{ pf_prefix }}-periode-calendar"></div>
+                </div>
+                <!-- Pied -->
+                <div class="flex items-center justify-between gap-2 border-t border-base-200 p-2.5 mt-1">
+                    <div class="text-[11px] opacity-70 truncate" id="{{ pf_prefix }}-periode-preview">Aucune date</div>
+                    <div class="flex gap-1.5 flex-none">
+                        <button type="button" class="btn btn-ghost btn-xs" id="{{ pf_prefix }}-periode-clear">Effacer</button>
+                        <button type="button" class="btn btn-xs bg-cyan-600 hover:bg-cyan-700 text-white border-0" id="{{ pf_prefix }}-periode-apply">Appliquer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </label>
+</div>
+
+{# CSS du popover (basé sur des classes → réutilisable sur toutes les pages). #}
+<style>
+    .periode-pop { width: 300px; }
+    .periode-panel {
+        position: absolute; left: 0; top: 100%; margin-top: .5rem; z-index: 50;
+        background: var(--ui-surface); border: 1px solid var(--ui-border);
+        border-radius: .75rem; box-shadow: var(--ui-shadow); color: var(--ui-text);
+    }
+    .periode-panel.hidden { display: none; }
+    .periode-panel .flatpickr-calendar.inline { box-shadow: none; margin: 0 auto; width: 100%; background: transparent; }
+    .periode-panel .flatpickr-calendar.inline .flatpickr-days,
+    .periode-panel .flatpickr-calendar.inline .dayContainer { width: 100%; min-width: 100%; max-width: 100%; }
+    .periode-panel .flatpickr-calendar.inline .flatpickr-day { max-width: none; height: 26px; line-height: 26px; }
+    .periode-panel .flatpickr-months .flatpickr-month { height: 30px; }
+    .periode-panel .flatpickr-current-month { padding-top: 2px; height: 28px; }
+    .periode-panel .flatpickr-current-month input.cur-year,
+    .periode-panel .flatpickr-current-month .flatpickr-monthDropdown-months { font-size: .92rem; }
+    .periode-panel span.flatpickr-weekday { height: 22px; line-height: 22px; }
+    .periode-panel .flatpickr-day.selected,
+    .periode-panel .flatpickr-day.startRange,
+    .periode-panel .flatpickr-day.endRange { background: #0891b2; border-color: #0891b2; }
+    .periode-panel .flatpickr-day.inRange { background: rgba(8,145,178,0.14); border-color: transparent; box-shadow: -5px 0 0 rgba(8,145,178,0.14), 5px 0 0 rgba(8,145,178,0.14); }
+</style>
