@@ -2198,6 +2198,7 @@ def logistique_gestion():
                            today=date.today(),
                            log_statuts=LOG_STATUTS,
                            per_page_log=per_page,
+                           per_page_options=PER_PAGE_OPTIONS,
                            can_write=_current_role() in ('admin', 'saisie'),
                            is_admin=_current_role() == 'admin')
 

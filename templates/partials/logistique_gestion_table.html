@@ -7,8 +7,10 @@
     {% else %}badge-ghost{% endif %}
 {% endmacro %}
 
-<div class="flex justify-between items-center mb-3 text-sm opacity-70" data-current-page="{{ page }}">
-    <span><span class="font-semibold">{{ total }}</span> entrée{{ 's' if total != 1 else '' }}</span>
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-2" data-current-page="{{ page }}">
+    <div class="text-sm opacity-70">
+        <span class="font-semibold">{{ total }}</span> entrée{{ 's' if total != 1 else '' }}
+    </div>
     <div class="flex items-center gap-2">
         <label class="text-xs opacity-60">Entrées</label>
         <select name="per_page_log" class="select select-bordered select-xs"
