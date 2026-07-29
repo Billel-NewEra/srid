@@ -144,7 +144,7 @@
             <th class="w-16">Type</th>
             <th class="cursor-pointer select-none w-28" onclick="sortOpsTable('montant')">Montant{{ sort_icon('montant', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="cursor-pointer select-none w-28" onclick="sortOpsTable('date_reception')">Réception{{ sort_icon('date_reception', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="cursor-pointer select-none w-28" onclick="sortOpsTable('date_operation')">Dép/Vir{{ sort_icon('date_operation', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="cursor-pointer select-none w-28" onclick="sortOpsTable('date_operation')">Date opé.{{ sort_icon('date_operation', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="cursor-pointer select-none w-36" onclick="sortOpsTable('date_encaissement')">Échéance{{ sort_icon('date_encaissement', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="cursor-pointer select-none w-44" onclick="sortOpsTable('statut')">Statut{{ sort_icon('statut', sort_col|default(''), sort_dir|default('asc')) }}</th>
             {% if can_write or can_delete %}<th class="text-center w-20">Actions</th>{% endif %}

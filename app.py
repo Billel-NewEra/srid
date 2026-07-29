@@ -1061,14 +1061,12 @@ def api_operation_add():
 
     date_operation = None
     date_reception = None
-    date_sortie = None
     date_echeance = None
     if type_operation == 'Chèque':
         date_reception = _parse_date(request.form.get('date_reception'))
-        date_sortie = _parse_date(request.form.get('date_sortie'))
         if type_cheque == 'À échéance':
             date_echeance = _parse_date(request.form.get('date_echeance') or request.form.get('date_encaissement'))
-        date_operation = date_sortie or date_reception or date_echeance
+        date_operation = date_reception or date_echeance
     else:
         date_operation = _parse_date(request.form.get('date_operation'))
 
@@ -1081,7 +1079,6 @@ def api_operation_add():
         date_operation=date_operation,
         date_reception=date_reception,
         date_encaissement=date_echeance,
-        date_sortie=date_sortie,
         client=(request.form.get('client') or '').strip().upper() or None,
         remettant=request.form.get('remettant_commercial') or request.form.get('remettant') or None,
         montant=abs(float(request.form.get('montant', 0))),
@@ -1120,14 +1117,12 @@ def edit_operation(op_id):
 
         date_operation = None
         date_reception = None
-        date_sortie = None
         date_echeance = None
         if type_operation == 'Chèque':
             date_reception = _parse_date(request.form.get('date_reception'))
-            date_sortie = _parse_date(request.form.get('date_sortie'))
             if type_cheque == 'À échéance':
                 date_echeance = _parse_date(request.form.get('date_echeance') or request.form.get('date_encaissement'))
-            date_operation = date_sortie or date_reception or date_echeance
+            date_operation = date_reception or date_echeance
         else:
             date_operation = _parse_date(request.form.get('date_operation'))
 
@@ -1137,7 +1132,6 @@ def edit_operation(op_id):
         op.date_operation = date_operation
         op.date_reception = date_reception
         op.date_encaissement = date_echeance
-        op.date_sortie = date_sortie
         op.client = (request.form.get('client') or '').strip().upper() or None
         op.remettant = request.form.get('remettant_commercial') or request.form.get('remettant') or None
         op.montant = abs(float(request.form.get('montant', 0)))
@@ -1501,20 +1495,26 @@ def _cours_du_bon(bon_id):
 
 
 def _attach_devise(items):
-    """Attache la devise du bon (item.devise_bon) à chaque entrée logistique.
+    """Attache la devise du bon (item.devise_bon) et son fret (item.fret_bon) à chaque entrée.
 
-    La devise est portée par les lignes du bon (LigneCommande.devise). Une seule
-    requête groupée est faite pour tous les bons de la page.
+    La devise est portée par les lignes du bon (LigneCommande.devise). Le fret est
+    porté par le bon (BonCommande.fret). Des requêtes groupées sont faites pour tous
+    les bons de la page.
     """
     bon_ids = [it.bon_id for it in items if getattr(it, 'bon_id', None)]
     devise_map = {}
+    fret_map = {}
     if bon_ids:
         rows = (db.session.query(LigneCommande.bon_id, LigneCommande.devise)
                 .filter(LigneCommande.bon_id.in_(bon_ids)).all())
         for bid, dev in rows:
             devise_map.setdefault(bid, dev or 'EUR')
+        for bid, fret in (db.session.query(BonCommande.id, BonCommande.fret)
+                          .filter(BonCommande.id.in_(bon_ids)).all()):
+            fret_map[bid] = fret or 0
     for it in items:
         it.devise_bon = devise_map.get(getattr(it, 'bon_id', None), 'EUR')
+        it.fret_bon = fret_map.get(getattr(it, 'bon_id', None), 0)
     return items
 
 
@@ -1593,7 +1593,7 @@ def _pr_config(frais, bon):
     }
     charges = {
         'rps':         s_charges.get('rps',         frais.rps if frais else 2500),
-        'fret':        s_charges.get('fret',        0),
+        'fret':        (bon.fret if (bon and bon.fret is not None) else 0),
         'echange':     s_charges.get('echange',     frais.echange if frais else 0),
         'honoraires':  s_charges.get('honoraires',  frais.honoraires_transitaire if frais else 0),
         'magasinage':  s_charges.get('magasinage',  frais.magasinage if frais else 0),
@@ -2460,6 +2460,7 @@ def api_bon_add():
         statut                = request.form.get('statut', 'Brouillon'),
         date_commande         = fd('date_commande') or date.today(),
         date_livraison_prevue = fd('date_livraison_prevue'),
+        fret                  = _parse_montant(request.form.get('fret', '')),
         notes                 = request.form.get('notes', '').strip() or None,
         cree_par              = session.get('username', ''),
     )
@@ -2579,6 +2580,7 @@ def api_bon_update(bon_id):
     bon.fournisseur   = request.form.get('fournisseur', '').strip().upper() or None
     bon.statut        = request.form.get('statut', bon.statut)
     bon.date_commande = fd('date_commande') or bon.date_commande
+    bon.fret          = _parse_montant(request.form.get('fret', ''))
     bon.notes         = request.form.get('notes', '').strip() or None
 
     # Préserver les surcharges TVA du PR avant de recréer les lignes.
@@ -3295,6 +3297,31 @@ with app.app_context():
             if _col not in _frais_cols:
                 _conn.exec_driver_sql(f"ALTER TABLE frais_logistique ADD COLUMN {_col} {_type}")
         _conn.commit()
+
+        # Migration : le fret est désormais défini sur le bon de commande (et non
+        # dans la modale de calcul des frais). Ajoute la colonne si absente et
+        # reprend une seule fois le fret déjà saisi dans frais_logistique.pr_config.
+        _bon_cols = [row[1] for row in _conn.exec_driver_sql("PRAGMA table_info(bons_commande)").fetchall()]
+        _fret_col_added = 'fret' not in _bon_cols
+        if _fret_col_added:
+            _conn.exec_driver_sql("ALTER TABLE bons_commande ADD COLUMN fret FLOAT")
+            _conn.commit()
+
+    if _fret_col_added:
+        # Reprise unique : copie le fret des configs PR existantes vers le bon.
+        for _fr in FraisLogistique.query.all():
+            if not _fr.pr_config or not _fr.bon_id:
+                continue
+            try:
+                _cfg = json.loads(_fr.pr_config)
+            except (ValueError, TypeError):
+                continue
+            _old_fret = (_cfg.get('charges') or {}).get('fret')
+            if _old_fret:
+                _bon = BonCommande.query.get(_fr.bon_id)
+                if _bon is not None and _bon.fret is None:
+                    _bon.fret = _old_fret
+        db.session.commit()
 
     # Normalise legacy roles to the new 3-role model.
     for u in User.query.all():

@@ -218,6 +218,7 @@
         .mobile-sidebar-backdrop {
             position: fixed;
             inset: 0;
+            z-index: 40;
             background: var(--ui-overlay);
             opacity: 0;
             pointer-events: none;
@@ -229,7 +230,7 @@
             transform: translateX(0);
         }
 
-        .sidebar-toggle:checked ~ .app-sidebar-wrap .mobile-sidebar-backdrop {
+        .sidebar-toggle:checked ~ .mobile-sidebar-backdrop {
             opacity: 1;
             pointer-events: auto;
         }
@@ -759,9 +760,11 @@
     <div class="app-shell">
         <input id="sidebar-toggle" type="checkbox" class="sidebar-toggle">
 
+        <!-- Backdrop mobile (hors du wrap transformé pour couvrir tout le viewport) -->
+        <label for="sidebar-toggle" aria-label="Fermer le menu" class="mobile-sidebar-backdrop"></label>
+
         <!-- ═══════════════════ SIDEBAR ═══════════════════ -->
         <div class="app-sidebar-wrap">
-            <label for="sidebar-toggle" aria-label="close sidebar" class="mobile-sidebar-backdrop"></label>
             <aside class="app-sidebar min-h-full flex flex-col">
 
                 <!-- Brand -->
@@ -1225,10 +1228,6 @@
                         <label class="label pb-1"><span class="label-text text-xs font-semibold">Date réception</span></label>
                         <input type="date" name="date_reception" class="input input-bordered input-sm w-full" data-modal-date-reception>
                     </div>
-                    <div class="form-control hidden" data-modal-date-sortie-wrap>
-                        <label class="label pb-1"><span class="label-text text-xs font-semibold">Date dépôt / virement</span></label>
-                        <input type="date" name="date_sortie" class="input input-bordered input-sm w-full" data-modal-date-sortie>
-                    </div>
                     <div class="form-control hidden" data-modal-date-echeance-wrap>
                         <label class="label pb-1"><span class="label-text text-xs font-semibold">Date échéance</span></label>
                         <input type="date" name="date_echeance" class="input input-bordered input-sm w-full" data-modal-date-echeance>
@@ -1382,7 +1381,7 @@
                 htmx.trigger(document.body, 'refreshGlobalAlert');
                 document.body.dispatchEvent(new CustomEvent('operationStatusChanged'));
             } else {
-                alert('Erreur lors du changement de statut.');
+                showToast('Erreur lors du changement de statut.', 'error');
             }
         });
     })();
@@ -1425,7 +1424,7 @@
                 headers: { 'Accept': 'application/json' },
                 credentials: 'same-origin'
             });
-            if (!response.ok) { alert("Impossible de charger l'opération à modifier."); return; }
+            if (!response.ok) { showToast("Impossible de charger l'opération à modifier.", 'error'); return; }
             var data = await response.json();
             form.reset();
             editingOperationId = opId;
@@ -1439,7 +1438,6 @@
             applyModalTypeRules();
             setValue('date_operation', data.date_operation);
             setValue('date_reception', data.date_reception);
-            setValue('date_sortie', data.date_sortie);
             setValue('date_echeance', data.date_encaissement);
             setValue('client', data.client);
             setValue('remettant_commercial', data.remettant);
@@ -1458,6 +1456,7 @@
         if (form) {
             form.addEventListener('submit', async function(e) {
                 e.preventDefault();
+
                 var montantInput = form.querySelector('[data-modal-montant-input]');
                 if (montantInput) {
                     montantInput.value = (montantInput.value || '').replace(/\s+/g, '').replace(/,/g, '.');
@@ -1485,7 +1484,7 @@
                     htmx.trigger(document.body, 'refreshGlobalAlert');
                     document.body.dispatchEvent(new CustomEvent('operationSaved', { detail: { id: newId, isCreate: isCreate } }));
                 } else {
-                    alert("Erreur lors de l'enregistrement de l'opération.");
+                    showToast("Erreur lors de l'enregistrement de l'opération.", 'error');
                 }
             });
 
@@ -1575,12 +1574,9 @@
             var dateGeneralInput = form.querySelector('[data-modal-date-general]');
             var dateReceptionWrap = form.querySelector('[data-modal-date-reception-wrap]');
             var dateReceptionInput = form.querySelector('[data-modal-date-reception]');
-            var dateSortieWrap = form.querySelector('[data-modal-date-sortie-wrap]');
-            var dateSortieInput = form.querySelector('[data-modal-date-sortie]');
             var dateEcheanceWrap = form.querySelector('[data-modal-date-echeance-wrap]');
             var dateEcheanceInput = form.querySelector('[data-modal-date-echeance]');
             var dateReceptionRequiredMark = form.querySelector('[data-modal-date-reception-required]');
-            var dateSortieRequiredMark = form.querySelector('[data-modal-date-sortie-required]');
             if (!typeSelect) return;
 
             var isCheque = typeSelect.value === 'Chèque';
@@ -1591,7 +1587,6 @@
 
             if (dateGeneralWrap) dateGeneralWrap.classList.toggle('hidden', isCheque);
             if (dateReceptionWrap) dateReceptionWrap.classList.toggle('hidden', !isCheque);
-            if (dateSortieWrap) dateSortieWrap.classList.toggle('hidden', !isCheque);
             if (dateEcheanceWrap) dateEcheanceWrap.classList.toggle('hidden', !isChequeEcheance);
             if (!isChequeEcheance && dateEcheanceInput) dateEcheanceInput.value = '';
         }
@@ -1655,6 +1650,59 @@
             setTimeout(function() { delete form.dataset.confirmed; }, 0);
         });
     }, true);
+    </script>
+
+    <!-- Notifications modernes (toasts) -->
+    <script>
+    (function() {
+        var TYPES = {
+            success: { cls: 'alert-success', icon: 'fa-circle-check' },
+            error:   { cls: 'alert-error',   icon: 'fa-circle-exclamation' },
+            warning: { cls: 'alert-warning', icon: 'fa-triangle-exclamation' },
+            info:    { cls: 'alert-info',    icon: 'fa-circle-info' }
+        };
+        window.showToast = function(message, type, duration) {
+            var conf = TYPES[type] || TYPES.info;
+            // Si un <dialog> modal est ouvert, on affiche le toast DEDANS : un
+            // <dialog> ouvert via showModal() vit dans le "top layer" du
+            // navigateur, au-dessus de tout (le z-index des autres elements n'a
+            // aucun effet face a lui). Un toast place dans le <body> resterait
+            // donc cache derriere le fond flou du modal.
+            var openDialog = document.querySelector('dialog[open]');
+            var container;
+            if (openDialog) {
+                container = openDialog.querySelector(':scope > .toast-in-dialog');
+                if (!container) {
+                    container = document.createElement('div');
+                    container.className = 'toast-in-dialog';
+                    container.style.cssText = 'position:fixed;top:70px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:.5rem;align-items:flex-end;';
+                    openDialog.appendChild(container);
+                }
+            } else {
+                container = document.getElementById('toast-container');
+            }
+            if (!container) return;
+            var el = document.createElement('div');
+            el.className = 'alert ' + conf.cls + ' shadow-lg text-sm max-w-sm';
+            el.setAttribute('role', 'alert');
+            el.style.transition = 'opacity .3s ease, transform .3s ease';
+            var icon = document.createElement('i');
+            icon.className = 'fas ' + conf.icon;
+            var span = document.createElement('span');
+            span.textContent = message;
+            el.appendChild(icon);
+            el.appendChild(span);
+            container.appendChild(el);
+            var timer = setTimeout(dismiss, duration || 4500);
+            el.addEventListener('click', dismiss);
+            function dismiss() {
+                clearTimeout(timer);
+                el.style.opacity = '0';
+                el.style.transform = 'translateX(20px)';
+                setTimeout(function() { el.remove(); }, 300);
+            }
+        };
+    })();
     </script>
 
     {% block scripts %}{% endblock %}

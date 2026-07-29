@@ -42,7 +42,9 @@
             </div>
             <div class="flex items-center justify-between gap-2 pt-1 text-sm">
                 <span class="opacity-60 whitespace-nowrap">{{ bon.date_commande.strftime('%d/%m/%Y') if bon.date_commande else '—' }}</span>
-                <span class="font-mono font-semibold">{{ bon.total_eur | currency(2) if bon.total_eur else '—' }}</span>
+                {% set bon_total = (bon.total_eur or 0) + (bon.fret or 0) %}
+                {% set bon_sym = '$' if (bon.lignes and bon.lignes[0].devise == 'USD') else '€' %}
+                <span class="font-mono font-semibold">{{ (bon_total | currency(2)) ~ ' ' ~ bon_sym if bon_total else '—' }}</span>
             </div>
             {% if can_write %}
             <div class="flex justify-end gap-1 pt-1" onclick="event.stopPropagation()">
@@ -114,7 +116,9 @@
             <span class="badge badge-sm font-semibold whitespace-nowrap {{ bon_badge }}">{{ bon.statut }}</span>
         </td>
         <td class="text-right font-mono font-semibold text-sm">
-            {{ bon.total_eur | currency(2) if bon.total_eur else '—' }}
+            {% set bon_total = (bon.total_eur or 0) + (bon.fret or 0) %}
+            {% set bon_sym = '$' if (bon.lignes and bon.lignes[0].devise == 'USD') else '€' %}
+            {{ (bon_total | currency(2)) ~ ' ' ~ bon_sym if bon_total else '—' }}
         </td>
         {% if can_write %}
         <td class="text-center" onclick="event.stopPropagation()">

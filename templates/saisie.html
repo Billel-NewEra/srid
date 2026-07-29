@@ -63,10 +63,6 @@
                         <label class="label"><span class="label-text font-medium">Date réception *</span></label>
                         <input type="date" name="date_reception" class="input input-bordered w-full" data-date-reception>
                     </div>
-                    <div class="form-control hidden" data-date-sortie-wrap>
-                        <label class="label"><span class="label-text font-medium">Date dépôt / virement *</span></label>
-                        <input type="date" name="date_sortie" class="input input-bordered w-full" data-date-sortie>
-                    </div>
                     <div class="form-control hidden" data-date-echeance-wrap>
                         <label class="label"><span class="label-text font-medium">Date échéance *</span></label>
                         <input type="date" name="date_echeance" class="input input-bordered w-full" data-date-echeance>
@@ -199,8 +195,6 @@
         const dateGeneralInput = document.querySelector('[data-date-general]');
         const dateReceptionWrap = document.querySelector('[data-date-reception-wrap]');
         const dateReceptionInput = document.querySelector('[data-date-reception]');
-        const dateSortieWrap = document.querySelector('[data-date-sortie-wrap]');
-        const dateSortieInput = document.querySelector('[data-date-sortie]');
         const dateEcheanceWrap = document.querySelector('[data-date-echeance-wrap]');
         const dateEcheanceInput = document.querySelector('[data-date-echeance]');
         const montantInput = document.querySelector('[data-montant-input]');
@@ -255,11 +249,9 @@
             if (!hasType) {
                 dateGeneralWrap.classList.add('hidden');
                 dateReceptionWrap.classList.add('hidden');
-                dateSortieWrap.classList.add('hidden');
                 dateEcheanceWrap.classList.add('hidden');
                 dateGeneralInput.required = false;
                 dateReceptionInput.required = false;
-                dateSortieInput.required = false;
                 dateEcheanceInput.required = false;
                 return;
             }
@@ -269,9 +261,6 @@
 
             dateReceptionWrap.classList.toggle('hidden', !isCheque);
             dateReceptionInput.required = isCheque;
-
-            dateSortieWrap.classList.toggle('hidden', !isCheque);
-            dateSortieInput.required = isCheque;
 
             dateEcheanceWrap.classList.toggle('hidden', !isChequeEcheance);
             dateEcheanceInput.required = isChequeEcheance;

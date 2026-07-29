@@ -32,10 +32,9 @@ class Operation(db.Model):
     famille = db.Column(db.String(100))
 
     # Dates
-    date_operation = db.Column(db.Date, nullable=False, index=True)
+    date_operation = db.Column(db.Date, nullable=True, index=True)
     date_reception = db.Column(db.Date)
     date_encaissement = db.Column(db.Date, index=True)
-    date_sortie = db.Column(db.Date)
 
     # Parties
     client = db.Column(db.String(200), nullable=False)
@@ -69,7 +68,6 @@ class Operation(db.Model):
             'date_operation': self.date_operation.isoformat() if self.date_operation else None,
             'date_reception': self.date_reception.isoformat() if self.date_reception else None,
             'date_encaissement': self.date_encaissement.isoformat() if self.date_encaissement else None,
-            'date_sortie': self.date_sortie.isoformat() if self.date_sortie else None,
             'client': self.client,
             'remettant': self.remettant,
             'montant': self.montant,
@@ -213,6 +211,7 @@ class BonCommande(db.Model):
     statut                = db.Column(db.String(30), default='Brouillon', index=True)
     date_commande         = db.Column(db.Date, nullable=False, index=True)
     date_livraison_prevue = db.Column(db.Date)
+    fret                  = db.Column(db.Float)  # Fret du bon (dans la devise du bon), défini à la création
     notes                 = db.Column(db.Text)
     cree_par              = db.Column(db.String(100))
     date_creation         = db.Column(db.DateTime, default=datetime.utcnow)
@@ -232,6 +231,7 @@ class BonCommande(db.Model):
             'statut':                self.statut,
             'date_commande':         self.date_commande.strftime('%Y-%m-%d') if self.date_commande else None,
             'date_livraison_prevue': self.date_livraison_prevue.strftime('%Y-%m-%d') if self.date_livraison_prevue else None,
+            'fret':                  self.fret,
             'notes':                 self.notes,
             'lignes': [
                 {

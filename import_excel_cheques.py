@@ -142,7 +142,6 @@ def main():
                 date_operation=date_op,
                 date_reception=date_reception,
                 date_encaissement=date_enc,
-                date_sortie=None,
                 client=client,
                 remettant=_txt(r[C_REMETTANT]),
                 montant=montant,

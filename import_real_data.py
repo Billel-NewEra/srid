@@ -156,7 +156,6 @@ def import_cheques_file():
                 date_operation=date_op,
                 date_reception=parse_date(row[1] if len(row) > 1 else None),
                 date_encaissement=parse_date(row[7] if len(row) > 7 else None),
-                date_sortie=parse_date(row[13] if len(row) > 13 else None),
                 client=client,
                 remettant=clean_str(row[2] if len(row) > 2 else None),
                 montant=montant,

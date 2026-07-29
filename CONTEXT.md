@@ -103,10 +103,9 @@ SRID/
 | type_operation | String(20) | `Chèque`, `Virement`, `Versement`, `Transfer`, `Autre` |
 | societe | String(100) | `SRID` ou `Genetics`, **indexé** |
 | famille | String(100) | |
-| date_operation | Date | **indexé** |
+| date_operation | Date | **indexé**, nullable — date métier (reporting année/mois) |
 | date_reception | Date | chèques uniquement |
 | date_encaissement | Date | **ATTENTION: stocke la date d'échéance** pour chèques, **indexé** |
-| date_sortie | Date | |
 | client | String(200) | |
 | remettant | String(200) | |
 | montant | Float | |

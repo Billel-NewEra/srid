@@ -304,6 +304,8 @@
         <div class="table-section">
             <h3>Articles commandés</h3>
             {% if bon.lignes %}
+            {% set marchandises = bon.total_eur or 0 %}
+            {% set fret = bon.fret or 0 %}
             <table>
                 <thead>
                     <tr>
@@ -316,6 +318,8 @@
                 </thead>
                 <tbody>
                     {% for ligne in bon.lignes %}
+                    {% set raw = (ligne.quantite or 0) * (ligne.prix_unitaire or 0) %}
+                    {% set line_total = raw %}
                     <tr>
                         <td style="font-family: 'Courier New', monospace; font-size: 11px; font-weight: 500;">
                             {{ ligne.reference or '' }}
@@ -331,7 +335,7 @@
                         </td>
                         <td class="text-right" style="font-family: 'Courier New', monospace; font-weight: 600;">
                             {% if ligne.quantite and ligne.prix_unitaire %}
-                                {{ "%.2f"|format(ligne.quantite * ligne.prix_unitaire) }} {{ ligne.devise or 'EUR' }}
+                                {{ "%.2f"|format(line_total) }} {{ ligne.devise or 'EUR' }}
                             {% else %}
                                 —
                             {% endif %}
@@ -347,11 +351,29 @@
         
         <!-- Totals -->
         {% if bon.lignes %}
+        {% set marchandises = bon.total_eur or 0 %}
+        {% set fret = bon.fret or 0 %}
+        {% set devise = bon.lignes[0].devise or 'EUR' %}
         <div class="totals-section">
+            {% if fret %}
+            <div class="total-row">
+                <div class="total-label">Total produits:</div>
+                <div class="total-value">{{ "%.2f"|format(marchandises) }} {{ devise }}</div>
+            </div>
+            <div class="total-row">
+                <div class="total-label">Fret:</div>
+                <div class="total-value">{{ "%.2f"|format(fret) }} {{ devise }}</div>
+            </div>
+            <div class="total-row grand-total">
+                <div class="total-label">Total:</div>
+                <div class="total-value">{{ "%.2f"|format(marchandises + fret) }} {{ devise }}</div>
+            </div>
+            {% else %}
             <div class="total-row">
                 <div class="total-label">Montant total:</div>
-                <div class="total-value">{{ "%.2f"|format(bon.total_eur or 0) }} {{ bon.lignes[0].devise or 'EUR' }}</div>
+                <div class="total-value">{{ "%.2f"|format(marchandises) }} {{ devise }}</div>
             </div>
+            {% endif %}
         </div>
         {% endif %}
         

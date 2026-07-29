@@ -86,12 +86,6 @@
             <p class="font-semibold">{{ operation.date_encaissement.strftime('%d/%m/%Y') }}</p>
         </div>
         {% endif %}
-        {% if operation.date_sortie %}
-        <div class="bg-base-200 rounded-lg p-3">
-            <p class="text-xs modal-label uppercase">Date sortie</p>
-            <p class="font-semibold">{{ operation.date_sortie.strftime('%d/%m/%Y') }}</p>
-        </div>
-        {% endif %}
         {% if operation.famille %}
         <div class="bg-base-200 rounded-lg p-3">
             <p class="text-xs modal-label uppercase">Famille</p>

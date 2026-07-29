@@ -61,6 +61,12 @@
                 </div>
                 {% if s %}<span class="badge badge-sm font-semibold whitespace-nowrap {{ badge_cls(s) }}">{{ s }}</span>{% endif %}
             </div>
+            <div class="flex items-center justify-between gap-2 pt-1 text-sm">
+                <span class="opacity-50 text-xs">Montant</span>
+                {% set item_total = (item.montant_eur or 0) + (item.fret_bon or 0) %}
+                {% set item_sym = '$' if item.devise_bon == 'USD' else '€' %}
+                <span class="font-mono font-semibold">{{ (item_total | currency(2)) ~ ' ' ~ item_sym if item_total else '—' }}</span>
+            </div>
             <div class="grid grid-cols-2 gap-x-3 gap-y-1 text-xs mt-2">
                 <div><span class="opacity-50">DAP</span><br>{{ item.date_arrivee.strftime('%d/%m/%Y') if item.date_arrivee else '—' }}</div>
                 <div><span class="opacity-50">Échéance</span><br>
@@ -92,6 +98,7 @@
         <tr class="bg-base-200">
             <th class="whitespace-nowrap">N° Bon</th>
             <th class="cursor-pointer select-none" onclick="sortGestionTable('fournisseur')">Fournisseur{{ sort_icon('fournisseur', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="text-right whitespace-nowrap">Montant</th>
             <th class="whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_etd')">ETD{{ sort_icon('date_etd', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_arrivee')">DAP{{ sort_icon('date_arrivee', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_d10')">D10{{ sort_icon('date_d10', sort_col|default(''), sort_dir|default('asc')) }}</th>
@@ -140,6 +147,9 @@
             {% else %}<span class="opacity-30">—</span>{% endif %}
         </td>
         <td class="text-sm font-medium" style="{{ row_style }}">{{ item.fournisseur or '—' }}</td>
+        {% set item_total = (item.montant_eur or 0) + (item.fret_bon or 0) %}
+        {% set item_sym = '$' if item.devise_bon == 'USD' else '€' %}
+        <td class="text-sm text-right font-mono font-semibold whitespace-nowrap" style="{{ row_style }}">{{ (item_total | currency(2)) ~ ' ' ~ item_sym if item_total else '—' }}</td>
         <td class="text-sm whitespace-nowrap opacity-70" style="{{ row_style }}">{{ item.date_etd.strftime('%d/%m/%Y') if item.date_etd else '—' }}</td>
         <td class="text-sm whitespace-nowrap font-medium" style="{{ row_style }}">{{ item.date_arrivee.strftime('%d/%m/%Y') if item.date_arrivee else '—' }}</td>
         <td class="text-sm whitespace-nowrap opacity-70" style="{{ row_style }}">{{ item.date_d10.strftime('%d/%m/%Y') if item.date_d10 else '—' }}</td>
@@ -155,7 +165,7 @@
         </td>
     </tr>
     {% else %}
-    <tr><td colspan="10" class="text-center py-12 opacity-50">
+    <tr><td colspan="11" class="text-center py-12 opacity-50">
         <i class="fas fa-inbox text-4xl mb-2 block"></i>
         Aucune entrée{% if search or societe or statut_f or date_filter or date_debut or date_fin %} pour ces filtres{% endif %}
     </td></tr>

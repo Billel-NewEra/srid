@@ -115,7 +115,12 @@
             <div class="divider divider-start text-sm font-semibold opacity-70">
                 <i class="fas fa-list mr-1"></i> Lignes de commande
             </div>
-            <div class="flex justify-end mb-2">
+            <div class="flex justify-end gap-3 mb-2">
+                <div class="form-control w-44">
+                    <label class="label py-1"><span class="label-text text-xs font-semibold">Fret (<span id="bon-fret-devise">€</span>)</span></label>
+                    <input type="text" inputmode="decimal" name="fret" id="bon-fret"
+                           class="input input-bordered input-sm w-full text-right" placeholder="0,00">
+                </div>
                 <div class="form-control w-44">
                     <label class="label py-1"><span class="label-text text-xs font-semibold">Devise du bon</span></label>
                     <select id="bon-devise-global" class="select select-bordered select-sm w-full">
@@ -164,9 +169,18 @@
                     <textarea name="notes" rows="2" class="textarea textarea-bordered textarea-sm w-full"
                               placeholder="Instructions spéciales, conditions..."></textarea>
                 </div>
-                <div class="bg-base-200 rounded-lg p-4 min-w-48 text-right">
-                    <div class="text-xs opacity-60 mb-1">Montant total</div>
-                    <div id="grand-total" class="text-xl font-bold font-mono text-primary">0,00 EUR</div>
+                <div class="bg-base-200 rounded-lg p-4 min-w-56 text-right">
+                    <div class="flex justify-between gap-6 text-xs opacity-70">
+                        <span>Total produits</span><span id="total-marchandises" class="font-mono">0,00 EUR</span>
+                    </div>
+                    <div class="flex justify-between gap-6 text-xs opacity-70 mt-0.5">
+                        <span>Fret</span><span id="total-fret" class="font-mono">0,00 EUR</span>
+                    </div>
+                    <div class="divider my-1"></div>
+                    <div class="flex justify-between gap-6 items-baseline">
+                        <span class="text-xs opacity-60">Total du bon</span>
+                        <span id="grand-total" class="text-xl font-bold font-mono text-primary">0,00 EUR</span>
+                    </div>
                 </div>
             </div>
 
@@ -408,22 +422,42 @@ function syncDeviseAcrossLines(devise) {
     document.querySelectorAll('.line-devise').forEach(function(sel) {
         sel.value = target;
     });
+    var fretDev = document.getElementById('bon-fret-devise');
+    if (fretDev) fretDev.textContent = devSym(target);
 }
 
 function updateGrandTotal() {
-    var total = 0;
     var totalDevise = getCurrentDevise();
     syncDeviseAcrossLines(totalDevise);
-    document.querySelectorAll('.bon-line').forEach(function(row) {
-        var qty    = parseFloat((row.querySelector('.line-qty')    || {}).value) || 0;
-        var price  = parseFloat((row.querySelector('.line-price')  || {}).value) || 0;
-        var t = qty * price;
-        total += t;
-        var cell = row.querySelector('.line-total');
-        if (cell) cell.textContent = fmtAmount(t, totalDevise);
+
+    // 1) Valeur brute (marchandises) de chaque ligne = qté × prix.
+    var rows = Array.prototype.slice.call(document.querySelectorAll('.bon-line'));
+    var rawVals = rows.map(function(row) {
+        var qty   = parseFloat((row.querySelector('.line-qty')   || {}).value) || 0;
+        var price = parseFloat((row.querySelector('.line-price') || {}).value) || 0;
+        return qty * price;
     });
+    var marchandises = rawVals.reduce(function(a, b) { return a + b; }, 0);
+
+    // 2) Fret global du bon.
+    var fretEl = document.getElementById('bon-fret');
+    var fret = 0;
+    if (fretEl) {
+        fret = parseFloat(('' + fretEl.value).replace(/[\s\u00A0\u202F]/g, '').replace(',', '.')) || 0;
+    }
+
+    // 3) Total de chaque ligne = valeur brute (qté × prix), sans le fret.
+    rows.forEach(function(row, i) {
+        var cell = row.querySelector('.line-total');
+        if (cell) cell.textContent = fmtAmount(rawVals[i], totalDevise);
+    });
+
+    var marchEl = document.getElementById('total-marchandises');
+    if (marchEl) marchEl.textContent = fmtAmount(marchandises, totalDevise);
+    var fretCell = document.getElementById('total-fret');
+    if (fretCell) fretCell.textContent = fmtAmount(fret, totalDevise);
     var el = document.getElementById('grand-total');
-    if (el) el.textContent = fmtAmount(total, totalDevise);
+    if (el) el.textContent = fmtAmount(marchandises + fret, totalDevise);
 }
 
 function setupProductSuggestion(row) {
@@ -542,6 +576,10 @@ if (globalDeviseSel) {
         updateGrandTotal();
     });
 }
+var bonFretEl = document.getElementById('bon-fret');
+if (bonFretEl) {
+    bonFretEl.addEventListener('input', updateGrandTotal);
+}
 syncDeviseAcrossLines(getCurrentDevise());
 updateGrandTotal();
 
@@ -629,6 +667,10 @@ function openEditBon(bon) {
     var notes = form.querySelector('[name="notes"]');
     if (notes) notes.value = bon.notes || '';
 
+    var fretEl = document.getElementById('bon-fret');
+    if (fretEl) fretEl.value = (bon.fret !== null && bon.fret !== undefined && bon.fret !== '')
+        ? Number(bon.fret).toLocaleString('fr-FR', {maximumFractionDigits: 2}) : '';
+
     // Reconstruire les lignes
     var tbody = document.getElementById('bon-lines');
     tbody.innerHTML = '';
@@ -688,11 +730,12 @@ function openBonDetail(el) {
     if (!lignes.length) {
         container.innerHTML = '<p class="opacity-50 text-sm">Aucune ligne</p>';
     } else {
-        var total = 0;
         var bonDevise = lignes[0].devise || 'EUR';
-        var rows = lignes.map(function(l) {
-            var t = (Number(l.quantite) || 0) * (Number(l.prix_unitaire) || 0);
-            total += t;
+        var fret = Number(bon.fret) || 0;
+        var rawVals = lignes.map(function(l) { return (Number(l.quantite) || 0) * (Number(l.prix_unitaire) || 0); });
+        var marchandises = rawVals.reduce(function(a, b) { return a + b; }, 0);
+        var rows = lignes.map(function(l, i) {
+            var lineTotal = rawVals[i];
             var devise = l.devise || 'EUR';
             return '<tr>' +
                 '<td class="font-mono text-xs font-semibold">' + escapeHtml(l.reference || '') + '</td>' +
@@ -700,7 +743,7 @@ function openBonDetail(el) {
                 '<td class="text-right">' + (l.quantite || '—') + '</td>' +
                 '<td class="text-center font-mono text-xs">' + escapeHtml(devise) + '</td>' +
                 '<td class="text-right font-mono">' + (l.prix_unitaire ? parseFloat(l.prix_unitaire).toLocaleString('fr-FR', { minimumFractionDigits: 2 }) : '—') + '</td>' +
-                '<td class="text-right font-mono font-semibold">' + (t ? t.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' ' + devise : '—') + '</td>' +
+                '<td class="text-right font-mono font-semibold">' + (lineTotal ? lineTotal.toLocaleString('fr-FR', { minimumFractionDigits: 2 }) + ' ' + devise : '—') + '</td>' +
                 '</tr>';
         }).join('');
         container.innerHTML =
@@ -708,7 +751,12 @@ function openBonDetail(el) {
             '<thead><tr class="bg-base-200"><th>Réf.</th><th>Désignation</th><th class="text-right">Quantité</th><th class="text-center">Devise</th><th class="text-right">Prix unitaire</th><th class="text-right">Total</th></tr></thead>' +
             '<tbody>' + rows + '</tbody></table>' +
             '<div class="flex justify-end">' +
-            '<div class="bg-base-200 rounded-lg px-4 py-2 font-bold font-mono text-lg text-primary">Total : ' + deviseFmt(bonDevise).format(total) + '</div>' +
+            '<div class="bg-base-200 rounded-lg px-4 py-2 text-right min-w-56">' +
+                '<div class="flex justify-between gap-6 text-xs opacity-70"><span>Total produits</span><span class="font-mono">' + deviseFmt(bonDevise).format(marchandises) + '</span></div>' +
+                '<div class="flex justify-between gap-6 text-xs opacity-70 mt-0.5"><span>Fret</span><span class="font-mono">' + deviseFmt(bonDevise).format(fret) + '</span></div>' +
+                '<div class="divider my-1"></div>' +
+                '<div class="flex justify-between gap-6 items-baseline"><span class="text-xs opacity-60">Total du bon</span><span class="font-bold font-mono text-lg text-primary">' + deviseFmt(bonDevise).format(marchandises + fret) + '</span></div>' +
+            '</div>' +
             '</div>' +
             (bon.notes ? '<div class="mt-3 p-3 border-l-4 border-primary bg-base-100 rounded text-sm">' +
                 '<span class="text-xs font-semibold opacity-60 block mb-1">REMARQUE</span>' + escapeHtml(bon.notes) + '</div>' : '');
@@ -729,18 +777,29 @@ function printBon(bon, autoprint) {
     var euro2 = new Intl.NumberFormat('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     var lignes = bon.lignes || [];
     var printDevise = (lignes[0] && lignes[0].devise) || 'EUR';
-    var grandTotal = lignes.reduce(function(s, l) { return s + (Number(l.quantite)||0)*(Number(l.prix_unitaire)||0); }, 0);
+    var fret = Number(bon.fret) || 0;
+    var rawVals = lignes.map(function(l) { return (Number(l.quantite)||0)*(Number(l.prix_unitaire)||0); });
+    var marchandises = rawVals.reduce(function(s, v) { return s + v; }, 0);
+    var grandTotal = marchandises + fret;
 
-    var rows = lignes.map(function(l) {
-        var t = (Number(l.quantite)||0) * (Number(l.prix_unitaire)||0);
+    var rows = lignes.map(function(l, i) {
+        var t = rawVals[i];
         return '<tr><td>' + escapeHtml(l.reference || '') + '</td><td>' + escapeHtml(l.designation || '—') + '</td>' +
             '<td class="num">' + Number(l.quantite || 0).toLocaleString('fr-FR') + '</td>' +
             '<td class="num">' + (l.prix_unitaire ? euro2.format(parseFloat(l.prix_unitaire)) : '—') + '</td>' +
             '<td class="num"><strong>' + (t ? euro2.format(t) : '—') + '</strong></td></tr>';
     }).join('');
 
+    var totalBox = (fret > 0)
+        ? '<div class="total-wrap"><div class="total-box" style="flex-direction:column;align-items:stretch;gap:3px">' +
+            '<div style="display:flex;justify-content:space-between"><span>Total produits</span><span>' + euro2.format(marchandises) + ' ' + escapeHtml(printDevise) + '</span></div>' +
+            '<div style="display:flex;justify-content:space-between"><span>Fret</span><span>' + euro2.format(fret) + ' ' + escapeHtml(printDevise) + '</span></div>' +
+            '<div style="display:flex;justify-content:space-between;border-top:1px solid #55a73b;padding-top:3px"><span>Total</span><strong>' + euro2.format(grandTotal) + ' ' + escapeHtml(printDevise) + '</strong></div>' +
+          '</div></div>'
+        : '<div class="total-wrap"><div class="total-box"><span>Montant total</span><strong>' + euro2.format(grandTotal) + ' ' + escapeHtml(printDevise) + '</strong></div></div>';
+
     var pw = window.open('', '_blank', 'width=900,height=760');
-    if (!pw) { alert("Autorisez les pop-ups pour imprimer"); return; }
+    if (!pw) { showToast("Autorisez les pop-ups pour imprimer", 'warning'); return; }
 
     var toolbar = autoprint ? '' :
         '<div id="preview-toolbar" style="position:fixed;top:0;left:0;right:0;z-index:9999;background:#172421;padding:10px 20px;display:flex;gap:10px;align-items:center;box-shadow:0 2px 10px rgba(0,0,0,.5)">' +
@@ -785,7 +844,7 @@ function printBon(bon, autoprint) {
         '</div></div></section>' +
         '<table><thead><tr><th>RÉF.</th><th>DÉSIGNATION</th><th class="num">QUANTITÉ</th><th class="num">PRIX UNITAIRE</th><th class="num">TOTAL</th></tr></thead>' +
         '<tbody>' + rows + '</tbody></table>' +
-        '<div class="total-wrap"><div class="total-box"><span>Montant total</span><strong>' + euro2.format(grandTotal) + ' ' + escapeHtml(printDevise) + '</strong></div></div>' +
+        totalBox +
         '</div>' +
         (bon.notes ? '<div class="notes"><span class="lbl">REMARQUE</span><p>' + escapeHtml(bon.notes) + '</p></div>' : '') +
         '</main></section></div>' +

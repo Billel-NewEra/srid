@@ -113,8 +113,9 @@
                 <label class="form-control"><span class="label-text text-xs">Droits de douane (D.D.)</span>
                     <select id="pg_douane" class="select select-bordered select-xs" oninput="recomputePR()">
                         <option value="0">TAUX 1 — 0 %</option>
-                        <option value="15">TAUX 2 — 15 %</option>
-                        <option value="30">TAUX 3 — 30 %</option>
+                        <option value="5">TAUX 2 — 5 %</option>
+                        <option value="15">TAUX 3 — 15 %</option>
+                        <option value="30">TAUX 4 — 30 %</option>
                     </select></label>
                 <label class="form-control"><span class="label-text text-xs">TCS (%)</span>
                     <input type="number" step="0.01" id="pg_tcs" class="input input-bordered input-xs" oninput="recomputePR()"></label>
@@ -127,7 +128,7 @@
             <div class="divider text-xs my-2 font-semibold text-warning">Frais transitaire</div>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
                 <label class="form-control"><span class="label-text text-xs">Fret (<span id="fret-devise">€</span>)</span>
-                    <input type="text" inputmode="decimal" id="pc_fret" class="input input-bordered input-xs text-right" oninput="_fmtAmountInput(this); recomputePR()"></label>
+                    <input type="text" id="pc_fret" class="input input-bordered input-xs text-right input-disabled bg-base-200 cursor-not-allowed opacity-80" disabled tabindex="-1" title="Indicatif — le fret est défini lors de la création du bon de commande"></label>
                 <label class="form-control"><span class="label-text text-xs">Taxe domiciliation (%)</span>
                     <input type="number" step="0.001" id="pg_taxedom" class="input input-bordered input-xs" oninput="recomputePR()"></label>
                 <label class="form-control"><span class="label-text text-xs">Frais transfert (%)</span>
