@@ -165,7 +165,7 @@
 <!-- ═══════ MODAL DÉTAIL ═══════ -->
 {% if can_write %}
 <dialog id="modal-detail-log" class="modal">
-    <div class="modal-box max-w-3xl w-full">
+    <div class="modal-box max-w-5xl w-full">
         <h3 class="font-bold text-lg mb-1" id="detail-log-titre">—</h3>
         <p class="text-xs modal-meta mb-4" id="detail-log-meta"></p>
         <div id="detail-log-corps" class="mb-4"></div>
@@ -286,7 +286,7 @@ function openLogDetail(el) {
         ['Remarque',       d.remarque || '—']
     );
     document.getElementById('detail-log-corps').innerHTML =
-        '<div class="grid grid-cols-2 sm:grid-cols-3 gap-2">' +
+        '<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">' +
         rows.map(([lbl, val, id]) =>
             '<div class="bg-base-200 rounded p-2">' +
             '<div class="text-xs modal-label uppercase mb-1">' + lbl + '</div>' +

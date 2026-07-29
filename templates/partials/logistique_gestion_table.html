@@ -93,19 +93,19 @@
 {% else %}<i class="fas fa-sort ml-1 opacity-30"></i>{% endif %}
 {% endmacro %}
 
-<table class="table table-sm w-full min-w-[860px]">
+<table class="table table-sm w-full min-w-[720px]">
     <thead>
         <tr class="bg-base-200">
             <th class="whitespace-nowrap">N° Bon</th>
             <th class="cursor-pointer select-none" onclick="sortGestionTable('fournisseur')">Fournisseur{{ sort_icon('fournisseur', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="text-right whitespace-nowrap">Montant</th>
-            <th class="whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_etd')">ETD{{ sort_icon('date_etd', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_arrivee')">DAP{{ sort_icon('date_arrivee', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_d10')">D10{{ sort_icon('date_d10', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_arrivee_depot')">DAD{{ sort_icon('date_arrivee_depot', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_echeance')">Échéance{{ sort_icon('date_echeance', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_paiement')">Paiement{{ sort_icon('date_paiement', sort_col|default(''), sort_dir|default('asc')) }}</th>
-            <th class="whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_valeur')">Val. Date{{ sort_icon('date_valeur', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="text-xs whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_etd')">ETD{{ sort_icon('date_etd', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="text-xs whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_arrivee')">DAP{{ sort_icon('date_arrivee', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="text-xs whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_d10')">D10{{ sort_icon('date_d10', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="text-xs whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_arrivee_depot')">DAD{{ sort_icon('date_arrivee_depot', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="text-xs whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_echeance')">Échéance{{ sort_icon('date_echeance', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="text-xs whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_paiement')">Paiement{{ sort_icon('date_paiement', sort_col|default(''), sort_dir|default('asc')) }}</th>
+            <th class="text-xs whitespace-nowrap cursor-pointer select-none" onclick="sortGestionTable('date_valeur')">Val. Date{{ sort_icon('date_valeur', sort_col|default(''), sort_dir|default('asc')) }}</th>
             <th class="cursor-pointer select-none" onclick="sortGestionTable('statut')">Statut{{ sort_icon('statut', sort_col|default(''), sort_dir|default('asc')) }}</th>
         </tr>
     </thead>
@@ -150,15 +150,15 @@
         {% set item_total = (item.montant_eur or 0) + (item.fret_bon or 0) %}
         {% set item_sym = '$' if item.devise_bon == 'USD' else '€' %}
         <td class="text-sm text-right font-mono font-semibold whitespace-nowrap" style="{{ row_style }}">{{ (item_total | currency(2)) ~ ' ' ~ item_sym if item_total else '—' }}</td>
-        <td class="text-sm whitespace-nowrap opacity-70" style="{{ row_style }}">{{ item.date_etd.strftime('%d/%m/%Y') if item.date_etd else '—' }}</td>
-        <td class="text-sm whitespace-nowrap font-medium" style="{{ row_style }}">{{ item.date_arrivee.strftime('%d/%m/%Y') if item.date_arrivee else '—' }}</td>
-        <td class="text-sm whitespace-nowrap opacity-70" style="{{ row_style }}">{{ item.date_d10.strftime('%d/%m/%Y') if item.date_d10 else '—' }}</td>
-        <td class="text-sm whitespace-nowrap font-medium" style="{{ row_style }}">{{ item.date_arrivee_depot.strftime('%d/%m/%Y') if item.date_arrivee_depot else '—' }}</td>
-        <td class="text-sm whitespace-nowrap {% if item.date_echeance and item.date_echeance < today and not item.date_paiement %}text-red-700 font-bold{% elif item.date_echeance and (item.date_echeance - today).days <= 7 and not item.date_paiement %}text-amber-700 font-semibold{% endif %}" style="{{ row_style }}">
-            {% if item.date_echeance and item.date_echeance < today and not item.date_paiement %}<i class="fas fa-circle-exclamation text-red-600 mr-1"></i>{% elif item.date_echeance and (item.date_echeance - today).days <= 7 and not item.date_paiement %}<i class="fas fa-triangle-exclamation text-amber-500 mr-1"></i>{% endif %}{{ item.date_echeance.strftime('%d/%m/%Y') if item.date_echeance else '—' }}
+        <td class="text-xs whitespace-nowrap opacity-70" style="{{ row_style }}">{{ item.date_etd.strftime('%d/%m/%y') if item.date_etd else '—' }}</td>
+        <td class="text-xs whitespace-nowrap font-medium" style="{{ row_style }}">{{ item.date_arrivee.strftime('%d/%m/%y') if item.date_arrivee else '—' }}</td>
+        <td class="text-xs whitespace-nowrap opacity-70" style="{{ row_style }}">{{ item.date_d10.strftime('%d/%m/%y') if item.date_d10 else '—' }}</td>
+        <td class="text-xs whitespace-nowrap font-medium" style="{{ row_style }}">{{ item.date_arrivee_depot.strftime('%d/%m/%y') if item.date_arrivee_depot else '—' }}</td>
+        <td class="text-xs whitespace-nowrap {% if item.date_echeance and item.date_echeance < today and not item.date_paiement %}text-red-700 font-bold{% elif item.date_echeance and (item.date_echeance - today).days <= 7 and not item.date_paiement %}text-amber-700 font-semibold{% endif %}" style="{{ row_style }}">
+            {% if item.date_echeance and item.date_echeance < today and not item.date_paiement %}<i class="fas fa-circle-exclamation text-red-600 mr-1"></i>{% elif item.date_echeance and (item.date_echeance - today).days <= 7 and not item.date_paiement %}<i class="fas fa-triangle-exclamation text-amber-500 mr-1"></i>{% endif %}{{ item.date_echeance.strftime('%d/%m/%y') if item.date_echeance else '—' }}
         </td>
-        <td class="text-sm whitespace-nowrap {% if item.date_paiement and not item.date_valeur %}text-blue-600 font-semibold{% else %}opacity-70{% endif %}" style="{{ row_style }}">{{ item.date_paiement.strftime('%d/%m/%Y') if item.date_paiement else '—' }}</td>
-        <td class="text-sm whitespace-nowrap {% if item.date_valeur %}text-green-600 font-semibold{% else %}opacity-70{% endif %}" style="{{ row_style }}">{{ item.date_valeur.strftime('%d/%m/%Y') if item.date_valeur else '—' }}</td>
+        <td class="text-xs whitespace-nowrap {% if item.date_paiement and not item.date_valeur %}text-blue-600 font-semibold{% else %}opacity-70{% endif %}" style="{{ row_style }}">{{ item.date_paiement.strftime('%d/%m/%y') if item.date_paiement else '—' }}</td>
+        <td class="text-xs whitespace-nowrap {% if item.date_valeur %}text-green-600 font-semibold{% else %}opacity-70{% endif %}" style="{{ row_style }}">{{ item.date_valeur.strftime('%d/%m/%y') if item.date_valeur else '—' }}</td>
         <td style="{{ row_style }}">
             {% if s %}<span class="badge badge-sm font-semibold whitespace-nowrap {{ badge_cls(s) }}">{{ s }}</span>
             {% else %}<span class="opacity-30">—</span>{% endif %}
