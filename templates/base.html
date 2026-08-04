@@ -875,7 +875,7 @@
 
                 <!-- Pied de sidebar : version (informatif, sans lien) -->
                 <div class="sidebar-foot">
-                    <span class="sidebar-ver"><i class="fas fa-code-branch"></i>SRID COM · v{{ app_version if app_version is defined else '2.4.0' }}</span>
+                    <span class="sidebar-ver"><i class="fas fa-code-branch"></i>SRID COM · v{{ app_version if app_version is defined else '2.5.0' }}</span>
                 </div>
 
             </aside>
@@ -971,12 +971,108 @@
             <footer class="app-footer">
                 <span class="foot-brand"><i class="fas fa-building"></i> SRID COM — Gestion Financière</span>
                 <span class="foot-links">
-                    <span class="ver-chip">v{{ app_version if app_version is defined else '2.4.0' }}</span>
+                    <span class="ver-chip">v{{ app_version if app_version is defined else '2.5.0' }}</span>
                     <span>© {{ now().year if now is defined else 2026 }} <a href="https://mobibenz.dz/fr" target="_blank" rel="noopener">MobiBenz</a> — Tous droits réservés</span>
                 </span>
             </footer>
         </div>
     </div>
+
+    {% if is_logged_in %}
+    <!-- Popup « Nouveautés » : affiché une seule fois par version, mémorisé côté navigateur -->
+    <div id="whatsnew-overlay" class="wn-overlay" hidden>
+        <div class="wn-card bg-base-100 text-base-content" role="dialog" aria-modal="true" aria-labelledby="wn-title">
+            <div class="wn-head">
+                <div class="wn-head-txt">
+                    <span class="wn-overline">Mise à jour de l'application</span>
+                    <h3 id="wn-title">Nouveautés de la version {{ app_version if app_version is defined else '2.5.0' }}</h3>
+                </div>
+                <button type="button" class="wn-x" onclick="dismissWhatsNew()" aria-label="Fermer">&times;</button>
+            </div>
+            <div class="wn-body">
+                <ul class="wn-list">
+                    <li>
+                        <span class="wn-ic"><i class="fas fa-calendar-alt"></i></span>
+                        <div><span class="wn-t">Filtre par période</span><span class="wn-d">Filtrez les Bons de commande et la Gestion des commandes par plage de dates.</span></div>
+                    </li>
+                    <li>
+                        <span class="wn-ic"><i class="fas fa-coins"></i></span>
+                        <div><span class="wn-t">Colonne Montant</span><span class="wn-d">Le montant s'affiche désormais dans la Gestion des commandes, en euros et en dinars.</span></div>
+                    </li>
+                    <li>
+                        <span class="wn-ic"><i class="fas fa-truck"></i></span>
+                        <div><span class="wn-t">Fret sur le bon de commande</span><span class="wn-d">Le fret se saisit directement sur le bon et alimente le calcul € → DA.</span></div>
+                    </li>
+                    <li>
+                        <span class="wn-ic"><i class="fas fa-percent"></i></span>
+                        <div><span class="wn-t">Droits de douane à 5 %</span><span class="wn-d">Nouveau taux disponible dans la modale de calcul de frais.</span></div>
+                    </li>
+                    <li>
+                        <span class="wn-ic"><i class="fas fa-list-check"></i></span>
+                        <div><span class="wn-t">Détails de commande harmonisés</span><span class="wn-d">Présentation unifiée : Montant, Fret, Cours et Montant DA.</span></div>
+                    </li>
+                </ul>
+            </div>
+            <div class="wn-foot">
+                <span class="wn-note"><i class="fas fa-circle-info"></i> Ce message ne s'affiche qu'une seule fois.</span>
+                <button type="button" class="btn btn-primary btn-sm" onclick="dismissWhatsNew()">J'ai compris</button>
+            </div>
+        </div>
+    </div>
+    <style>
+        .wn-overlay{position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.6);backdrop-filter:blur(2px);display:flex;align-items:center;justify-content:center;padding:1rem;}
+        .wn-overlay[hidden]{display:none;}
+        .wn-card{max-width:560px;width:100%;border-radius:1rem;box-shadow:0 24px 70px rgba(0,0,0,.4);overflow:hidden;animation:wn-pop .2s ease-out;border:1px solid rgba(0,0,0,.06);}
+        @keyframes wn-pop{from{opacity:0;transform:translateY(10px) scale(.985);}to{opacity:1;transform:none;}}
+        .wn-head{display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;padding:1.25rem 1.5rem 1rem;border-bottom:1px solid var(--fallback-b3,rgba(0,0,0,.08));}
+        .wn-head-txt{display:flex;flex-direction:column;gap:.15rem;}
+        .wn-overline{font-size:.68rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:hsl(var(--p,221 83% 53%));}
+        .wn-head h3{margin:0;font-size:1.15rem;font-weight:700;line-height:1.25;}
+        .wn-x{background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;color:inherit;opacity:.5;padding:0 .25rem;}
+        .wn-x:hover{opacity:1;}
+        .wn-body{padding:1rem 1.5rem;}
+        .wn-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.9rem;}
+        .wn-list li{display:flex;align-items:flex-start;gap:.85rem;}
+        .wn-ic{flex:0 0 auto;width:2.15rem;height:2.15rem;border-radius:.6rem;display:flex;align-items:center;justify-content:center;background:hsl(var(--p,221 83% 53%)/.12);color:hsl(var(--p,221 83% 53%));font-size:.9rem;}
+        .wn-list li > div{display:flex;flex-direction:column;gap:.1rem;}
+        .wn-t{font-weight:600;font-size:.92rem;line-height:1.2;}
+        .wn-d{font-size:.82rem;opacity:.72;line-height:1.35;}
+        .wn-foot{display:flex;align-items:center;justify-content:space-between;gap:1rem;padding:1rem 1.5rem 1.25rem;border-top:1px solid var(--fallback-b3,rgba(0,0,0,.08));}
+        .wn-note{font-size:.75rem;opacity:.6;display:flex;align-items:center;gap:.4rem;}
+        @media (max-width:480px){.wn-foot{flex-direction:column-reverse;align-items:stretch;}.wn-foot .btn{width:100%;}.wn-note{justify-content:center;}}
+    </style>
+    <script>
+        (function () {
+            var APP_VERSION = "{{ app_version if app_version is defined else '2.5.0' }}";
+            var KEY = 'srid_seen_version';
+            window.dismissWhatsNew = function () {
+                try { localStorage.setItem(KEY, APP_VERSION); } catch (e) {}
+                var o = document.getElementById('whatsnew-overlay');
+                if (o) o.hidden = true;
+            };
+            document.addEventListener('DOMContentLoaded', function () {
+                var seen = null;
+                try { seen = localStorage.getItem(KEY); } catch (e) {}
+                if (seen !== APP_VERSION) {
+                    var o = document.getElementById('whatsnew-overlay');
+                    if (o) o.hidden = false;
+                }
+            });
+            // Fermer en cliquant hors de la carte
+            document.addEventListener('click', function (e) {
+                var o = document.getElementById('whatsnew-overlay');
+                if (o && !o.hidden && e.target === o) window.dismissWhatsNew();
+            });
+            // Fermer avec la touche Échap
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') {
+                    var o = document.getElementById('whatsnew-overlay');
+                    if (o && !o.hidden) window.dismissWhatsNew();
+                }
+            });
+        })();
+    </script>
+    {% endif %}
 
     <script>
         // Toggle thème clair/sombre

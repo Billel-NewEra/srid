@@ -125,6 +125,7 @@ def inject_globals():
         'can_manage_users': role_key == 'admin',
         'is_logged_in': 'user_id' in session,
         'now': datetime.now,
+        'app_version': '2.5.0',
         'bank_options': _get_bank_suggestions() if 'user_id' in session else [],
         'client_options': _get_client_suggestions() if 'user_id' in session else [],
         'remettant_options': _get_remettant_suggestions() if 'user_id' in session else [],
