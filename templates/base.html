@@ -990,31 +990,28 @@
                 <button type="button" class="wn-x" onclick="dismissWhatsNew()" aria-label="Fermer">&times;</button>
             </div>
             <div class="wn-body">
+                <p class="wn-intro">Bonjour{% if current_user %} {{ current_user }}{% endif %},<br>
+                Voici les dernières améliorations que nous avons préparées pour vous simplifier le travail au quotidien.</p>
                 <ul class="wn-list">
                     <li>
-                        <span class="wn-ic"><i class="fas fa-calendar-alt"></i></span>
                         <div><span class="wn-t">Filtre par période</span><span class="wn-d">Filtrez les Bons de commande et la Gestion des commandes par plage de dates.</span></div>
                     </li>
                     <li>
-                        <span class="wn-ic"><i class="fas fa-coins"></i></span>
                         <div><span class="wn-t">Colonne Montant</span><span class="wn-d">Le montant s'affiche désormais dans la Gestion des commandes, dans sa devise d'origine (€ ou $).</span></div>
                     </li>
                     <li>
-                        <span class="wn-ic"><i class="fas fa-truck"></i></span>
                         <div><span class="wn-t">Fret sur le bon de commande</span><span class="wn-d">Le fret se saisit directement sur le bon et alimente le calcul devise → DA (€ ou $).</span></div>
                     </li>
                     <li>
-                        <span class="wn-ic"><i class="fas fa-percent"></i></span>
                         <div><span class="wn-t">Droits de douane à 5 %</span><span class="wn-d">Nouveau taux disponible dans la modale de calcul de frais.</span></div>
                     </li>
                     <li>
-                        <span class="wn-ic"><i class="fas fa-list-check"></i></span>
                         <div><span class="wn-t">Détails de commande harmonisés</span><span class="wn-d">Présentation unifiée : Montant, Fret, Cours et Montant DA.</span></div>
                     </li>
                 </ul>
             </div>
             <div class="wn-foot">
-                <span class="wn-note"><i class="fas fa-circle-info"></i> Ce message ne s'affiche qu'une seule fois.</span>
+                <span class="wn-note">Ce message ne s'affiche qu'une seule fois.</span>
                 <button type="button" class="btn btn-primary btn-sm" onclick="dismissWhatsNew()">J'ai compris</button>
             </div>
         </div>
@@ -1031,9 +1028,10 @@
         .wn-x{background:none;border:none;font-size:1.4rem;line-height:1;cursor:pointer;color:inherit;opacity:.5;padding:0 .25rem;}
         .wn-x:hover{opacity:1;}
         .wn-body{padding:1rem 1.5rem;}
+        .wn-intro{margin:0 0 1rem;font-size:.9rem;line-height:1.5;opacity:.85;}
         .wn-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:.9rem;}
-        .wn-list li{display:flex;align-items:flex-start;gap:.85rem;}
-        .wn-ic{flex:0 0 auto;width:2.15rem;height:2.15rem;border-radius:.6rem;display:flex;align-items:center;justify-content:center;background:hsl(var(--p,221 83% 53%)/.12);color:hsl(var(--p,221 83% 53%));font-size:.9rem;}
+        .wn-list li{display:flex;align-items:flex-start;gap:.6rem;}
+        .wn-list li::before{content:"";flex:0 0 auto;width:.4rem;height:.4rem;margin-top:.45rem;border-radius:50%;background:hsl(var(--p,221 83% 53%));}
         .wn-list li > div{display:flex;flex-direction:column;gap:.1rem;}
         .wn-t{font-weight:600;font-size:.92rem;line-height:1.2;}
         .wn-d{font-size:.82rem;opacity:.72;line-height:1.35;}
