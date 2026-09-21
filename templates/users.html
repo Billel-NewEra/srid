@@ -22,17 +22,32 @@
                         <input type="text" name="nom_complet" class="input input-bordered" placeholder="ex: Mehdi">
                     </div>
                     <div class="form-control">
-                        <label class="label"><span class="label-text">Rôle</span></label>
-                        <select name="role" class="select select-bordered" required>
-                            <option value="admin">Admin (full access)</option>
-                            <option value="saisie">Saisie (créer/modifier)</option>
-                            <option value="consultation">Consultation (lecture seule)</option>
-                        </select>
-                    </div>
-                    <div class="form-control">
                         <label class="label"><span class="label-text">Mot de passe</span></label>
                         <input type="password" name="password" class="input input-bordered" minlength="6" required>
                         <label class="label"><span class="label-text-alt opacity-70">Minimum 6 caractères</span></label>
+                    </div>
+                    <div class="divider text-xs opacity-60 my-1">Accès</div>
+                    <div class="form-control">
+                        <label class="label cursor-pointer justify-start gap-3">
+                            <input type="checkbox" name="is_admin" value="1" class="checkbox checkbox-error checkbox-sm" data-admin-toggle>
+                            <span class="label-text font-semibold">Administrateur <span class="opacity-60 font-normal">(accès total)</span></span>
+                        </label>
+                    </div>
+                    <div class="form-control" data-section-fields>
+                        <label class="label"><span class="label-text">Finance</span></label>
+                        <select name="finance_niveau" class="select select-bordered" data-section-select>
+                            {% for niv in section_niveaux %}
+                            <option value="{{ niv }}" {% if niv == 'aucun' %}selected{% endif %}>{{ niveau_labels[niv] }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-control" data-section-fields>
+                        <label class="label"><span class="label-text">Logistique</span></label>
+                        <select name="logistique_niveau" class="select select-bordered" data-section-select>
+                            {% for niv in section_niveaux %}
+                            <option value="{{ niv }}" {% if niv == 'aucun' %}selected{% endif %}>{{ niveau_labels[niv] }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div class="pt-2">
                         <button type="submit" class="btn btn-primary w-full">
@@ -52,8 +67,8 @@
                             <tr>
                                 <th>Username</th>
                                 <th>Nom</th>
-                                <th>Rôle</th>
-                                <th>Changer rôle</th>
+                                <th>Accès actuel</th>
+                                <th>Modifier les accès</th>
                                 <th>Nouveau mot de passe</th>
                                 <th>Suppression</th>
                             </tr>
@@ -64,17 +79,48 @@
                                 <td class="font-mono text-xs">{{ u.username }}</td>
                                 <td>{{ u.nom_complet or '-' }}</td>
                                 <td>
-                                    <span class="badge badge-sm {% if u.role == 'admin' %}badge-error{% elif u.role == 'saisie' %}badge-warning{% else %}badge-ghost{% endif %}">
-                                        {{ role_labels.get(u.role, u.role) }}
-                                    </span>
+                                    {% if u.role == 'admin' %}
+                                    <span class="badge badge-sm badge-error">Administrateur</span>
+                                    {% else %}
+                                    <div class="flex flex-col gap-1 text-xs">
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="w-16 opacity-60">Finance</span>
+                                            <span class="badge badge-sm whitespace-nowrap {% if u.finance_niveau == 'ecriture' %}badge-success{% elif u.finance_niveau == 'lecture' %}badge-info{% else %}badge-ghost{% endif %}">
+                                                {{ niveau_labels.get(u.finance_niveau, u.finance_niveau) }}
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center gap-1.5">
+                                            <span class="w-16 opacity-60">Logistique</span>
+                                            <span class="badge badge-sm whitespace-nowrap {% if u.logistique_niveau == 'ecriture' %}badge-success{% elif u.logistique_niveau == 'lecture' %}badge-info{% else %}badge-ghost{% endif %}">
+                                                {{ niveau_labels.get(u.logistique_niveau, u.logistique_niveau) }}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {% endif %}
                                 </td>
                                 <td>
-                                    <form method="POST" action="{{ url_for('update_user_role', user_id=u.id) }}" class="flex gap-2 items-center" data-role-form>
-                                        <select name="role" class="select select-xs select-bordered" data-role-select data-original-role="{{ u.role }}" data-username="{{ u.username }}" {% if u.id == current_user_id %}disabled{% endif %}>
-                                            <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>Admin</option>
-                                            <option value="saisie" {% if u.role == 'saisie' %}selected{% endif %}>Saisie</option>
-                                            <option value="consultation" {% if u.role == 'consultation' %}selected{% endif %}>Consultation</option>
-                                        </select>
+                                    <form method="POST" action="{{ url_for('update_user_role', user_id=u.id) }}" class="flex flex-col gap-1.5" data-access-form data-username="{{ u.username }}">
+                                        <label class="cursor-pointer flex items-center gap-2 text-xs">
+                                            <input type="checkbox" name="is_admin" value="1" class="checkbox checkbox-error checkbox-xs" data-admin-toggle {% if u.role == 'admin' %}checked{% endif %} {% if u.id == current_user_id %}disabled{% endif %}>
+                                            <span>Administrateur</span>
+                                        </label>
+                                        <div class="flex items-center gap-1 text-xs" data-section-fields>
+                                            <span class="w-16 opacity-70">Finance</span>
+                                            <select name="finance_niveau" class="select select-xs select-bordered" data-section-select {% if u.id == current_user_id %}disabled{% endif %}>
+                                                {% for niv in section_niveaux %}
+                                                <option value="{{ niv }}" {% if niv == u.finance_niveau %}selected{% endif %}>{{ niveau_labels[niv] }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <div class="flex items-center gap-1 text-xs" data-section-fields>
+                                            <span class="w-16 opacity-70">Logistique</span>
+                                            <select name="logistique_niveau" class="select select-xs select-bordered" data-section-select {% if u.id == current_user_id %}disabled{% endif %}>
+                                                {% for niv in section_niveaux %}
+                                                <option value="{{ niv }}" {% if niv == u.logistique_niveau %}selected{% endif %}>{{ niveau_labels[niv] }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+                                        <button type="submit" class="btn btn-xs btn-outline w-fit" {% if u.id == current_user_id %}disabled{% endif %}>Appliquer</button>
                                     </form>
                                 </td>
                                 <td>
@@ -165,21 +211,34 @@
         closeConfirm();
     });
 
-    document.querySelectorAll('[data-role-select]').forEach((selectEl) => {
-        selectEl.addEventListener('change', () => {
-            const originalRole = selectEl.dataset.originalRole;
-            const newRole = selectEl.value;
-            const username = selectEl.dataset.username || 'cet utilisateur';
-
-            if (newRole === originalRole) return;
-
-            const form = selectEl.closest('form[data-role-form]');
+    // Toggle Administrateur : désactive les sélecteurs de section quand coché
+    document.querySelectorAll('[data-admin-toggle]').forEach((toggle) => {
+        const form = toggle.closest('form');
+        const applyAdminState = () => {
             if (!form) return;
+            form.querySelectorAll('[data-section-fields]').forEach((el) => {
+                el.style.opacity = toggle.checked ? '0.4' : '1';
+            });
+            form.querySelectorAll('[data-section-select]').forEach((sel) => {
+                sel.disabled = toggle.checked;
+            });
+        };
+        toggle.addEventListener('change', applyAdminState);
+        applyAdminState();
+    });
 
+    // Formulaire de modification des accès (dans le tableau) : confirmation avant envoi
+    document.querySelectorAll('form[data-access-form]').forEach((formEl) => {
+        formEl.addEventListener('submit', (event) => {
+            event.preventDefault();
+            const username = formEl.dataset.username || 'cet utilisateur';
             openConfirm(
-                `Confirmer le changement de rôle pour ${username} ?`,
-                () => form.submit(),
-                () => { selectEl.value = originalRole; }
+                `Confirmer la modification des accès pour ${username} ? Effectif après reconnexion.`,
+                () => {
+                    // Réactiver les selects désactivés (admin) pour qu'ils soient soumis
+                    formEl.querySelectorAll('[data-section-select]').forEach((sel) => { sel.disabled = false; });
+                    formEl.submit();
+                }
             );
         });
     });

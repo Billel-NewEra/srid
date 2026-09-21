@@ -26,6 +26,9 @@ class User(db.Model):
     password_hash = db.Column(db.String(200), nullable=False)
     nom_complet = db.Column(db.String(150))
     role = db.Column(db.String(20), nullable=False, default='saisie')  # admin, saisie, consultation
+    # Accès par section (aucun | lecture | ecriture). L'admin (role='admin') a tout.
+    finance_niveau = db.Column(db.String(10), nullable=False, default='aucun')
+    logistique_niveau = db.Column(db.String(10), nullable=False, default='aucun')
 
     def set_password(self, password):
         self.password_hash = generate_password_hash(password)

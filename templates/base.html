@@ -779,14 +779,17 @@
                 <!-- Liens de navigation -->
                 <nav class="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto">
 
-                    <!-- Dashboard -->
+                    <!-- Dashboard (admin uniquement) -->
+                    {% if is_admin %}
                     <a href="{{ url_for('dashboard') }}"
                        class="nav-link {% if request.endpoint == 'dashboard' %}active{% endif %}">
                         <i class="nav-icon fas fa-chart-line"></i>
                         <span>Dashboard</span>
                     </a>
+                    {% endif %}
 
                     <!-- ── FINANCE ── -->
+                    {% if can_finance_read %}
                     <div class="pt-5 pb-1.5">
                         <div class="nav-section-label">
                             <div class="module-strip module-strip-finance"></div>
@@ -798,22 +801,22 @@
                         <i class="nav-icon fas fa-coins"></i>
                         <span>Opérations</span>
                     </a>
-                    {% if can_write %}
+                    {% if can_finance_write %}
                     <a href="{{ url_for('import_excel') }}"
                        class="nav-link nav-link-finance {% if request.endpoint == 'import_excel' %}active{% endif %}">
                         <i class="nav-icon fas fa-file-import"></i>
                         <span>Import Excel</span>
                     </a>
-                    {% endif %}
-                    {% if can_write %}
                     <a href="{{ url_for('referentiels') }}"
                        class="nav-link nav-link-finance {% if request.endpoint == 'referentiels' %}active{% endif %}">
                         <i class="nav-icon fas fa-list"></i>
                         <span>Référentiels</span>
                     </a>
                     {% endif %}
+                    {% endif %}
 
                     <!-- ── LOGISTIQUE ── -->
+                    {% if can_logistique_read %}
                     <div class="pt-5 pb-1.5">
                         <div class="nav-section-label">
                             <div class="module-strip module-strip-logistique"></div>
@@ -835,12 +838,13 @@
                         <i class="nav-icon fas fa-calculator"></i>
                         <span>Prix de revient/vente</span>
                     </a>
-                    {% if can_write %}
+                    {% if can_logistique_write %}
                     <a href="{{ url_for('logistique_referentiels') }}"
                        class="nav-link nav-link-logistique {% if request.endpoint == 'logistique_referentiels' %}active{% endif %}">
                         <i class="nav-icon fas fa-list"></i>
                         <span>Référentiels</span>
                     </a>
+                    {% endif %}
                     {% endif %}
 
                     <!-- ── MOBICOM BRIDGE ── -->
@@ -852,24 +856,24 @@
                     </div>
 
                     <!-- ── ADMINISTRATION ── -->
+                    {% if is_admin %}
                     <div class="pt-5 pb-1.5">
                         <div class="nav-section-label">
                             <div class="module-strip module-strip-admin"></div>
                             Administration
                         </div>
                     </div>
-                    {% if can_manage_users %}
                     <a href="{{ url_for('manage_users') }}"
                        class="nav-link nav-link-admin {% if request.endpoint == 'manage_users' %}active{% endif %}">
                         <i class="nav-icon fas fa-users-cog"></i>
                         <span>Utilisateurs</span>
                     </a>
-                    {% endif %}
                     <a href="{{ url_for('historique') }}"
                        class="nav-link nav-link-admin {% if request.endpoint == 'historique' %}active{% endif %}">
                         <i class="nav-icon fas fa-history"></i>
                         <span>Historique</span>
                     </a>
+                    {% endif %}
 
                 </nav>
 

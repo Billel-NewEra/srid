@@ -57,6 +57,22 @@ ROLE_LABELS = {
     'consultation': 'Consultation',
 }
 
+# --- Accès par section (Finance / Logistique) ---
+# Chaque utilisateur non-admin a un niveau par section : aucun | lecture | ecriture.
+# L'admin (role='admin') a accès à tout.
+SECTION_NIVEAUX = ['aucun', 'lecture', 'ecriture']
+NIVEAU_LABELS = {
+    'aucun': 'Aucun accès',
+    'lecture': 'Lecture seule',
+    'ecriture': 'Lecture / Écriture',
+}
+_NIVEAU_RANK = {'aucun': 0, 'lecture': 1, 'ecriture': 2}
+
+
+def _normalize_niveau(value):
+    v = (value or '').strip().lower()
+    return v if v in _NIVEAU_RANK else 'aucun'
+
 CHECK_TYPE_CHOICES = ['Garantie', 'À encaisser', 'À échéance']
 STATUS_CHOICES = ['Encaissé', 'Rejeté', 'Échéance', 'En cours', 'Arrive à échéance', 'Échu', 'Garantie', 'Retour']
 
@@ -72,11 +88,36 @@ def _current_role():
     return _normalize_role(session.get('user_role', ''))
 
 
+def _current_niveau(section):
+    """Niveau d'accès de l'utilisateur courant pour 'finance' ou 'logistique'.
+    L'admin a toujours 'ecriture'."""
+    if _current_role() == 'admin':
+        return 'ecriture'
+    key = 'finance_niveau' if section == 'finance' else 'logistique_niveau'
+    return _normalize_niveau(session.get(key, 'aucun'))
+
+
+def _can(section, niveau='lecture'):
+    """True si l'utilisateur courant a au moins le niveau demandé sur la section."""
+    return _NIVEAU_RANK[_current_niveau(section)] >= _NIVEAU_RANK[_normalize_niveau(niveau)]
+
+
+def _landing_endpoint():
+    """Page d'atterrissage selon les accès (admin -> dashboard, sinon 1re section accessible)."""
+    if _current_role() == 'admin':
+        return 'dashboard'
+    if _can('finance', 'lecture'):
+        return 'operations'
+    if _can('logistique', 'lecture'):
+        return 'logistique_gestion'
+    return 'logout'
+
+
 def _forbidden_response():
     if request.path.startswith('/api/') or request.headers.get('HX-Request'):
         return ('Accès refusé.', 403)
-    flash('Accès refusé pour ce rôle.', 'error')
-    return redirect(url_for('dashboard'))
+    flash('Accès refusé pour cette section.', 'error')
+    return redirect(url_for(_landing_endpoint()))
 
 def login_required(f):
     @wraps(f)
@@ -108,21 +149,64 @@ def role_required(*allowed_roles):
     return decorator
 
 
+def section_required(section, niveau='lecture'):
+    """Protège une route par section (finance/logistique) et niveau (lecture/ecriture).
+    L'admin passe toujours."""
+
+    def decorator(f):
+        @wraps(f)
+        def decorated_function(*args, **kwargs):
+            if 'user_id' not in session:
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest' \
+                   or request.accept_mimetypes.best == 'application/json' \
+                   or request.headers.get('HX-Request'):
+                    return jsonify({'error': 'Non authentifié'}), 401
+                return redirect(url_for('login'))
+            if _current_role() == 'admin':
+                return f(*args, **kwargs)
+            if not _can(section, niveau):
+                return _forbidden_response()
+            return f(*args, **kwargs)
+
+        return decorated_function
+
+    return decorator
+
+
 # --- Contexte global templates ---
 
 @app.context_processor
 def inject_globals():
     from datetime import datetime
     role_key = _current_role()
+    is_admin = role_key == 'admin'
+    can_fin_read = _can('finance', 'lecture')
+    can_fin_write = _can('finance', 'ecriture')
+    can_log_read = _can('logistique', 'lecture')
+    can_log_write = _can('logistique', 'ecriture')
+    # can_write contextuel : dépend de la section de la page courante, pour que
+    # les templates existants (qui utilisent can_write) restent corrects sans refonte.
+    _ep = request.endpoint or ''
+    _is_log_page = _ep.startswith('logistique') or _ep.startswith('api_logistique') \
+        or _ep in ('api_products_by_company', 'api_products_search') \
+        or request.path.startswith('/logistique') or request.path.startswith('/api/logistique') \
+        or request.path.startswith('/api/products')
+    can_write = can_log_write if _is_log_page else can_fin_write
+    # La suppression suit le droit d'écriture de la section courante.
+    can_delete = can_write
     return {
         'current_user_id': session.get('user_id'),
         'current_user': session.get('user_nom', ''),
         'current_role': ROLE_LABELS.get(role_key, 'Consultation'),
         'current_role_key': role_key,
-        'can_write': role_key in {'admin', 'saisie'},
-        'can_delete': role_key == 'admin',
-        'is_admin': role_key == 'admin',
-        'can_manage_users': role_key == 'admin',
+        'can_write': can_write,
+        'can_delete': can_delete,
+        'is_admin': is_admin,
+        'can_manage_users': is_admin,
+        'can_finance_read': can_fin_read,
+        'can_finance_write': can_fin_write,
+        'can_logistique_read': can_log_read,
+        'can_logistique_write': can_log_write,
         'is_logged_in': 'user_id' in session,
         'now': datetime.now,
         'app_version': '2.5.0',
@@ -396,7 +480,7 @@ def service_worker():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if 'user_id' in session:
-        return redirect(url_for('dashboard'))
+        return redirect(url_for(_landing_endpoint()))
     if request.method == 'POST':
         username = request.form.get('username', '').strip().lower()
         password = request.form.get('password', '')
@@ -406,8 +490,10 @@ def login():
             session['user_id'] = user.id
             session['user_nom'] = user.nom_complet or user.username
             session['user_role'] = _normalize_role(user.role)
+            session['finance_niveau'] = _normalize_niveau(getattr(user, 'finance_niveau', 'aucun'))
+            session['logistique_niveau'] = _normalize_niveau(getattr(user, 'logistique_niveau', 'aucun'))
             flash(f'Bienvenue, {user.nom_complet or user.username} !', 'success')
-            return redirect(url_for('dashboard'))
+            return redirect(url_for(_landing_endpoint()))
         flash('Identifiants incorrects.', 'error')
     return render_template('login.html')
 
@@ -421,22 +507,29 @@ def logout():
 @app.route('/utilisateurs', methods=['GET', 'POST'])
 @role_required('admin')
 def manage_users():
-    role_choices = ['admin', 'saisie', 'consultation']
-
     if request.method == 'POST':
         username = request.form.get('username', '').strip().lower()
         nom_complet = request.form.get('nom_complet', '').strip()
         password = request.form.get('password', '')
-        role = _normalize_role(request.form.get('role', 'consultation'))
+        is_admin = request.form.get('is_admin') in ('1', 'on', 'true', 'yes')
+        finance_niveau = _normalize_niveau(request.form.get('finance_niveau', 'aucun'))
+        logistique_niveau = _normalize_niveau(request.form.get('logistique_niveau', 'aucun'))
+
+        if is_admin:
+            finance_niveau = 'ecriture'
+            logistique_niveau = 'ecriture'
+            role = 'admin'
+        else:
+            role = 'saisie' if 'ecriture' in (finance_niveau, logistique_niveau) else 'consultation'
 
         if not username or len(username) < 3:
             flash('Nom utilisateur invalide (min 3 caractères).', 'error')
             return redirect(url_for('manage_users'))
-        if role not in role_choices:
-            flash('Rôle invalide.', 'error')
-            return redirect(url_for('manage_users'))
         if len(password) < 6:
             flash('Mot de passe trop court (min 6 caractères).', 'error')
+            return redirect(url_for('manage_users'))
+        if not is_admin and finance_niveau == 'aucun' and logistique_niveau == 'aucun':
+            flash('Sélectionnez au moins un accès (Finance ou Logistique) ou cochez Administrateur.', 'error')
             return redirect(url_for('manage_users'))
         if User.query.filter_by(username=username).first():
             flash('Ce nom utilisateur existe déjà.', 'error')
@@ -446,38 +539,53 @@ def manage_users():
             username=username,
             nom_complet=nom_complet or username,
             role=role,
+            finance_niveau=finance_niveau,
+            logistique_niveau=logistique_niveau,
         )
         user.set_password(password)
         db.session.add(user)
         db.session.commit()
-        flash(f'Utilisateur {username} créé avec rôle {ROLE_LABELS.get(role, role)}.', 'success')
+        flash(f'Utilisateur {username} créé.', 'success')
         return redirect(url_for('manage_users'))
 
     users = User.query.order_by(User.username.asc()).all()
-    return render_template('users.html', users=users, role_labels=ROLE_LABELS)
+    return render_template('users.html', users=users, role_labels=ROLE_LABELS,
+                           niveau_labels=NIVEAU_LABELS, section_niveaux=SECTION_NIVEAUX)
 
 
 @app.route('/utilisateurs/<int:user_id>/role', methods=['POST'])
 @role_required('admin')
 def update_user_role(user_id):
     user = User.query.get_or_404(user_id)
-    new_role = _normalize_role(request.form.get('role', 'consultation'))
-    if new_role not in {'admin', 'saisie', 'consultation'}:
-        flash('Rôle invalide.', 'error')
-        return redirect(url_for('manage_users'))
+    is_admin = request.form.get('is_admin') in ('1', 'on', 'true', 'yes')
+    finance_niveau = _normalize_niveau(request.form.get('finance_niveau', 'aucun'))
+    logistique_niveau = _normalize_niveau(request.form.get('logistique_niveau', 'aucun'))
+
+    if is_admin:
+        finance_niveau = 'ecriture'
+        logistique_niveau = 'ecriture'
+        new_role = 'admin'
+    else:
+        new_role = 'saisie' if 'ecriture' in (finance_niveau, logistique_niveau) else 'consultation'
 
     if user.id == session.get('user_id'):
-        flash('Vous ne pouvez pas modifier votre propre rôle.', 'error')
+        flash('Vous ne pouvez pas modifier vos propres accès.', 'error')
         return redirect(url_for('manage_users'))
 
-    if user.role == 'admin' and new_role != 'admin' and _admin_users_count() <= 1:
+    if user.role == 'admin' and not is_admin and _admin_users_count() <= 1:
         flash('Impossible de retirer le dernier administrateur.', 'error')
         return redirect(url_for('manage_users'))
 
+    if not is_admin and finance_niveau == 'aucun' and logistique_niveau == 'aucun':
+        flash('Sélectionnez au moins un accès (Finance ou Logistique) ou cochez Administrateur.', 'error')
+        return redirect(url_for('manage_users'))
+
     user.role = new_role
+    user.finance_niveau = finance_niveau
+    user.logistique_niveau = logistique_niveau
     db.session.commit()
     flash(
-        f'Rôle mis à jour pour {user.username}. Le nouvel accès sera effectif après reconnexion de cet utilisateur.',
+        f'Accès mis à jour pour {user.username}. Les nouveaux accès seront effectifs après reconnexion de cet utilisateur.',
         'success'
     )
     return redirect(url_for('manage_users'))
@@ -594,6 +702,9 @@ def _dashboard_kpi_block(year, month):
 @app.route('/')
 @login_required
 def dashboard():
+    # Le tableau de bord (chiffres financiers globaux) est réservé aux admins.
+    if _current_role() != 'admin':
+        return redirect(url_for(_landing_endpoint()))
     current_year = date.today().year
     previous_year = current_year - 1
     today = date.today()
@@ -789,7 +900,7 @@ def dashboard():
 # --- API Dashboard (filtres HTMX/JS) ---
 
 @app.route('/api/dashboard/monthly')
-@login_required
+@role_required('admin')
 def api_dashboard_monthly():
     year = request.args.get('year', date.today().year, type=int)
     prev_year = year - 1
@@ -817,7 +928,7 @@ def api_dashboard_monthly():
 
 
 @app.route('/api/dashboard/kpis')
-@login_required
+@role_required('admin')
 def api_dashboard_kpis():
     """HTMX partial: KPIs filtrés par année et/ou mois."""
     year = request.args.get('year', date.today().year, type=int)
@@ -896,7 +1007,7 @@ def api_dashboard_kpis():
 
 
 @app.route('/api/dashboard/overview')
-@login_required
+@role_required('admin')
 def api_dashboard_overview():
     """HTMX partial: Vue d'ensemble filtrée (année/mois indépendants)."""
     year = request.args.get('year', date.today().year, type=int)
@@ -912,7 +1023,7 @@ def api_dashboard_overview():
 
 
 @app.route('/api/dashboard/encaisse')
-@login_required
+@role_required('admin')
 def api_dashboard_encaisse():
     """HTMX partial: carte Encaissé filtrée (année/mois indépendants)."""
     year = request.args.get('year', date.today().year, type=int)
@@ -926,7 +1037,7 @@ def api_dashboard_encaisse():
 
 
 @app.route('/api/dashboard/encours')
-@login_required
+@role_required('admin')
 def api_dashboard_encours():
     """HTMX partial: carte En cours d'encaissement filtrée (année/mois indépendants)."""
     year = request.args.get('year', date.today().year, type=int)
@@ -940,7 +1051,7 @@ def api_dashboard_encours():
 
 
 @app.route('/api/dashboard/societes')
-@login_required
+@role_required('admin')
 def api_dashboard_societes():
     year = request.args.get('year', date.today().year, type=int)
 
@@ -964,7 +1075,7 @@ def api_dashboard_societes():
 
 
 @app.route('/api/dashboard/statuts-monthly')
-@login_required
+@role_required('admin')
 def api_dashboard_statuts_monthly():
     year = request.args.get('year', date.today().year, type=int)
     status_labels = STATUS_CHOICES
@@ -1001,7 +1112,7 @@ def api_dashboard_statuts_monthly():
 
 
 @app.route('/api/dashboard/top-clients')
-@login_required
+@role_required('admin')
 def api_dashboard_top_clients():
     year = request.args.get('year', date.today().year, type=int)
     month = request.args.get('month', 0, type=int)
@@ -1038,7 +1149,7 @@ def api_dashboard_top_clients():
 
 
 @app.route('/api/dashboard/types')
-@login_required
+@role_required('admin')
 def api_dashboard_types():
     societe = request.args.get('societe', 'all')
     result = {}
@@ -1053,7 +1164,7 @@ def api_dashboard_types():
 # --- Saisie ---
 
 @app.route('/api/operation/add', methods=['POST'])
-@role_required('admin', 'saisie')
+@section_required('finance', 'ecriture')
 def api_operation_add():
     type_operation = _normalize_type_operation(request.form.get('type_operation'))
     type_cheque = (request.form.get('type_cheque') or request.form.get('type_detail')) if type_operation == 'Chèque' else None
@@ -1108,7 +1219,7 @@ def api_operation_add():
 # --- Modification ---
 
 @app.route('/edit/<int:op_id>', methods=['GET', 'POST'])
-@role_required('admin', 'saisie')
+@section_required('finance', 'ecriture')
 def edit_operation(op_id):
     op = Operation.query.get_or_404(op_id)
     if request.method == 'POST':
@@ -1200,13 +1311,13 @@ def _ref_remettants_ctx(is_admin, page=1, search='', per_page=REF_PER_PAGE):
 
 
 @app.route('/referentiels')
-@role_required('admin', 'saisie')
+@section_required('finance', 'ecriture')
 def referentiels():
     return render_template('referentiels.html', is_admin=_current_role() == 'admin')
 
 
 @app.route('/api/referentiels/clients/list')
-@role_required('admin', 'saisie')
+@section_required('finance', 'lecture')
 def api_ref_clients_list():
     page   = request.args.get('page', 1, type=int)
     search = request.args.get('search', '').strip()
@@ -1216,7 +1327,7 @@ def api_ref_clients_list():
 
 
 @app.route('/api/referentiels/remettants/list')
-@role_required('admin', 'saisie')
+@section_required('finance', 'lecture')
 def api_ref_remettants_list():
     page   = request.args.get('page', 1, type=int)
     search = request.args.get('search', '').strip()
@@ -1226,7 +1337,7 @@ def api_ref_remettants_list():
 
 
 @app.route('/api/referentiels/clients/add', methods=['POST'])
-@role_required('admin', 'saisie')
+@section_required('finance', 'ecriture')
 def api_ref_client_add():
     nom = (request.form.get('nom') or '').strip()
     if not nom:
@@ -1240,7 +1351,7 @@ def api_ref_client_add():
 
 
 @app.route('/api/referentiels/clients/<int:item_id>/toggle', methods=['POST'])
-@role_required('admin', 'saisie')
+@section_required('finance', 'ecriture')
 def api_ref_client_toggle(item_id):
     item = ClientLabel.query.get_or_404(item_id)
     item.actif = not item.actif
@@ -1250,7 +1361,7 @@ def api_ref_client_toggle(item_id):
 
 
 @app.route('/api/referentiels/clients/<int:item_id>/delete', methods=['DELETE', 'POST'])
-@role_required('admin')
+@section_required('finance', 'ecriture')
 def api_ref_client_delete(item_id):
     item = ClientLabel.query.get_or_404(item_id)
     db.session.delete(item)
@@ -1260,7 +1371,7 @@ def api_ref_client_delete(item_id):
 
 
 @app.route('/api/referentiels/remettants/add', methods=['POST'])
-@role_required('admin', 'saisie')
+@section_required('finance', 'ecriture')
 def api_ref_remettant_add():
     nom = (request.form.get('nom') or '').strip()
     if not nom:
@@ -1274,7 +1385,7 @@ def api_ref_remettant_add():
 
 
 @app.route('/api/referentiels/remettants/<int:item_id>/toggle', methods=['POST'])
-@role_required('admin', 'saisie')
+@section_required('finance', 'ecriture')
 def api_ref_remettant_toggle(item_id):
     item = RemettantLabel.query.get_or_404(item_id)
     item.actif = not item.actif
@@ -1284,7 +1395,7 @@ def api_ref_remettant_toggle(item_id):
 
 
 @app.route('/api/referentiels/remettants/<int:item_id>/delete', methods=['DELETE', 'POST'])
-@role_required('admin')
+@section_required('finance', 'ecriture')
 def api_ref_remettant_delete(item_id):
     item = RemettantLabel.query.get_or_404(item_id)
     db.session.delete(item)
@@ -1311,13 +1422,13 @@ def _ref_fournisseurs_ctx(is_admin, page=1, search='', societe='', per_page=REF_
 
 
 @app.route('/logistique/referentiels')
-@role_required('admin', 'saisie')
+@section_required('logistique', 'ecriture')
 def logistique_referentiels():
     return render_template('logistique_referentiels.html', is_admin=_current_role() == 'admin')
 
 
 @app.route('/api/logistique/referentiels/fournisseurs/list')
-@role_required('admin', 'saisie')
+@section_required('logistique', 'lecture')
 def api_ref_fournisseurs_list():
     page    = request.args.get('page', 1, type=int)
     search  = request.args.get('search', '').strip()
@@ -1328,7 +1439,7 @@ def api_ref_fournisseurs_list():
 
 
 @app.route('/api/logistique/referentiels/fournisseurs/add', methods=['POST'])
-@role_required('admin', 'saisie')
+@section_required('logistique', 'ecriture')
 def api_ref_fournisseur_add():
     nom     = (request.form.get('nom') or '').strip()
     societe = (request.form.get('societe') or '').strip()
@@ -1345,7 +1456,7 @@ def api_ref_fournisseur_add():
 
 
 @app.route('/api/logistique/referentiels/fournisseurs/<int:item_id>/toggle', methods=['POST'])
-@role_required('admin', 'saisie')
+@section_required('logistique', 'ecriture')
 def api_ref_fournisseur_toggle(item_id):
     item = Fournisseur.query.get_or_404(item_id)
     item.actif = not item.actif
@@ -1355,7 +1466,7 @@ def api_ref_fournisseur_toggle(item_id):
 
 
 @app.route('/api/logistique/referentiels/fournisseurs/<int:item_id>/delete', methods=['DELETE', 'POST'])
-@role_required('admin')
+@section_required('logistique', 'ecriture')
 def api_ref_fournisseur_delete(item_id):
     item = Fournisseur.query.get_or_404(item_id)
     societe = item.societe
@@ -1814,7 +1925,7 @@ def _build_frais_query(args):
 
 
 @app.route('/api/logistique/bons')
-@login_required
+@section_required('logistique')
 def api_logistique_bons_list():
     """HTMX partial: retourne la table des bons filtrée."""
     page     = request.args.get('page', 1, type=int)
@@ -1877,7 +1988,7 @@ def api_logistique_bons_list():
                                sort_col=sort_col, sort_dir=sort_dir,
                        per_page_bons=per_page,
                        per_page_options=PER_PAGE_OPTIONS,
-                               can_write=_current_role() in ('admin', 'saisie'),
+                               can_write=_can('logistique', 'ecriture'),
                                is_admin=_current_role() == 'admin')
     else:
         q = q.order_by(BonCommande.date_commande.desc(), BonCommande.id.desc())
@@ -1893,12 +2004,12 @@ def api_logistique_bons_list():
                            sort_col=sort_col, sort_dir=sort_dir,
                            per_page_bons=per_page,
                            per_page_options=PER_PAGE_OPTIONS,
-                           can_write=_current_role() in ('admin', 'saisie'),
+                           can_write=_can('logistique', 'ecriture'),
                            is_admin=_current_role() == 'admin')
 
 
 @app.route('/api/logistique/gestion')
-@login_required
+@section_required('logistique')
 def api_logistique_gestion_list():
     """HTMX partial: retourne la table de gestion filtrée."""
     page     = request.args.get('page', 1, type=int)
@@ -2017,25 +2128,25 @@ def api_logistique_gestion_list():
                            today=date.today(),
                            per_page_log=per_page,
                            per_page_options=PER_PAGE_OPTIONS,
-                           can_write=_current_role() in ('admin', 'saisie'),
+                           can_write=_can('logistique', 'ecriture'),
                            is_admin=_current_role() == 'admin')
 
 
 @app.route('/api/logistique/frais')
-@login_required
+@section_required('logistique')
 def api_logistique_frais_list():
     data = _build_frais_query(request.args)
     return render_template(
         'partials/logistique_frais_table.html',
         search=request.args.get('search', '').strip(),
         societe=request.args.get('societe', '').strip(),
-        can_write=_current_role() in ('admin', 'saisie'),
+        can_write=_can('logistique', 'ecriture'),
         **data,
     )
 
 
 @app.route('/api/logistique/frais/config/<int:bon_id>')
-@login_required
+@section_required('logistique')
 def api_frais_config(bon_id):
     """Configuration PR d'un bon, pour la modale de calcul depuis Gestion des commandes."""
     frais = FraisLogistique.query.filter_by(bon_id=bon_id).first()
@@ -2049,7 +2160,7 @@ def api_frais_config(bon_id):
 
 
 @app.route('/api/logistique/frais/<int:item_id>/edit', methods=['POST'])
-@role_required('admin', 'saisie')
+@section_required('logistique', 'ecriture')
 def api_frais_edit(item_id):
     frais = FraisLogistique.query.get_or_404(item_id)
 
@@ -2107,7 +2218,7 @@ def api_frais_edit(item_id):
 
 
 @app.route('/logistique/prix-revient')
-@login_required
+@section_required('logistique')
 def logistique_prix_revient():
     societe = request.args.get('societe', '').strip()
 
@@ -2160,12 +2271,12 @@ def logistique_prix_revient():
         produit_options=produit_options,
         bon_options=bon_options,
         societe=societe,
-        can_write=_current_role() in ('admin', 'saisie'),
+        can_write=_can('logistique', 'ecriture'),
     )
 
 
 @app.route('/logistique/gestion')
-@login_required
+@section_required('logistique')
 def logistique_gestion():
     page     = request.args.get('page', 1, type=int)
     per_page = _get_per_page(request.args, 'per_page_log', LOG_PER_PAGE)
@@ -2252,12 +2363,12 @@ def logistique_gestion():
                            log_statuts=LOG_STATUTS,
                            per_page_log=per_page,
                            per_page_options=PER_PAGE_OPTIONS,
-                           can_write=_current_role() in ('admin', 'saisie'),
+                           can_write=_can('logistique', 'ecriture'),
                            is_admin=_current_role() == 'admin')
 
 
 @app.route('/api/logistique/notifications')
-@login_required
+@section_required('logistique')
 def api_logistique_notifications():
     return render_template(
         'partials/logistique_notifications_panel.html',
@@ -2315,7 +2426,7 @@ def _log_form_fields(c):
 
 
 @app.route('/api/logistique/add', methods=['POST'])
-@role_required('admin', 'saisie')
+@section_required('logistique', 'ecriture')
 def api_logistique_add():
     c = CommandeLogistique(cree_par=session.get('username', ''))
     _log_form_fields(c)
@@ -2325,7 +2436,7 @@ def api_logistique_add():
 
 
 @app.route('/api/logistique/<int:item_id>/edit', methods=['POST'])
-@role_required('admin', 'saisie')
+@section_required('logistique', 'ecriture')
 def api_logistique_edit(item_id):
     c = CommandeLogistique.query.get_or_404(item_id)
     _log_form_fields(c)
@@ -2334,7 +2445,7 @@ def api_logistique_edit(item_id):
 
 
 @app.route('/api/logistique/<int:item_id>/delete', methods=['POST', 'DELETE'])
-@role_required('admin')
+@section_required('logistique', 'ecriture')
 def api_logistique_delete(item_id):
     CommandeLogistique.query.get_or_404(item_id)
     flash('Suppression directe désactivée. Supprimez le bon de commande pour supprimer aussi son entrée de gestion.', 'warning')
@@ -2344,7 +2455,7 @@ def api_logistique_delete(item_id):
 # ── Products (Referentiels) ──────────────────────────────────────────────────
 
 @app.route('/api/products/by-company')
-@login_required
+@section_required('logistique')
 def api_products_by_company():
     """Get products filtered by company for autofill."""
     company = request.args.get('company', '').strip()
@@ -2356,7 +2467,7 @@ def api_products_by_company():
 
 
 @app.route('/api/products/search')
-@login_required
+@section_required('logistique')
 def api_products_search():
     """Search products by reference or designation."""
     q = request.args.get('q', '').strip()
@@ -2379,7 +2490,7 @@ def api_products_search():
 # ── Bons de commande ──────────────────────────────────────────────────────────
 
 @app.route('/logistique/bons')
-@login_required
+@section_required('logistique')
 def logistique_bons():
     page     = request.args.get('page', 1, type=int)
     per_page = _get_per_page(request.args, 'per_page_bons', BON_PER_PAGE)
@@ -2409,7 +2520,7 @@ def logistique_bons():
     bons        = q.offset((page - 1) * per_page).limit(per_page).all()
     total_pages = max(1, (total + per_page - 1) // per_page)
 
-    can_write = _current_role() in ('admin', 'saisie')
+    can_write = _can('logistique', 'ecriture')
 
     # Années présentes (boutons raccourcis du filtre Période).
     _yr_min = db.session.query(db.func.min(BonCommande.date_commande)).scalar()
@@ -2442,7 +2553,7 @@ def logistique_bons():
 
 
 @app.route('/api/logistique/bons/add', methods=['POST'])
-@role_required('admin', 'saisie')
+@section_required('logistique', 'ecriture')
 def api_bon_add():
     def fd(k):
         v = request.form.get(k, '').strip()
@@ -2574,7 +2685,7 @@ def api_bon_add():
 
 
 @app.route('/api/logistique/bons/<int:bon_id>/statut', methods=['POST'])
-@role_required('admin', 'saisie')
+@section_required('logistique', 'ecriture')
 def api_bon_statut(bon_id):
     bon = BonCommande.query.get_or_404(bon_id)
     bon.statut = request.form.get('statut', bon.statut)
@@ -2583,7 +2694,7 @@ def api_bon_statut(bon_id):
 
 
 @app.route('/api/logistique/bons/<int:bon_id>/update', methods=['POST'])
-@role_required('admin', 'saisie')
+@section_required('logistique', 'ecriture')
 def api_bon_update(bon_id):
     bon = BonCommande.query.get_or_404(bon_id)
 
@@ -2755,7 +2866,7 @@ def api_bon_update(bon_id):
 
 
 @app.route('/api/logistique/bons/<int:bon_id>/delete', methods=['POST', 'DELETE'])
-@role_required('admin')
+@section_required('logistique', 'ecriture')
 def api_bon_delete(bon_id):
     bon = BonCommande.query.get_or_404(bon_id)
     CommandeLogistique.query.filter_by(bon_id=bon.id).delete()
@@ -2766,7 +2877,7 @@ def api_bon_delete(bon_id):
 
 
 @app.route('/logistique/bons/<int:bon_id>/print')
-@login_required
+@section_required('logistique')
 def print_bon(bon_id):
     """Print bon de commande."""
     bon = BonCommande.query.get_or_404(bon_id)
@@ -2775,7 +2886,7 @@ def print_bon(bon_id):
 
 
 @app.route('/api/logistique/bons/<int:bon_id>/detail')
-@login_required
+@section_required('logistique')
 def api_bon_detail(bon_id):
     """Return bon de commande data as JSON (used by gestion page viewer)."""
     try:
@@ -2789,7 +2900,7 @@ def api_bon_detail(bon_id):
 # --- Suppression ---
 
 @app.route('/delete/<int:op_id>', methods=['DELETE', 'POST'])
-@role_required('admin')
+@section_required('finance', 'ecriture')
 def delete_operation(op_id):
     op = Operation.query.get_or_404(op_id)
     _log_audit(op.id, 'suppression', f"{op.type_operation} - {op.client} - {op.montant}")
@@ -2997,7 +3108,7 @@ def _build_operations_query(args):
 
 
 @app.route('/operations')
-@login_required
+@section_required('finance')
 def operations():
     _auto_update_echeance_statuts()
     notifications = _get_echeance_notifications()
@@ -3018,7 +3129,7 @@ def operations():
 
 
 @app.route('/api/operations')
-@login_required
+@section_required('finance')
 def api_operations():
     data = _build_operations_query(request.args)
     role = _current_role()
@@ -3033,7 +3144,7 @@ def api_operations():
 
 
 @app.route('/api/notifications')
-@login_required
+@section_required('finance')
 def api_notifications():
     notifications = _get_echeance_notifications()
     return render_template(
@@ -3097,7 +3208,7 @@ def api_notifications_drawer():
 
 
 @app.route('/api/rejections')
-@login_required
+@section_required('finance')
 def api_rejections():
     """Retourne les rejets récents (sauf pour les admins)."""
     if _current_role() == 'admin':
@@ -3112,7 +3223,7 @@ def api_rejections():
     )
 
 @app.route('/api/operations/<int:op_id>')
-@login_required
+@section_required('finance')
 def api_operation_detail(op_id):
     op = Operation.query.get_or_404(op_id)
     audits = AuditLog.query.filter_by(operation_id=op_id).order_by(AuditLog.date_action.desc()).all()
@@ -3151,7 +3262,7 @@ def api_update_operation_status(op_id):
 # --- Import Excel ---
 
 @app.route('/import', methods=['GET', 'POST'])
-@role_required('admin', 'saisie')
+@section_required('finance', 'ecriture')
 def import_excel():
     if request.method == 'POST':
         file = request.files.get('file')
@@ -3186,7 +3297,7 @@ def import_excel():
 # --- Historique ---
 
 @app.route('/historique')
-@login_required
+@role_required('admin')
 def historique():
     audits = AuditLog.query.order_by(AuditLog.date_action.desc()).limit(200).all()
     return render_template('historique.html', audits=audits)
@@ -3195,7 +3306,7 @@ def historique():
 # --- Export ---
 
 @app.route('/export')
-@login_required
+@section_required('finance')
 def export_excel():
     query = Operation.query
     search = request.args.get('search', '').strip()
@@ -3347,6 +3458,29 @@ with app.app_context():
         if 'date_etd' not in _cols:
             _conn.exec_driver_sql("ALTER TABLE commandes_logistique ADD COLUMN date_etd DATE")
             _conn.commit()
+
+        # Migration : accès par section (Finance / Logistique). Ajoute les colonnes
+        # de niveau si absentes et initialise les utilisateurs existants une seule
+        # fois (admin -> écriture partout ; autres -> écriture selon l'ancien rôle).
+        _user_cols = [row[1] for row in _conn.exec_driver_sql("PRAGMA table_info(users)").fetchall()]
+        _niveau_cols_added = False
+        for _ncol in ('finance_niveau', 'logistique_niveau'):
+            if _ncol not in _user_cols:
+                _conn.exec_driver_sql(
+                    f"ALTER TABLE users ADD COLUMN {_ncol} VARCHAR(10) NOT NULL DEFAULT 'aucun'")
+                _niveau_cols_added = True
+        if _niveau_cols_added:
+            # Admins : accès complet aux deux sections.
+            _conn.exec_driver_sql(
+                "UPDATE users SET finance_niveau='ecriture', logistique_niveau='ecriture' WHERE role='admin'")
+            # Rôle 'saisie' : écriture sur les deux sections (comportement historique).
+            _conn.exec_driver_sql(
+                "UPDATE users SET finance_niveau='ecriture', logistique_niveau='ecriture' WHERE role='saisie'")
+            # Rôle 'consultation' : lecture sur les deux sections.
+            _conn.exec_driver_sql(
+                "UPDATE users SET finance_niveau='lecture', logistique_niveau='lecture' WHERE role='consultation'")
+            _conn.commit()
+
 
         # Migration : refonte de frais_logistique pour le calcul du prix de revient.
         _frais_cols = [row[1] for row in _conn.exec_driver_sql("PRAGMA table_info(frais_logistique)").fetchall()]
