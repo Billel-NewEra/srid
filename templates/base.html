@@ -1605,6 +1605,12 @@
                     var openUp = spaceBelow < minListHeight && spaceAbove > spaceBelow;
                     var available = openUp ? spaceAbove : spaceBelow;
                     list.style.maxHeight = Math.max(96, Math.min(available, 360)) + 'px';
+                    // Ouvre la liste au-dessus du champ quand la place manque en dessous.
+                    list.style.top = openUp ? 'auto' : '';
+                    list.style.bottom = openUp ? '100%' : '';
+                    list.style.marginTop = openUp ? '0' : '';
+                    list.style.marginBottom = openUp ? '0.25rem' : '';
+                    list.style.transformOrigin = openUp ? 'bottom' : '';
                 }
 
                 function filterOptions() {

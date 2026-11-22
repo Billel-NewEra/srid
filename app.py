@@ -1178,8 +1178,6 @@ def api_operation_add():
         date_reception = _parse_date(request.form.get('date_reception'))
         if type_cheque == 'À échéance':
             date_echeance = _parse_date(request.form.get('date_echeance') or request.form.get('date_encaissement'))
-        if not date_operation:
-            date_operation = date_reception or date_echeance
     else:
         date_operation = _parse_date(request.form.get('date_operation'))
 
@@ -1235,8 +1233,6 @@ def edit_operation(op_id):
             date_reception = _parse_date(request.form.get('date_reception'))
             if type_cheque == 'À échéance':
                 date_echeance = _parse_date(request.form.get('date_echeance') or request.form.get('date_encaissement'))
-            if not date_operation:
-                date_operation = date_reception or date_echeance
         else:
             date_operation = _parse_date(request.form.get('date_operation'))
 
@@ -1704,13 +1700,15 @@ def _pr_config(frais, bon):
     Fusionne les valeurs éditables enregistrées (frais.pr_config, JSON) avec les
     valeurs par défaut : taux fixes standards + données produits issues du bon.
     - Prix achat et quantité proviennent du bon (non modifiables).
-    - Le taux de droits de douane (D.D.) et le fret sont communs au bon.
-    - Seule la TVA peut différer par produit.
+    - Le fret est commun au bon.
+    - La TVA et le taux de droits de douane (D.D.) s'appliquent par produit.
+      Pour les anciens bons (D.D. global), rates['douane'] sert de valeur par
+      défaut et est propagé à chaque produit (sans réécriture en base).
     Structure retournée :
       {
         'rates':   {'tcs','tva','precompte','taxe_dom','frais_transfert','douane'},
         'charges': {'rps','fret','echange','honoraires','magasinage','surestaries'},
-        'produits': { <ligne_id>: {'nom','prix','qte','tva'} },
+        'produits': { <ligne_id>: {'nom','prix','qte','tva','douane'} },
       }
     """
     saved = {}
@@ -1751,6 +1749,7 @@ def _pr_config(frais, bon):
                 'prix': l.prix_unitaire or 0,   # depuis le bon (lecture seule)
                 'qte':  l.quantite or 0,        # depuis le bon (lecture seule)
                 'tva':  sp.get('tva', rates['tva']),
+                'douane': sp.get('douane', rates['douane']),
                 'prix_vente_ttc': sp.get('prix_vente_ttc'),  # prix de vente TTC unitaire saisi
             }
     return {'rates': rates, 'charges': charges, 'produits': produits}
@@ -1761,9 +1760,9 @@ def _calculer_pr_bon(bon, frais, cours):
 
     Valeur en douane = Montant DA + (fret réparti × cours). Le fret et le RPS
     sont saisis une fois pour le bon puis répartis au prorata de la part de chaque
-    produit dans la valeur des marchandises. Le taux de droits de douane est commun
-    au bon ; la TVA peut différer par produit. Les taxes proportionnelles sont
-    calculées sur la valeur en douane (fret inclus).
+    produit dans la valeur des marchandises. Le taux de droits de douane et la TVA
+    s'appliquent par produit. Les taxes proportionnelles sont calculées sur la
+    valeur en douane (fret inclus).
     """
     if not bon or not bon.lignes or not cours:
         return []
@@ -1772,7 +1771,6 @@ def _calculer_pr_bon(bon, frais, cours):
     rates = cfg['rates']
     charges = cfg['charges']
     fret_total = charges['fret'] or 0
-    douane_rate = rates['douane'] or 0
 
     ordered = [(l, cfg['produits'][str(l.id)]) for l in bon.lignes if str(l.id) in cfg['produits']]
 
@@ -1790,7 +1788,7 @@ def _calculer_pr_bon(bon, frais, cours):
 
         # Taxes douanières (sur la valeur en douane, fret inclus)
         tcs       = valeur_douane * rates['tcs']
-        douane    = valeur_douane * douane_rate
+        douane    = valeur_douane * (p['douane'] or 0)
         tva       = (valeur_douane + tcs) * (p['tva'] or 0)
         precompte = (valeur_douane + tcs + tva) * rates['precompte']
         rps_l     = (charges['rps'] or 0) * part
@@ -1903,6 +1901,9 @@ def _build_frais_query(args):
         item.cours_bon = _cours_du_bon(item.bon_id) if item.bon_id else None
         bon = BonCommande.query.get(item.bon_id) if item.bon_id else None
         frais_pr_map[item.id] = _frais_config_payload(item, bon, item.cours_bon)
+        # Taux D.D. distincts des produits (par produit), pour l'affichage.
+        dd_rates = sorted({round((p.get('douane') or 0) * 100, 2) for p in frais_pr_map[item.id]['produits']})
+        item.douane_label = ' / '.join(f'{r:g}%' for r in dd_rates) if dd_rates else None
         if item.bon_id and item.cours_bon and bon:
             pr_lignes = _calculer_pr_bon(bon, item, item.cours_bon)
             item.pr_ttc_total = sum(r['pr_ttc'] for r in pr_lignes) if pr_lignes else None
@@ -2189,7 +2190,10 @@ def api_frais_edit(item_id):
         frais.honoraires_transitaire = _f(charges.get('honoraires'))
         frais.magasinage  = _f(charges.get('magasinage'))
         frais.surestaries = _f(charges.get('surestaries'))
-        frais.taux_douane = _f(rates.get('douane'))
+        # D.D. par produit : la colonne héritée conserve le taux le plus élevé (tri).
+        prod_douanes = [_f((p or {}).get('douane')) for p in (config.get('produits') or {}).values()]
+        prod_douanes = [d for d in prod_douanes if d is not None]
+        frais.taux_douane = max(prod_douanes) if prod_douanes else _f(rates.get('douane'))
     else:
         # Repli : ancienne saisie simple par champs de formulaire.
         def ff(k):
@@ -2771,18 +2775,19 @@ def api_bon_update(bon_id):
             old_pr_config = json.loads(frais_entry.pr_config)
         except (ValueError, TypeError):
             old_pr_config = None
-    tva_overrides = []  # [ref_norm, desig_norm, tva, prix_vente_ttc, consumed]
+    tva_overrides = []  # [ref_norm, desig_norm, tva, prix_vente_ttc, consumed, douane]
     if old_pr_config and isinstance(old_pr_config.get('produits'), dict):
         prod_cfg = old_pr_config['produits']
         for l in bon.lignes:
             sp = prod_cfg.get(str(l.id)) or {}
             tva = sp.get('tva')
             pv = sp.get('prix_vente_ttc')
-            if tva is not None or pv is not None:
+            dd = sp.get('douane')
+            if tva is not None or pv is not None or dd is not None:
                 tva_overrides.append([
                     (l.reference or '').strip().upper(),
                     (l.designation or '').strip().upper(),
-                    tva, pv, False,
+                    tva, pv, False, dd,
                 ])
 
     # Remplacer les lignes existantes
@@ -2824,6 +2829,8 @@ def api_bon_update(bon_id):
                     entry['tva'] = match[2]
                 if match[3] is not None:
                     entry['prix_vente_ttc'] = match[3]
+                if match[5] is not None:
+                    entry['douane'] = match[5]
                 new_produits[str(nl.id)] = entry
         old_pr_config['produits'] = new_produits
         frais_entry.pr_config = json.dumps(old_pr_config, ensure_ascii=False)
@@ -3449,8 +3456,70 @@ def _parse_excel_row(row, sheet_name):
 
 
 # --- Initialisation ---
+def _migrate_operations_date_operation_nullable():
+    """Retire la contrainte NOT NULL de operations.date_operation (SQLite).
+
+    SQLite ne permet pas de modifier une contrainte via ALTER : la table est
+    reconstruite à l'identique (mêmes colonnes, même ordre, mêmes index) en
+    retirant uniquement le NOT NULL. Une sauvegarde du fichier est faite avant.
+    Idempotent : ne fait rien si la colonne est déjà nullable.
+    """
+    import sqlite3
+    import shutil
+
+    db_path = db.engine.url.database
+    if not db_path or db_path == ':memory:' or not os.path.exists(db_path):
+        return
+
+    con = sqlite3.connect(db_path, isolation_level=None)
+    try:
+        cols = con.execute("PRAGMA table_info(operations)").fetchall()
+        col = next((c for c in cols if c[1] == 'date_operation'), None)
+        if col is None or col[3] == 0:  # c[3] = notnull
+            return
+
+        table_sql = con.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='operations'"
+        ).fetchone()[0]
+        new_sql, n = re.subn(r'(date_operation\s+DATE)\s+NOT\s+NULL', r'\1', table_sql, count=1, flags=re.IGNORECASE)
+        if n != 1:
+            app.logger.warning("Migration date_operation : définition inattendue, migration ignorée.")
+            return
+        new_sql = re.sub(r'^\s*CREATE\s+TABLE\s+"?operations"?', 'CREATE TABLE operations_new', new_sql, count=1, flags=re.IGNORECASE)
+        index_sqls = [r[0] for r in con.execute(
+            "SELECT sql FROM sqlite_master WHERE type='index' AND tbl_name='operations' AND sql IS NOT NULL"
+        ).fetchall()]
+
+        backup = f"{os.path.splitext(db_path)[0]}.backup-before-date-op-nullable-{datetime.now():%Y%m%d-%H%M%S}.db"
+        shutil.copy2(db_path, backup)
+
+        con.execute("BEGIN IMMEDIATE")
+        try:
+            before = con.execute("SELECT COUNT(*) FROM operations").fetchone()[0]
+            con.execute("DROP TABLE IF EXISTS operations_new")
+            con.execute(new_sql)
+            con.execute("INSERT INTO operations_new SELECT * FROM operations")
+            after = con.execute("SELECT COUNT(*) FROM operations_new").fetchone()[0]
+            if before != after:
+                raise RuntimeError(f"Nombre de lignes différent ({before} != {after})")
+            con.execute("DROP TABLE operations")
+            con.execute("ALTER TABLE operations_new RENAME TO operations")
+            for idx_sql in index_sqls:
+                con.execute(idx_sql)
+            con.execute("COMMIT")
+            app.logger.info("Migration date_operation nullable OK (%s lignes, sauvegarde : %s)", after, backup)
+        except Exception:
+            con.execute("ROLLBACK")
+            raise
+    finally:
+        con.close()
+
+
 with app.app_context():
     db.create_all()
+
+    # Migration : date dépôt/virement (date_operation) facultative pour les chèques.
+    _migrate_operations_date_operation_nullable()
 
     # Migration légère : ajoute la colonne date_etd si absente (DB déjà existante).
     with db.engine.connect() as _conn:

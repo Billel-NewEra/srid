@@ -43,7 +43,7 @@
             <td>{{ item.annee or '-' }}</td>
             <td>{{ item.fournisseur or '-' }}</td>
             <td class="text-right">{{ ('%.4f'|format(item.cours_bon)) if item.cours_bon is not none else '-' }}</td>
-            <td class="text-right">{{ ('%.0f%%'|format(item.taux_douane * 100)) if item.taux_douane is not none else '-' }}</td>
+            <td class="text-right">{{ item.douane_label or (('%.0f%%'|format(item.taux_douane * 100)) if item.taux_douane is not none else '-') }}</td>
             <td class="text-right">{{ item.rps|currency if item.rps is not none else '-' }}</td>
             <td class="text-right">{{ item.echange|currency if item.echange is not none else '-' }}</td>
             <td class="text-right">{{ item.honoraires_transitaire|currency if item.honoraires_transitaire is not none else '-' }}</td>
@@ -67,7 +67,7 @@
             <div class="text-xs opacity-70">{{ item.ref_log or '-' }} · {{ item.societe or '-' }}</div>
             <div class="grid grid-cols-2 gap-2 mt-2 text-xs">
                 <div><span class="opacity-50">Cours</span><br>{{ ('%.4f'|format(item.cours_bon)) if item.cours_bon is not none else '-' }}</div>
-                <div><span class="opacity-50">Taux douane</span><br>{{ ('%.0f%%'|format(item.taux_douane * 100)) if item.taux_douane is not none else '-' }}</div>
+                <div><span class="opacity-50">Taux douane</span><br>{{ item.douane_label or (('%.0f%%'|format(item.taux_douane * 100)) if item.taux_douane is not none else '-') }}</div>
                 <div><span class="opacity-50">RPS</span><br>{{ item.rps|currency if item.rps is not none else '-' }}</div>
                 <div><span class="opacity-50">Échange</span><br>{{ item.echange|currency if item.echange is not none else '-' }}</div>
                 <div><span class="opacity-50">Honoraires</span><br>{{ item.honoraires_transitaire|currency if item.honoraires_transitaire is not none else '-' }}</div>
@@ -110,13 +110,6 @@
 
             <div class="divider text-xs my-2 font-semibold text-info">Taxes douanières</div>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-2">
-                <label class="form-control"><span class="label-text text-xs">Droits de douane (D.D.)</span>
-                    <select id="pg_douane" class="select select-bordered select-xs" oninput="recomputePR()">
-                        <option value="0">TAUX 1 — 0 %</option>
-                        <option value="5">TAUX 2 — 5 %</option>
-                        <option value="15">TAUX 3 — 15 %</option>
-                        <option value="30">TAUX 4 — 30 %</option>
-                    </select></label>
                 <label class="form-control"><span class="label-text text-xs">TCS (%)</span>
                     <input type="number" step="0.01" id="pg_tcs" class="input input-bordered input-xs" oninput="recomputePR()"></label>
                 <label class="form-control"><span class="label-text text-xs">Précompte IBS (%)</span>
@@ -276,7 +269,6 @@ function openFraisEdit(id) {
     var r = cfg.rates || {}, c = cfg.charges || {};
     var fd = document.getElementById('fret-devise');
     if (fd) fd.textContent = devSym(cfg.devise);
-    _setv('pg_douane',     r.douane     != null ? Math.round(r.douane * 100) : '0');
     _setv('pg_tcs',        r.tcs        != null ? r.tcs * 100 : '');
     _setv('pg_precompte',  r.precompte  != null ? r.precompte * 100 : '');
     _setv('pg_taxedom',    r.taxe_dom   != null ? r.taxe_dom * 100 : '');
@@ -299,6 +291,18 @@ function _fmtNum(x) {
     return x.toLocaleString('fr-FR', {maximumFractionDigits: 4});
 }
 
+// Liste déroulante du taux de droits de douane (D.D.) d'un produit.
+var DD_TAUX = [[0, 'TAUX 1 — 0 %'], [5, 'TAUX 2 — 5 %'], [15, 'TAUX 3 — 15 %'], [30, 'TAUX 4 — 30 %']];
+function _ddSelectHtml(i, rate) {
+    var pct = (rate === null || rate === undefined) ? 0 : Math.round(rate * 10000) / 100;
+    var opts = DD_TAUX.slice();
+    if (!opts.some(function (o) { return o[0] === pct; })) opts.push([pct, pct + ' %']);
+    return '<select id="pa_douane_' + i + '" class="select select-bordered select-xs" oninput="recomputePR()">' +
+        opts.map(function (o) {
+            return '<option value="' + o[0] + '"' + (o[0] === pct ? ' selected' : '') + '>' + o[1] + '</option>';
+        }).join('') + '</select>';
+}
+
 function buildFraisGrid() {
     var prods = (_fraisCurrent && _fraisCurrent.produits) ? _fraisCurrent.produits : [];
     var sym = devSym(_fraisCurrent && _fraisCurrent.devise);
@@ -306,6 +310,7 @@ function buildFraisGrid() {
         '<th class="text-left">Produit</th>' +
         '<th class="text-right">Prix achat ' + sym + ' C&F</th>' +
         '<th class="text-right">Quantité</th>' +
+        '<th class="text-right">Droits de douane (D.D.)</th>' +
         '<th class="text-right">TVA (%)</th>' +
         '</tr>';
     document.getElementById('frais-in-head').innerHTML = head;
@@ -317,12 +322,13 @@ function buildFraisGrid() {
             '<td class="font-medium">' + (p.nom || '-') + '</td>' +
             '<td class="text-right opacity-70">' + _fmtNum(p.prix) + '</td>' +
             '<td class="text-right opacity-70">' + _fmtNum(p.qte) + '</td>' +
+            '<td class="text-right">' + _ddSelectHtml(i, p.douane) + '</td>' +
             '<td class="text-right"><input type="number" step="0.01" id="pa_tva_' + i +
             '" value="' + tva + '" class="input input-bordered input-xs w-20 text-right" oninput="recomputePR()"></td>' +
             '</tr>';
     });
     if (!prods.length) {
-        body = '<tr><td colspan="4" class="text-center opacity-50 py-3">Aucun produit sur ce bon</td></tr>';
+        body = '<tr><td colspan="5" class="text-center opacity-50 py-3">Aucun produit sur ce bon</td></tr>';
     }
     document.getElementById('frais-in-body').innerHTML = body;
 }
@@ -381,14 +387,14 @@ function recomputePR() {
     }
     warn.classList.add('hidden');
 
-    var douaneR = _numv('pg_douane') / 100;
     var tcsR = _numv('pg_tcs') / 100, precR = _numv('pg_precompte') / 100,
         domR = _numv('pg_taxedom') / 100, transR = _numv('pg_transfert') / 100;
     var rps = _numv('pc_rps'), fret = _numv('pc_fret'), echange = _numv('pc_echange'),
         honoraires = _numv('pc_honoraires'), magasinage = _numv('pc_magasinage'), surestaries = _numv('pc_surestaries');
 
     var inputs = prods.map(function (p, i) {
-        return {nom: p.nom, prix: p.prix || 0, qte: p.qte || 0, tva: _numv('pa_tva_' + i) / 100};
+        return {nom: p.nom, prix: p.prix || 0, qte: p.qte || 0, tva: _numv('pa_tva_' + i) / 100,
+                douane: _numv('pa_douane_' + i) / 100};
     });
     var montants = inputs.map(function (p) { return p.prix * p.qte * cours; });
     var totalDa = montants.reduce(function (a, b) { return a + b; }, 0);
@@ -400,7 +406,7 @@ function recomputePR() {
         var fretDa = fretUsd * cours;
         var vd = md + fretDa;                       // valeur en douane (fret inclus)
         var tcs = vd * tcsR;
-        var douane = vd * douaneR;
+        var douane = vd * p.douane;
         var tva = (vd + tcs) * p.tva;
         var precompte = (vd + tcs + tva) * precR;
         var rpsL = rps * part;
@@ -451,7 +457,8 @@ document.addEventListener('submit', function (e) {
     var cfg = _fraisCurrent || {produits: []};
     var prods = cfg.produits || [];
     var config = {rates: {}, charges: {}, produits: {}};
-    config.rates.douane = _numv('pg_douane') / 100;
+    // D.D. par produit ; le taux global hérité (anciens bons) est conservé comme valeur par défaut.
+    config.rates.douane = (cfg.rates && cfg.rates.douane != null) ? cfg.rates.douane : 0;
     config.rates.tcs = _numv('pg_tcs') / 100;
     config.rates.precompte = _numv('pg_precompte') / 100;
     config.rates.taxe_dom = _numv('pg_taxedom') / 100;
@@ -463,7 +470,8 @@ document.addEventListener('submit', function (e) {
     config.charges.magasinage = _numv('pc_magasinage');
     config.charges.surestaries = _numv('pc_surestaries');
     prods.forEach(function (p, i) {
-        config.produits[p.id] = {tva: _numv('pa_tva_' + i) / 100};
+        config.produits[p.id] = {tva: _numv('pa_tva_' + i) / 100, douane: _numv('pa_douane_' + i) / 100,
+                                 prix_vente_ttc: p.prix_vente_ttc};
     });
     document.getElementById('frais-pr-config').value = JSON.stringify(config);
 });

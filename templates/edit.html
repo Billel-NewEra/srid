@@ -222,8 +222,8 @@
             // Date principale toujours visible : « Date » (virement/versement)
             // ou « Date dépôt / virement » (chèque).
             dateGeneralWrap.classList.remove('hidden');
-            dateGeneralInput.required = true;
-            if (dateGeneralLabel) dateGeneralLabel.textContent = isCheque ? 'Date dépôt / virement *' : 'Date *';
+            dateGeneralInput.required = !isCheque;
+            if (dateGeneralLabel) dateGeneralLabel.textContent = isCheque ? 'Date dépôt / virement' : 'Date *';
 
             dateReceptionWrap.classList.toggle('hidden', !isCheque);
             dateReceptionInput.required = isCheque;
